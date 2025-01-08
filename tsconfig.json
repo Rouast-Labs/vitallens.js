@@ -1,18 +1,24 @@
 {
   "compilerOptions": {
-    "target": "es2020",                     // Targets modern JavaScript features
-    "module": "es2020",                     // ES2020 module system for browser and Node.js
-    "lib": ["es2020", "dom"],               // Includes ES2020 and DOM features
-    "moduleResolution": "node",             // Resolves modules in Node.js style
-    "outDir": "dist",                       // Compiles output into the `dist` directory
-    "strict": true,                         // Enables strict type checking
-    "esModuleInterop": true,                // Improves compatibility with CommonJS modules
-    "resolveJsonModule": true,              // Allows importing JSON files
-    "declaration": true,                    // Generates `.d.ts` type definitions
-    "sourceMap": true,                      // Includes source maps for debugging
-    "types": ["node"],                      // Includes Node.js type definitions
-    "skipLibCheck": true                    // Skips type checking of third-party libraries
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationDir": "./dist/types",
+    "declarationMap": true,
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"]
   },
-  "include": ["src/**/*.ts"],               // Includes all TypeScript files in the `src` directory
-  "exclude": ["node_modules", "dist"]       // Excludes output and dependencies
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test", "**/*.test.ts", "**/*.spec.ts"]
 }
