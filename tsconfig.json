@@ -10,36 +10,14 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "declaration": true,
+    "declarationDir": "./dist/types",
+    "declarationMap": true,
     "typeRoots": ["./node_modules/@types", "./typings"],
-    // "declarationDir": "./dist/types",
-    // "declarationMap": true,
     "sourceMap": true,
-    // "resolveJsonModule": true,
-    // "noImplicitReturns": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "isolatedModules": true,
-    // "lib": ["ESNext", "DOM", "DOM.Iterable"]
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
   },
   "include": ["src/**/*.ts"],
-  // "exclude": [
-  //   "node_modules/@types/babel__*", // Ignore babel-related types
-  //   "node_modules/@types/undici*"  // Ignore undici-related types
-  // ]
-  // "exclude": ["node_modules", "dist", "test", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": ["node_modules", "dist", "test", "**/*.test.ts", "**/*.spec.ts"]
 }
-
-// {
-//   "compilerOptions": {
-//     "target": "ES2020", // Set to ES2020 or ESNext
-//     "module": "ESNext",
-//     "moduleResolution": "Node",
-//     "strict": true,
-//     "esModuleInterop": true,
-//     "skipLibCheck": true,
-//     "outDir": "./dist",
-//     "rootDir": "./src",
-//     "declaration": true,
-//     "sourceMap": true
-//   },
-//   "include": ["src/test.ts"]
-// }
