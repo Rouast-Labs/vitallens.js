@@ -19,6 +19,16 @@ export default [
       terser(), // Minifies the output
     ],
   },
+  // CJS Build
+  {
+    input: 'src/index.ts',
+    output: {
+      file: 'dist/vitallens.cjs.js',
+      format: 'cjs',
+      sourcemap: true,
+    },
+    plugins: [typescript(), nodeResolve(), commonjs(), terser()],
+  },
   // Browser Build (Browser-specific optimizations)
   {
     input: 'src/index.ts',

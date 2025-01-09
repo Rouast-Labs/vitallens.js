@@ -1,6 +1,5 @@
 import { Frame, VitalLensOptions } from '../types/core';
-import { ROIProcessor } from '../utils/ROIProcessor';
-import { FFmpegWrapper } from '../utils/FFmpegWrapper';
+import FFmpegWrapper from '../utils/FFmpegWrapper';
 
 /**
  * Handles video processing, including frame capture and preprocessing.
@@ -59,11 +58,21 @@ export class VideoProcessor {
    */
   async extractFramesFromFile(filePath: string): Promise<Frame[]> {
     const ffmpeg = new FFmpegWrapper();
-    const rawFrames = await ffmpeg.extractFrames(filePath, this.options.fps, this.options.roi);
 
-    return rawFrames.map((rawFrame, index) => ({
-      data: rawFrame, // Buffer from FFmpeg
-      timestamp: index / this.options.fps,
-    }));
+    // Initialize FFmpegWrapper
+    await ffmpeg.init();
+
+    // Call `readVideo` to process the video
+    const rawBuffer = await ffmpeg.readVideo(filePath, {
+      targetFps: this.options.fps,
+      crop: this.options.roi, // Assuming `roi` corresponds to the `crop` option
+      pixelFormat: "rgb24",
+    });
+
+    // TODO: Convert `rawBuffer` into TensorFlow.js tensors
+    // Placeholder for future implementation
+    console.warn("TensorFlow.js tensor conversion not yet implemented.");
+
+    return []; // Return an empty array for now
   }
 }

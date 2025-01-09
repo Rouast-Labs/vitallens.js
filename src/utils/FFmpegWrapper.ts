@@ -1,9 +1,6 @@
-/**
- * FFmpeg Wrapper for Video Processing
- * 
- * Provides support for both browser and Node.js environments, dynamically choosing
- * between ffmpeg.wasm (browser) and fluent-ffmpeg (Node.js).
- */
+import fluentFFmpeg from "fluent-ffmpeg";
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { toBlobURL, fetchFile } from "@ffmpeg/util";
 
 interface VideoProcessingOptions {
   targetFps?: number; // Downsample frames to this FPS
@@ -27,19 +24,13 @@ class FFmpegWrapper {
    */
   async init() {
     if (this.isNode) {
-      // Node.js: Ensure fluent-ffmpeg is available
-      const fluentFFmpeg = await import("fluent-ffmpeg");
-      // const fluentFFmpeg = (await import("fluent-ffmpeg")) as typeof import("fluent-ffmpeg");
       if (!fluentFFmpeg) {
         throw new Error("fluent-ffmpeg could not be loaded in Node.js");
       }
     } else {
-      // Browser: Dynamically import @ffmpeg/ffmpeg
-      const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-      const { toBlobURL } = await import("@ffmpeg/util");
-      this.ffmpeg = new FFmpeg();
-
-      if (!this.ffmpeg.loaded) {
+      // Browser
+      if (!this.ffmpeg) {
+        this.ffmpeg = new FFmpeg();
         const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
         await this.ffmpeg.load({
           coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),

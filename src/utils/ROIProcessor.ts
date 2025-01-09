@@ -1,5 +1,5 @@
 import sharp from 'sharp'; // For Node.js image processing
-import { isBrowser } from './EnvironmentUtils';
+import { isBrowser } from "isomorphic-env";
 
 /**
  * Utility class for processing Region of Interest (ROI) in video frames.

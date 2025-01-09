@@ -1,8 +1,7 @@
 import { VideoProcessor } from './VideoProcessor';
 import { FrameBuffer } from './FrameBuffer';
+import { MethodHandlerFactory } from '../methods/MethodHandlerFactory';
 import { MethodHandler } from '../methods/MethodHandler';
-import { POSHandler } from '../methods/POSHandler';
-import { VitalLensAPIHandler } from '../methods/VitalLensAPIHandler';
 import { WebSocketClient } from '../utils/WebSocketClient';
 import { VitalLensOptions, Frame, VitalLensResult } from '../types/core';
 import { API_ENDPOINT } from '../config/constants';
@@ -60,9 +59,13 @@ export class VitalLensController {
     if (!this.videoProcessor) {
       this.videoProcessor = new VideoProcessor(this.options);
     }
-    return this.videoProcessor.extractFramesFromFile(filePath).then((frames) => {
-      return this.methodHandler.process(frames);
-    });
+  
+    const frames = await this.videoProcessor.extractFramesFromFile(filePath);
+  
+    const result = await this.methodHandler.process(frames);
+  
+    // Ensure the result is always an array
+    return Array.isArray(result) ? result : [result];
   }
 
   /**
@@ -82,7 +85,7 @@ export class VitalLensController {
    */
   stop(): void {
     if (this.videoProcessor) {
-      this.videoProcessor.stopFrameCapture();
+      // this.videoProcessor.stopFrameCapture(); TODO
       this.videoProcessor = null;
     }
   }
@@ -102,13 +105,9 @@ export class VitalLensController {
    * @returns The method handler instance.
    */
   private createMethodHandler(options: VitalLensOptions): MethodHandler {
-    if (options.method === 'vitallens') {
-      return new VitalLensAPIHandler(
-        new WebSocketClient(API_ENDPOINT),
-        options
-      );
-    }
-    // TODO: Use factory
-    return new POSHandler(options);
+    const dependencies = {
+      webSocketClient: options.method === 'vitallens' ? new WebSocketClient(API_ENDPOINT) : undefined,
+    };
+    return MethodHandlerFactory.createHandler(options.method, options, dependencies);
   }
 }
