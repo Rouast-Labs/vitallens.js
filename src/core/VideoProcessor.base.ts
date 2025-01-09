@@ -1,11 +1,17 @@
 import { Frame, VitalLensOptions } from '../types/core';
-import FFmpegWrapper from '../utils/FFmpegWrapper';
+import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
+import { IVideoProcessor } from '../types/IVideoProcessor';
 
 /**
  * Handles video processing, including frame capture and preprocessing.
  */
-export class VideoProcessor {
+export abstract class VideoProcessorBase implements IVideoProcessor {
   constructor(private options: VitalLensOptions) {}
+
+  /**
+   * Subclasses must return the environment-specific FFmpeg wrapper.
+   */
+  protected abstract getFFmpegWrapper(): IFFmpegWrapper;
 
   /**
    * Starts capturing frames from a MediaStream.
@@ -57,7 +63,7 @@ export class VideoProcessor {
    * @returns A promise resolving to an array of frames.
    */
   async extractFramesFromFile(filePath: string): Promise<Frame[]> {
-    const ffmpeg = new FFmpegWrapper();
+    const ffmpeg = this.getFFmpegWrapper();
 
     // Initialize FFmpegWrapper
     await ffmpeg.init();

@@ -1,11 +1,11 @@
-import { VitalLensController } from './VitalLensController';
 import { VitalLensOptions, VitalLensResult } from '../types/core';
+import { IVitalLensController } from '../types/IVitalLensController';
 
 /**
  * Main API entry point for the VitalLens library.
  */
-export class VitalLens {
-  private controller: VitalLensController;
+export abstract class VitalLensBase {
+  private controller: IVitalLensController;
   private isProcessing = false;
 
   /**
@@ -13,8 +13,13 @@ export class VitalLens {
    * @param options - Configuration options for the library.
    */
   constructor(private options: VitalLensOptions) {
-    this.controller = new VitalLensController(options);
+    this.controller = this.createController(options);
   }
+
+  /**
+   * Subclasses must return the correct environment-specific VitalLensController instance.
+   */
+  protected abstract createController(options: VitalLensOptions): IVitalLensController;
 
   /**
    * Starts processing for live streams.

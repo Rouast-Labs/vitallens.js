@@ -1,40 +1,42 @@
-import { VideoProcessor } from './VideoProcessor';
 import { FrameBuffer } from './FrameBuffer';
 import { MethodHandlerFactory } from '../methods/MethodHandlerFactory';
 import { MethodHandler } from '../methods/MethodHandler';
 import { WebSocketClient } from '../utils/WebSocketClient';
-import { VitalLensOptions, Frame, VitalLensResult } from '../types/core';
+import { VitalLensOptions, VitalLensResult } from '../types/core';
+import { IVideoProcessor } from '../types/IVideoProcessor';
 import { API_ENDPOINT } from '../config/constants';
+import { IVitalLensController } from '../types/IVitalLensController';
 
-/**
- * Controller to orchestrate video processing, buffering, and method handling.
- */
-export class VitalLensController {
-  private videoProcessor: VideoProcessor | null = null;
-  private buffer: FrameBuffer;
-  private methodHandler: MethodHandler;
-  private processing = false;
-  private eventListeners: { [event: string]: ((data: any) => void)[] } = {};
+export abstract class VitalLensControllerBase implements IVitalLensController {
+  protected videoProcessor: IVideoProcessor | null = null;
+  protected buffer: FrameBuffer;
+  protected methodHandler: MethodHandler;
+  protected processing = false;
+  protected eventListeners: { [event: string]: ((data: any) => void)[] } = {};
 
-  constructor(private options: VitalLensOptions) {
+  constructor(protected options: VitalLensOptions) {
     this.buffer = new FrameBuffer(options.fps);
     this.methodHandler = this.createMethodHandler(options);
+    this.videoProcessor = this.createVideoProcessor(options);
   }
+
+  /**
+   * Subclasses must return the correct environment-specific VideoProcessor instance.
+   */
+  protected abstract createVideoProcessor(options: VitalLensOptions): IVideoProcessor;
 
   /**
    * Adds a MediaStream for processing.
    * @param stream - MediaStream to process.
    * @param existingVideoElement - Optional video element if the client is already rendering the stream.
    */
-  async addStream(stream: MediaStream, existingVideoElement?: HTMLVideoElement): Promise<void> {
-    if (!this.videoProcessor) {
-      this.videoProcessor = new VideoProcessor(this.options);
-    }
-    this.videoProcessor.startStreamCapture(stream, (frame) => this.buffer.add(frame), existingVideoElement);
+  async addStream(stream: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
+    if (!this.videoProcessor) return;
+    await this.videoProcessor.startStreamCapture(stream, (frame) => this.buffer.add(frame), videoElement);
   }
 
   /**
-   * Processes the current buffer and triggers event listeners with the results.
+   * Consumes frames from the buffer, calls the method handler, triggers events.
    */
   async processBuffer(): Promise<void> {
     if (this.processing || !this.buffer.isReady()) return;
@@ -42,9 +44,9 @@ export class VitalLensController {
 
     try {
       const frames = this.buffer.consume();
-      const result = await this.methodHandler.process(frames, this.buffer.getState());
-      this.buffer.setState(result.state);
-      this.dispatchEvent('vitals', result);
+      const output = await this.methodHandler.process(frames, this.buffer.getState());
+      this.buffer.setState(output.state);
+      this.dispatchEvent('vitals', output);
     } finally {
       this.processing = false;
     }
@@ -57,7 +59,7 @@ export class VitalLensController {
    */
   async processFile(filePath: string): Promise<VitalLensResult[]> {
     if (!this.videoProcessor) {
-      this.videoProcessor = new VideoProcessor(this.options);
+      this.videoProcessor = this.createVideoProcessor(this.options);
     }
   
     const frames = await this.videoProcessor.extractFramesFromFile(filePath);
@@ -104,9 +106,11 @@ export class VitalLensController {
    * @param options - Configuration options.
    * @returns The method handler instance.
    */
-  private createMethodHandler(options: VitalLensOptions): MethodHandler {
+  protected createMethodHandler(options: VitalLensOptions): MethodHandler {
     const dependencies = {
-      webSocketClient: options.method === 'vitallens' ? new WebSocketClient(API_ENDPOINT) : undefined,
+      webSocketClient: options.method === 'vitallens'
+        ? new WebSocketClient(API_ENDPOINT)
+        : undefined,
     };
     return MethodHandlerFactory.createHandler(options.method, options, dependencies);
   }
