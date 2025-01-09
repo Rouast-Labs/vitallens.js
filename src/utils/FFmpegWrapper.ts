@@ -1,62 +1,125 @@
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
+/**
+ * FFmpeg Wrapper for Video Processing
+ * 
+ * Provides support for both browser and Node.js environments, dynamically choosing
+ * between ffmpeg.wasm (browser) and fluent-ffmpeg (Node.js).
+ */
 
-export class FFmpegWrapper {
-  private ffmpeg: FFmpeg;
+interface VideoProcessingOptions {
+  targetFps?: number; // Downsample frames to this FPS
+  crop?: { x: number; y: number; width: number; height: number }; // Crop coordinates
+  scale?: { width: number; height: number }; // Resize dimensions
+  trim?: { startFrame: number; endFrame: number }; // Frame range for trimming
+  pixelFormat?: string; // Pixel format (default: rgb24)
+  scaleAlgorithm?: "bicubic" | "bilinear" | "area" | "lanczos"; // Scaling algorithm
+}
+
+class FFmpegWrapper {
+  private ffmpeg?: any;
+  private isNode: boolean;
 
   constructor() {
-    this.ffmpeg = new FFmpeg();
+    this.isNode = typeof window === "undefined";
   }
 
   /**
-   * Initializes the FFmpeg instance. Must be called before using other methods.
+   * Initialize the FFmpeg instance for the appropriate environment.
    */
-  async init(): Promise<void> {
-    if (!this.ffmpeg.isLoaded()) {
-      await this.ffmpeg.load();
-    }
-  }
-
-  /**
-   * Processes a video file and extracts the frames as raw pixel data in memory.
-   * Crops to the specified ROI and resizes to target dimensions.
-   * @param filePath - Path to the input video file (or Uint8Array in the browser).
-   * @param fps - Target frames per second for extraction.
-   * @param roi - Region of interest to crop { x, y, width, height }.
-   * @returns A Uint8Array containing the video frames as raw pixel data.
-   */
-  async processVideoToMemory(
-    filePath: string | Uint8Array,
-    fps: number,
-    roi: { x: number; y: number; width: number; height: number }
-  ): Promise<Uint8Array> {
-    await this.init(); // Ensure FFmpeg is ready
-
-    const inputFileName = 'input.mp4';
-    const cropFilter = `crop=${roi.width}:${roi.height}:${roi.x}:${roi.y}`;
-    const scaleFilter = `scale=40:40`; // Resize to 40x40 pixels
-    const pixFmt = 'rgb24'; // Format for raw RGB data
-    const command = ['-i', inputFileName, '-vf', `${cropFilter},${scaleFilter},fps=${fps}`, '-f', 'rawvideo', '-pix_fmt', pixFmt, 'output.raw'];
-
-    // Write the input video file into FFmpeg's virtual filesystem
-    if (typeof filePath === 'string') {
-      const fs = require('fs');
-      const fileData = fs.readFileSync(filePath); // Read file from disk
-      await this.ffmpeg.writeFile(inputFileName, fileData);
+  async init() {
+    if (this.isNode) {
+      // Node.js: Ensure fluent-ffmpeg is available
+      const fluentFFmpeg = await import("fluent-ffmpeg");
+      // const fluentFFmpeg = (await import("fluent-ffmpeg")) as typeof import("fluent-ffmpeg");
+      if (!fluentFFmpeg) {
+        throw new Error("fluent-ffmpeg could not be loaded in Node.js");
+      }
     } else {
-      await this.ffmpeg.writeFile(inputFileName, filePath); // Handle Uint8Array (browser)
+      // Browser: Dynamically import @ffmpeg/ffmpeg
+      const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+      const { toBlobURL } = await import("@ffmpeg/util");
+      this.ffmpeg = new FFmpeg();
+
+      if (!this.ffmpeg.loaded) {
+        const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
+        await this.ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+        });
+      }
     }
+  }
 
-    // Execute the FFmpeg command
-    await this.ffmpeg.exec(command);
+  /**
+   * Read video file and apply transformations.
+   *
+   * @param filePath Path to the video file.
+   * @param options Video processing options.
+   * @returns Processed video as raw RGB24 buffer.
+   */
+  async readVideo(filePath: string, options: VideoProcessingOptions = {}): Promise<Uint8Array | Buffer> {
+    if (this.isNode) {
+      // Node.js: Use fluent-ffmpeg
+      const fluentFFmpeg = (await import("fluent-ffmpeg")).default;
+      const tmpOutput = "output.rgb";
+      const fs = require("fs");
 
-    // Read the output file containing raw video data
-    const rawData = await this.ffmpeg.readFile('output.raw');
+      return new Promise((resolve, reject) => {
+        let command = fluentFFmpeg(filePath)
+          .outputOptions("-pix_fmt", options.pixelFormat || "rgb24")
+          .outputOptions("-f", "rawvideo");
 
-    // Cleanup temporary files
-    await this.ffmpeg.removeFile(inputFileName);
-    await this.ffmpeg.removeFile('output.raw');
+        if (options.crop) {
+          const { x, y, width, height } = options.crop;
+          command = command.videoFilter(`crop=${width}:${height}:${x}:${y}`);
+        }
 
-    return rawData; // Return raw pixel data as Uint8Array
+        if (options.scale) {
+          const { width, height } = options.scale;
+          command = command.videoFilter(`scale=${width}:${height}`);
+        }
+
+        command.save(tmpOutput).on("end", () => {
+          const data = fs.readFileSync(tmpOutput);
+          fs.unlinkSync(tmpOutput);
+          resolve(data);
+        }).on("error", reject);
+      });
+    } else {
+      // Browser: Use ffmpeg.wasm
+      await this.init();
+
+      // Load video into FFmpeg virtual filesystem
+      const { fetchFile } = await import("@ffmpeg/util");
+      const inputName = "input.mp4";
+      this.ffmpeg.writeFile(inputName, await fetchFile(filePath));
+
+      // Build FFmpeg filters
+      const filters = [];
+      if (options.crop) {
+        const { x, y, width, height } = options.crop;
+        filters.push(`crop=${width}:${height}:${x}:${y}`);
+      }
+      if (options.scale) {
+        const { width, height } = options.scale;
+        filters.push(`scale=${width}:${height}`);
+      }
+      const filterString = filters.length > 0 ? `-vf ${filters.join(",")}` : "";
+
+      const outputName = "output.rgb";
+      await this.ffmpeg.exec([
+        "-i", inputName,
+        ...filterString.split(" "),
+        "-pix_fmt", options.pixelFormat || "rgb24",
+        "-f", "rawvideo",
+        outputName,
+      ]);
+
+      const output = this.ffmpeg.readFile(outputName);
+      this.ffmpeg.unlink(inputName);
+      this.ffmpeg.unlink(outputName);
+      return output;
+    }
   }
 }
+
+export default FFmpegWrapper;
