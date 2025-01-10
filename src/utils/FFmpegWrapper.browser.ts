@@ -27,6 +27,8 @@ export default class FFmpegWrapper implements IFFmpegWrapper {
         // const workerURL = await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, "text/javascript");
         // console.log("Worker Blob URL:", workerURL);
         // Now load FFmpeg with the obtained Blob URLs
+        // TODO: Load times out as there is an issue with worker.js
+        // https://github.com/ffmpegwasm/ffmpeg.wasm/issues/532
         await this.ffmpeg.load({
           coreURL: coreURL,
           wasmURL: wasmURL,
