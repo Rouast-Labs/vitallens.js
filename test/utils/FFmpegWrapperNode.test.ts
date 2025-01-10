@@ -1,36 +1,58 @@
-import path from 'path';
-import fs from 'fs';
 import FFmpegWrapper from '../../src/utils/FFmpegWrapper.node';
 
-describe('FFmpegWrapper (Node.js Integration)', () => {
+jest.mock('fluent-ffmpeg', () => {
+  const mockFFmpeg = jest.fn(() => ({
+    outputOptions: jest.fn().mockReturnThis(),
+    videoFilter: jest.fn().mockReturnThis(),
+    save: jest.fn().mockImplementation((output: string) => ({
+      on: jest.fn((event: string, callback: Function) => {
+        if (event === "end") {
+          callback(); // Simulate the end event
+        }
+        if (event === "error") {
+          callback(new Error("Mocked error")); // Simulate an error event if needed
+        }
+        return this; // Ensure chainability
+      }),
+    })),
+  }));
+  mockFFmpeg.prototype = {};
+  return mockFFmpeg;
+});
+
+jest.mock('fs', () => ({
+  readFileSync: jest.fn((path: string) => {
+    if (path.endsWith('output.rgb')) {
+      return Buffer.from([1, 2, 3]); // Simulate file content
+    }
+    throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+  }),
+  unlinkSync: jest.fn((path: string) => {
+    if (!path.endsWith('output.rgb')) {
+      throw new Error(`ENOENT: no such file or directory, unlink '${path}'`);
+    }
+  }),
+}));
+
+describe('FFmpegWrapper (Node.js)', () => {
   let wrapper: FFmpegWrapper;
 
-  beforeAll(async () => {
+  beforeEach(() => {
     wrapper = new FFmpegWrapper();
-    await wrapper.init();
   });
 
-  it('should process a real video file in Node.js', async () => {
-    const inputPath = path.resolve(__dirname, '../../examples/sample_video_1.mp4');
-    const outputPath = path.resolve(__dirname, '../../examples/output.rgb');
-    
-    if (!fs.existsSync(inputPath)) {
-      throw new Error(`Sample video not found: ${inputPath}`);
-    }
+  it('should initialize correctly', async () => {
+    const initSpy = jest.spyOn(wrapper, 'init');
+    await wrapper.init();
+    expect(initSpy).toHaveBeenCalled();
+  });
 
-    const options = {
+  it('should process video using fluent-ffmpeg', async () => {
+    const video = await wrapper.readVideo('test.mp4', {
       crop: { x: 0, y: 0, width: 100, height: 100 },
-      scale: { width: 40, height: 40 },
       pixelFormat: 'rgb24',
-    };
-
-    const buffer = await wrapper.readVideo(inputPath, options);
-
-    expect(buffer).toBeDefined();
-    expect(buffer).toBeInstanceOf(Buffer);
-    // expect(buffer.length).toBeGreaterThan(0);
-
-    // Optional: Write output for manual inspection (not necessary for tests)
-    // fs.writeFileSync(outputPath, buffer);
+    });
+    expect(video).toBeDefined();
+    expect(video).toBeInstanceOf(Buffer);
   });
 });

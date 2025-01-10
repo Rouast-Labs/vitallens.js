@@ -1,17 +1,11 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { toBlobURL, fetchFile } from "@ffmpeg/util";
 import { IFFmpegWrapper } from "../types/IFFmpegWrapper";
+import { VideoProcessingOptions } from "../types/VideoProcessingOptions";
+import { VideoInput } from "../types";
+// import { input } from "@tensorflow/tfjs";
 
-interface VideoProcessingOptions {
-  targetFps?: number; // Downsample frames to this FPS
-  crop?: { x: number; y: number; width: number; height: number }; // Crop coordinates
-  scale?: { width: number; height: number }; // Resize dimensions
-  trim?: { startFrame: number; endFrame: number }; // Frame range for trimming
-  pixelFormat?: string; // Pixel format (default: rgb24)
-  scaleAlgorithm?: "bicubic" | "bilinear" | "area" | "lanczos"; // Scaling algorithm
-}
-
-class FFmpegWrapper implements IFFmpegWrapper {
+export default class FFmpegWrapper implements IFFmpegWrapper {
   private ffmpeg?: any;
 
   constructor() {}
@@ -20,32 +14,67 @@ class FFmpegWrapper implements IFFmpegWrapper {
    * Initialize the FFmpeg instance for the appropriate environment.
    */
   async init() {
-    this.ffmpeg = new FFmpeg();
-    const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
-    await this.ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-    });
+    if (!this.ffmpeg) {
+      this.ffmpeg = new FFmpeg();
+      const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
+      console.log("Preparing to load FFmpeg resources...");
+      try {
+        // Await and log each Blob URL
+        const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
+        console.log("Core Blob URL:", coreURL);
+        const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
+        console.log("WASM Blob URL:", wasmURL);
+        // const workerURL = await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, "text/javascript");
+        // console.log("Worker Blob URL:", workerURL);
+        // Now load FFmpeg with the obtained Blob URLs
+        await this.ffmpeg.load({
+          coreURL: coreURL,
+          wasmURL: wasmURL,
+          // workerURL: workerURL,
+          // classWorkerURL: workerURL,
+        });
+        console.log("FFmpeg loaded successfully.");
+      } catch (err) {
+        console.error("FFmpeg load error:", err);
+        throw err;
+      }
+    }
   }
-
+  
   /**
    * Read video file and apply transformations.
    *
-   * @param filePath Path to the video file.
+   * @param input URL or File or Blob representing a video file.
    * @param options Video processing options.
    * @returns Processed video as raw RGB24 buffer.
    */
-  async readVideo(filePath: string, options: VideoProcessingOptions = {}): Promise<Uint8Array | Buffer> {
-    // Browser: Use ffmpeg.wasm
+  async readVideo(input: VideoInput, options: VideoProcessingOptions = {}): Promise<Uint8Array> {
+    // Make sure ffmpeg is loaded
     await this.init();
 
-    // Load video into FFmpeg virtual filesystem
-    const { fetchFile } = await import("@ffmpeg/util");
+    let data: Uint8Array;
+
+    if (typeof input === "string") {
+      // Could be a URL
+      data = await fetchFile(input);
+    } else if (input instanceof File) {
+      // A user-selected File
+      const arrayBuffer = await input.arrayBuffer();
+      data = new Uint8Array(arrayBuffer);
+    } else if (input instanceof Blob) {
+      // Could be a generic Blob (not necessarily a File)
+      const arrayBuffer = await input.arrayBuffer();
+      data = new Uint8Array(arrayBuffer);
+    } else {
+      throw new Error("Unsupported input type.");
+    }
+
+    // Write to FFmpeg virtual FS
     const inputName = "input.mp4";
-    this.ffmpeg.writeFile(inputName, await fetchFile(filePath));
+    this.ffmpeg.writeFile(inputName, data);
 
     // Build FFmpeg filters
-    const filters = [];
+    const filters: string[] = [];
     if (options.crop) {
       const { x, y, width, height } = options.crop;
       filters.push(`crop=${width}:${height}:${x}:${y}`);
@@ -54,12 +83,12 @@ class FFmpegWrapper implements IFFmpegWrapper {
       const { width, height } = options.scale;
       filters.push(`scale=${width}:${height}`);
     }
-    const filterString = filters.length > 0 ? `-vf ${filters.join(",")}` : "";
+    const filterString = filters.length > 0 ? ["-vf", filters.join(",")] : [];
 
     const outputName = "output.rgb";
     await this.ffmpeg.exec([
       "-i", inputName,
-      ...filterString.split(" "),
+      ...filterString,
       "-pix_fmt", options.pixelFormat || "rgb24",
       "-f", "rawvideo",
       outputName,
@@ -71,5 +100,3 @@ class FFmpegWrapper implements IFFmpegWrapper {
     return output;
   }
 }
-
-export default FFmpegWrapper;

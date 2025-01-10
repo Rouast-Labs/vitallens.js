@@ -52,4 +52,27 @@ export default [
       terser(),
     ],
   },
+  // UMD Build for FFmpegWrapper.browser (for integration test)
+  {
+    input: 'src/utils/FFmpegWrapper.browser.ts',
+    output: {
+      file: 'dist/utils/FFmpegWrapper.browser.umd.js',
+      format: 'umd',
+      name: 'FFmpegWrapper',
+      sourcemap: true,
+    },
+    plugins: [
+      typescript({
+        tsconfig: './tsconfig.json',
+        compilerOptions: {
+          declaration: false,
+          declarationMap: false,
+          declarationDir: null
+        },
+      }),
+      nodeResolve({ browser: true }),
+      commonjs(),
+      terser(),
+    ],
+  },
 ];

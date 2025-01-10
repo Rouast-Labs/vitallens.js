@@ -1,6 +1,7 @@
 /**
- * Core type definitions for the VitalLens library.
+ * Represents possible video file inputs.
  */
+export type VideoInput = string | File | Blob;
 
 /**
  * Represents a single video frame.
