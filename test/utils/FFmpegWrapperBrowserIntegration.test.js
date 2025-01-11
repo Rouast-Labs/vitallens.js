@@ -29,7 +29,7 @@ describe('FFmpegWrapper (Browser)', () => {
     app.use('/dist', express.static(path.join(__dirname, '../../dist')));
     
     app.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, '../../public/index.html'));
+      res.sendFile(path.join(__dirname, '../../examples/webcam.html'));
     });
 
     server = http.createServer(app).listen(PORT, () => {

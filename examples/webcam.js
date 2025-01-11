@@ -1,10 +1,10 @@
-import { VitalLens } from 'vitallens.js';
+import { VitalLens } from '../dist/vitallens.browser.js';
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 const options = {
-  method: 'vitallens',
+  method: 'pos',
   fps: 30,
   roi: { x: 50, y: 50, width: 200, height: 200 },
 };

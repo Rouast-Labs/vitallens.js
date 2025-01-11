@@ -1,12 +1,12 @@
-import { VitalLensOptions, VitalLensResult } from '../types/core';
+import { VitalLensOptions, VitalLensResult, VideoInput } from '../types/core';
 import { IVitalLensController } from '../types/IVitalLensController';
 
 /**
- * Main API entry point for the VitalLens library.
+ * Base class for the VitalLens library, providing a unified API for file-based
+ * and live stream video processing.
  */
 export abstract class VitalLensBase {
   private controller: IVitalLensController;
-  private isProcessing = false;
 
   /**
    * Initializes the VitalLens instance with the provided options.
@@ -22,39 +22,45 @@ export abstract class VitalLensBase {
   protected abstract createController(options: VitalLensOptions): IVitalLensController;
 
   /**
-   * Starts processing for live streams.
+   * Starts processing for live streams or resumes if paused.
    */
   start(): void {
-    if (!this.isProcessing) {
-      this.isProcessing = true;
-      this.startProcessingLoop();
-    }
+    this.controller.start();
   }
 
   /**
-   * Stops all ongoing processing.
+   * Pauses processing for live streams, including frame capture and predictions.
+   */
+  pause(): void {
+    this.controller.pause();
+  }
+
+  /**
+   * Stops all ongoing processing and clears resources.
    */
   stop(): void {
-    this.isProcessing = false;
     this.controller.stop();
   }
 
   /**
-   * Starts processing from a MediaStream.
-   * @param stream - The MediaStream to process.
-   * @param videoElement - Optional existing video element to use for processing.
+   * Adds a MediaStream, an HTMLVideoElement, or both for live stream processing.
+   * @param stream - The MediaStream to process (optional).
+   * @param videoElement - The HTMLVideoElement to use for processing (optional).
    */
-  async addStream(stream: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
+  async addStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
+    if (!stream && !videoElement) {
+      throw new Error('You must provide either a MediaStream, an HTMLVideoElement, or both.');
+    }
     await this.controller.addStream(stream, videoElement);
   }
 
   /**
-   * Processes a video file.
-   * @param filePath - Path to the video file.
+   * Processes a video file or input.
+   * @param videoInput - The video input to process (string, File, or Blob).
    * @returns The results after processing the video.
    */
-  async processFile(filePath: string): Promise<VitalLensResult[]> {
-    return this.controller.processFile(filePath);
+  async processFile(videoInput: VideoInput): Promise<VitalLensResult[]> {
+    return this.controller.processFile(videoInput);
   }
 
   /**
@@ -64,24 +70,5 @@ export abstract class VitalLensBase {
    */
   addEventListener(event: string, callback: (data: any) => void): void {
     this.controller.addEventListener(event, callback);
-  }
-
-  /**
-   * Internal method to start the processing loop for live streams.
-   */
-  private startProcessingLoop(): void {
-    const loop = async () => {
-      if (!this.isProcessing) return;
-
-      try {
-        await this.controller.processBuffer();
-      } catch (error) {
-        console.error('Error during processing:', error);
-      } finally {
-        requestAnimationFrame(loop);
-      }
-    };
-
-    requestAnimationFrame(loop);
   }
 }

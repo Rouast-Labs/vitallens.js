@@ -17,13 +17,13 @@ export default class FFmpegWrapper implements IFFmpegWrapper {
     if (!this.ffmpeg) {
       this.ffmpeg = new FFmpeg();
       const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
-      console.log("Preparing to load FFmpeg resources...");
+      console.debug("Preparing to load FFmpeg resources...");
       try {
         // Await and log each Blob URL
         const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
-        console.log("Core Blob URL:", coreURL);
+        console.debug("Core Blob URL:", coreURL);
         const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
-        console.log("WASM Blob URL:", wasmURL);
+        console.debug("WASM Blob URL:", wasmURL);
         // const workerURL = await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, "text/javascript");
         // console.log("Worker Blob URL:", workerURL);
         // Now load FFmpeg with the obtained Blob URLs
@@ -35,13 +35,15 @@ export default class FFmpegWrapper implements IFFmpegWrapper {
           // workerURL: workerURL,
           // classWorkerURL: workerURL,
         });
-        console.log("FFmpeg loaded successfully.");
+        console.debug("FFmpeg loaded successfully.");
       } catch (err) {
         console.error("FFmpeg load error:", err);
         throw err;
       }
     }
   }
+
+  // TODO: Add probeVideo
   
   /**
    * Read video file and apply transformations.
@@ -76,6 +78,7 @@ export default class FFmpegWrapper implements IFFmpegWrapper {
     this.ffmpeg.writeFile(inputName, data);
 
     // Build FFmpeg filters
+    // TODO: trim is not implemented
     const filters: string[] = [];
     if (options.crop) {
       const { x, y, width, height } = options.crop;

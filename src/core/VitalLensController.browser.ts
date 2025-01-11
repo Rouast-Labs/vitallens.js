@@ -1,10 +1,10 @@
 import { VitalLensControllerBase } from './VitalLensController.base';
-import { VideoProcessor } from './VideoProcessor.browser'; // Browser version
+import { VideoInputProcessor } from '../processing/VideoInputProcessor.browser';
 import { VitalLensOptions } from '../types/core';
-import { IVideoProcessor } from '../types/IVideoProcessor';
+import { IVideoInputProcessor } from '../types/IVideoInputProcessor';
 
 export class VitalLensController extends VitalLensControllerBase {
-  protected createVideoProcessor(options: VitalLensOptions): IVideoProcessor {
-    return new VideoProcessor(options);
+  protected createVideoInputProcessor(options: VitalLensOptions): IVideoInputProcessor {
+    return new VideoInputProcessor(options);
   }
 }

@@ -44,6 +44,7 @@ export abstract class SimpleMethodHandler extends MethodHandler {
    * Extracts the average RGB values from a frame and adds them to the signal buffer.
    * @param frameData - Base64 string representing the frame data.
    */
+  // TODO: THis needs to be reimplemented with tf
   private extractRGBSignal(frameData: string): void {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');

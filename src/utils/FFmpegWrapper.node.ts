@@ -6,6 +6,8 @@ import * as path from "path";
 export default class FFmpegWrapper implements IFFmpegWrapper {
   async init() {}
 
+  // TODO: Add probeVideo
+
   /**
    * Read video file and apply transformations.
    *

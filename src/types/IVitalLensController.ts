@@ -1,9 +1,10 @@
 import { VitalLensResult } from "./core";
 
 export interface IVitalLensController {
-  addStream(stream: MediaStream, videoElement?: HTMLVideoElement): Promise<void>;
-  stop(): void;
+  addStream(stream: MediaStream): Promise<void>;
   processFile(filePath: string): Promise<VitalLensResult[]>;
-  processBuffer(): Promise<void>;
-  addEventListener(event: string, callback: (data: any) => void): void;
+  start(): void;
+  pause(): void;
+  stop(): void;
+  addEventListener(event: string, listener: (data: any) => void): void;
 }
