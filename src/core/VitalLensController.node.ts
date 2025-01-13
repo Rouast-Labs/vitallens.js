@@ -1,10 +1,10 @@
 import { VitalLensControllerBase } from './VitalLensController.base';
-import { VideoInputProcessor } from '../processing/VideoInputProcessor.node';
+import { FrameIteratorFactory } from '../processing/FrameIteratorFactory.node';
 import { VitalLensOptions } from '../types/core';
-import { IVideoInputProcessor } from '../types/IVideoInputProcessor';
+import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 
 export class VitalLensController extends VitalLensControllerBase {
-  protected createVideoInputProcessor(options: VitalLensOptions): IVideoInputProcessor {
-    return new VideoInputProcessor(options);
+  protected createFrameIteratorFactory(options: VitalLensOptions): IFrameIteratorFactory {
+    return new FrameIteratorFactory(options);
   }
 }

@@ -1,51 +1,139 @@
-import { IFFmpegWrapper } from "../types/IFFmpegWrapper";
-import { VideoProcessingOptions } from "../types/VideoProcessingOptions";
-import { VideoInput } from "../types";
+import { FFmpegWrapperBase } from "./FFmpegWrapper.base";
+import { VideoInput, VideoProbeResult, VideoProcessingOptions } from "../types";
 import * as path from "path";
+import * as fs from "fs";
+import ffmpeg from "fluent-ffmpeg";
 
-export default class FFmpegWrapper implements IFFmpegWrapper {
-  async init() {}
-
-  // TODO: Add probeVideo
+export default class FFmpegWrapper extends FFmpegWrapperBase {
+  private loadedFilePath: string | null = null;
 
   /**
-   * Read video file and apply transformations.
-   *
-   * @param filePath Path to the video file.
-   * @param options Video processing options.
-   * @returns Processed video as raw RGB24 buffer.
+   * Initializes FFmpeg. For the Node.js implementation, this is a no-op.
    */
-  async readVideo(input: VideoInput, options: VideoProcessingOptions = {}): Promise<Buffer> {
+  async init(): Promise<void> {
+    // No initialization needed for Node.js implementation
+  }
+
+  /**
+   * Loads the video input file and returns its path.
+   * @param input - The video input (file path).
+   * @returns The path to the loaded file.
+   */
+  async loadInput(input: VideoInput): Promise<string> {
     if (typeof input !== "string") {
-      throw new Error("Node FFmpegWrapper only supports string file paths, not File/Blob.");
+      throw new Error("Only file paths are supported for Node.js FFmpegWrapper.");
     }
-    
-    const fs = require('fs');
-    const fluentFFmpeg = (await import("fluent-ffmpeg")).default;
-    const tmpOutput = path.join(process.cwd(), "output.rgb");
 
-    return new Promise<Buffer>((resolve, reject) => {
-      let command = fluentFFmpeg(input)
+    if (this.loadedFilePath === input) {
+      // Skip re-loading if already loaded
+      return input;
+    }
+
+    if (!fs.existsSync(input)) {
+      throw new Error(`File not found: ${input}`);
+    }
+
+    this.loadedFilePath = input;
+    return input;
+  }
+
+  /**
+   * Cleans up any loaded video file reference.
+   */
+  cleanup(): void {
+    this.loadedFilePath = null;
+  }
+
+  /**
+   * Probes the video file to extract metadata.
+   * @param input - The video input (file path).
+   * @returns A promise resolving to metadata about the video.
+   */
+  async probeVideo(input: VideoInput): Promise<VideoProbeResult> {
+    const filePath = await this.loadInput(input);
+
+    return new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(filePath, (err, metadata) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        const videoStream = metadata.streams.find(
+          (stream) => stream.codec_type === "video"
+        );
+
+        if (!videoStream) {
+          reject(new Error("No video streams found in the file."));
+          return;
+        }
+
+        const fps = this.extractFrameRate(videoStream.avg_frame_rate);
+        const duration = parseFloat(videoStream.duration) || 0;
+        let totalFrames = parseInt(videoStream.nb_frames, 10);
+
+        if (isNaN(totalFrames)) {
+          totalFrames = Math.round(duration * (fps || 0));
+        }
+
+        const width = videoStream.width || 0;
+        const height = videoStream.height || 0;
+        const codec = videoStream.codec_name || "";
+        const bitrate = parseFloat(videoStream.bit_rate) / 1000 || 0;
+
+        let rotation = 0;
+        if (videoStream.tags?.rotate) {
+          rotation = parseInt(videoStream.tags.rotate, 10);
+        } else if (
+          videoStream.side_data_list?.[0]?.rotation !== undefined
+        ) {
+          rotation = parseInt(videoStream.side_data_list[0].rotation, 10);
+        }
+
+        resolve({
+          fps: fps || 0,
+          totalFrames,
+          width,
+          height,
+          codec,
+          bitrate,
+          rotation,
+          issues: false, // Node implementation doesn't infer issues
+        });
+      });
+    });
+  }
+
+  /**
+   * Reads video frames and applies transformations.
+   * @param input - The video input (file path).
+   * @param options - Video processing options.
+   * @param probeInfo - Video probe information.
+   * @returns A promise resolving to a Uint8Array containing processed frame data.
+   */
+  async readVideo(
+    input: VideoInput,
+    options: VideoProcessingOptions,
+    probeInfo: VideoProbeResult
+  ): Promise<Uint8Array> {
+    const filePath = await this.loadInput(input);
+
+    const filters = this.assembleVideoFilters(options, probeInfo);
+    const tempFile = path.join(process.cwd(), "output.rgb");
+
+    return new Promise<Uint8Array>((resolve, reject) => {
+      let command = ffmpeg(filePath)
         .outputOptions("-pix_fmt", options.pixelFormat || "rgb24")
-        .outputOptions("-f", "rawvideo");
-
-      // Crop & scale
-      if (options.crop) {
-        const { x, y, width, height } = options.crop;
-        command = command.videoFilter(`crop=${width}:${height}:${x}:${y}`);
-      }
-      if (options.scale) {
-        const { width, height } = options.scale;
-        command = command.videoFilter(`scale=${width}:${height}`);
-      }
-
+        .outputOptions("-f", "rawvideo")
+        .videoFilters(filters);
+  
       command
-        .save(tmpOutput)
+        .save(tempFile)
         .on("end", async () => {
           try {
-            const data = fs.readFileSync(tmpOutput);
-            fs.unlinkSync(tmpOutput);
-            resolve(data); // A Node Buffer
+            const buffer = fs.readFileSync(tempFile);
+            fs.unlinkSync(tempFile);
+            resolve(new Uint8Array(buffer));
           } catch (err) {
             reject(err);
           }
@@ -54,5 +142,18 @@ export default class FFmpegWrapper implements IFFmpegWrapper {
         .run();
     });
   }
-}
 
+  /**
+   * Extracts the frame rate from the FFmpeg avg_frame_rate string.
+   * @param avgFrameRate - The avg_frame_rate string.
+   * @returns The frame rate as a number or null if unavailable.
+   */
+  private extractFrameRate(avgFrameRate: string): number | null {
+    if (!avgFrameRate) return null;
+
+    const [numerator, denominator] = avgFrameRate.split("/").map(Number);
+    if (denominator === 0) return null;
+
+    return numerator / denominator;
+  }
+}

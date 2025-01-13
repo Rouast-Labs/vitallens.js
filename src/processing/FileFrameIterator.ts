@@ -1,7 +1,8 @@
-import { Frame, VideoInput, VitalLensOptions } from '../types/core';
+import { VideoInput, VitalLensOptions, VideoProbeResult } from '../types/core';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
-import { MethodConfig } from '../config/methodsConfig';
+import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
+import { Tensor, tidy, tensor } from '@tensorflow/tfjs-core';
 
 /**
  * Frame iterator for video files (e.g., local file paths, File, or Blob inputs).
@@ -9,7 +10,7 @@ import { MethodConfig } from '../config/methodsConfig';
 export class FileFrameIterator extends FrameIteratorBase {
   private ffmpeg: IFFmpegWrapper;
   private currentFrameIndex: number = 0;
-  private totalFrames: number = 0;
+  private probeInfo: VideoProbeResult | null = null;
 
   constructor(
     private videoInput: VideoInput,
@@ -26,39 +27,77 @@ export class FileFrameIterator extends FrameIteratorBase {
    */
   async start(): Promise<void> {
     await this.ffmpeg.init();
-    const videoInfo = await this.ffmpeg.probeVideo(this.videoInput);
-    this.totalFrames = videoInfo.total_frames;
-    // TODO: Determine potential downsampling based on this.options.fps and videoInfo.fps and this.methodConfig.targetFps
+    await this.ffmpeg.loadInput(this.videoInput);
+    this.probeInfo = await this.ffmpeg.probeVideo(this.videoInput);
+    if (!this.probeInfo) {
+      throw new Error('Failed to retrieve video probe information. Ensure the input is valid.');
+    }
   }
 
   /**
    * Retrieves the next frame from the video file.
    * @returns A promise resolving to the next frame or null if the iterator is closed or EOF is reached.
    */
-  // TODO: This needs to be changed. It should load the next chunk of frames
-  // - depending on this.methodConfig.minWindowLength and this.methodConfig.maxWindowLength
-  async next(): Promise<Frame | null> {
-    if (this.isClosed || this.currentFrameIndex >= this.totalFrames) {
+  async next(): Promise<Tensor | null> {
+    if (!this.probeInfo) {
+      throw new Error('Probe information is not available. Ensure `start()` has been called before `next()`.');
+    }
+
+    if (this.isClosed || this.currentFrameIndex >= this.probeInfo.totalFrames) {
       return null;
     }
 
-    const frame = await this.ffmpeg.readFrame(this.videoInput, this.currentFrameIndex, {
-      targetFps: this.options.fps,
-      crop: this.options.roi,
-      pixelFormat: 'rgb24',
+    const framesToRead = Math.min(
+      this.methodConfig.maxWindowLength,
+      this.probeInfo.totalFrames - this.currentFrameIndex
+    );
+
+    const frameData = await this.ffmpeg.readVideo(
+      this.videoInput,
+      {
+        fpsTarget: this.options.overrideFpsTarget
+        ? this.options.overrideFpsTarget
+        : METHODS_CONFIG[this.options.method].fpsTarget,
+        crop: this.options.roi,
+        scale: this.methodConfig.inputSize
+        ? { width: this.methodConfig.inputSize, height: this.methodConfig.inputSize }
+        : undefined,
+        trim: { startFrame: this.currentFrameIndex, endFrame: this.currentFrameIndex + framesToRead },
+        pixelFormat: 'rgb24',
+        scaleAlgorithm: 'bicubic',
+      },
+      this.probeInfo
+    );
+
+    if (!frameData) {
+      this.stop();
+      return null;
+    }
+
+    this.currentFrameIndex += framesToRead;
+
+    const width = this.methodConfig.inputSize || this.options.roi?.width; 
+    const height = this.methodConfig.inputSize || this.options.roi?.height;
+    if (!width || !height) {
+      throw new Error(
+        'Unable to determine frame dimensions. Ensure scale or ROI dimensions are provided.'
+      );
+    }
+
+    const totalPixels = width * height * 3;
+    const expectedBufferLength = framesToRead * totalPixels;
+
+    if (frameData.length !== expectedBufferLength) {
+      throw new Error(
+        `Buffer length mismatch. Expected ${expectedBufferLength}, but received ${frameData.length}.`
+      );
+    }
+    
+    // Convert Uint8Array to Tensor
+    return tidy(() => {
+      const shape = [framesToRead, height, width, 3];
+      return tensor(frameData, shape, 'float32');
     });
-
-    if (!frame) {
-      this.stop(); // Stop iterator if EOF is reached
-      return null;
-    }
-
-    this.currentFrameIndex += 1;
-
-    return {
-      data: frame,
-      timestamp: (this.currentFrameIndex / this.options.fps) * 1000, // Approximate timestamp
-    };
   }
 
   /**

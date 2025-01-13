@@ -1,7 +1,7 @@
 import { MethodConfig } from '../config/methodsConfig';
 import { Frame, VitalLensOptions, VideoInput } from './core';
 
-export interface IVideoInputProcessor {
+export interface IFrameIteratorFactory {
   createStreamFrameIterator(
     stream?: MediaStream, 
     videoElement?: HTMLVideoElement,

@@ -14,7 +14,7 @@ export abstract class SimpleMethodHandler extends MethodHandler {
 
   constructor(options: VitalLensOptions) {
     super(options);
-    this.maxBufferSize = options.fps * 3; // Assume a 3-second sliding window
+    // TODO maxBufferSize?
   }
 
   /**

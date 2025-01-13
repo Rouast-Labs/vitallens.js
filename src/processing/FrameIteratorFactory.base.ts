@@ -1,14 +1,14 @@
 import { MethodConfig } from '../config/methodsConfig';
 import { Frame, VitalLensOptions, VideoInput } from '../types/core';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
-import { IVideoInputProcessor } from '../types/IVideoInputProcessor';
+import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { FileFrameIterator } from './FileFrameIterator';
 import { StreamFrameIterator } from './StreamFrameIterator';
 
 /**
- * Handles video processing, including frame capture and preprocessing.
+ * Creates iterators for video processing, including frame capture and preprocessing.
  */
-export abstract class VideoInputProcessorBase implements IVideoInputProcessor {
+export abstract class FrameIteratorFactoryBase implements IFrameIteratorFactory {
   constructor(private options: VitalLensOptions) {}
 
   /**

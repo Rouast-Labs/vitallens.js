@@ -4,7 +4,7 @@ import { MethodHandler } from '../methods/MethodHandler';
 import { MethodHandlerFactory } from '../methods/MethodHandlerFactory';
 import { WebSocketClient } from '../utils/WebSocketClient';
 import { VitalLensOptions, VitalLensResult, VideoInput } from '../types/core';
-import { IVideoInputProcessor } from '../types/IVideoInputProcessor';
+import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { IVitalLensController } from '../types/IVitalLensController';
 import { API_ENDPOINT } from '../config/constants';
 import { METHODS_CONFIG } from '../config/methodsConfig';
@@ -14,7 +14,7 @@ import { METHODS_CONFIG } from '../config/methodsConfig';
  * and predictions for both file-based and live stream scenarios.
  */
 export abstract class VitalLensControllerBase implements IVitalLensController {
-  protected videoInputProcessor: IVideoInputProcessor | null = null;
+  protected frameIteratorFactory: IFrameIteratorFactory | null = null;
   protected frameBuffer: FrameBuffer;
   protected streamProcessor: StreamProcessor | null = null;
   protected methodHandler: MethodHandler;
@@ -27,13 +27,13 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       METHODS_CONFIG[this.options.method].minWindowLength,
     );
     this.methodHandler = this.createMethodHandler(this.options);
-    this.videoInputProcessor = this.createVideoInputProcessor(this.options);
+    this.frameIteratorFactory = this.createFrameIteratorFactory(this.options);
   }
 
   /**
-   * Subclasses must return the appropriate VideoInputProcessor instance.
+   * Subclasses must return the appropriate FrameIteratorFactory instance.
    */
-  protected abstract createVideoInputProcessor(options: VitalLensOptions): IVideoInputProcessor;
+  protected abstract createFrameIteratorFactory(options: VitalLensOptions): IFrameIteratorFactory;
 
   /**
    * Creates the appropriate method handler based on the options.
@@ -55,9 +55,9 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @param videoElement - HTMLVideoElement to use for processing (optional).
    */
   async addStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
-    if (!this.videoInputProcessor) throw new Error('VideoInputProcessor is not initialized.');
+    if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
 
-    const frameIterator = this.videoInputProcessor.createStreamFrameIterator(stream, videoElement, this.options);
+    const frameIterator = this.frameIteratorFactory.createStreamFrameIterator(stream, videoElement, this.options);
 
     this.streamProcessor = new StreamProcessor(
       frameIterator,
@@ -78,9 +78,9 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @returns The results after processing the video.
    */
   async processFile(videoInput: VideoInput): Promise<VitalLensResult[]> {
-    if (!this.videoInputProcessor) throw new Error('VideoInputProcessor is not initialized.');
+    if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
 
-    const frameIterator = this.videoInputProcessor.createFileFrameIterator(videoInput, this.options, METHODS_CONFIG[this.options.method]);
+    const frameIterator = this.frameIteratorFactory.createFileFrameIterator(videoInput, this.options, METHODS_CONFIG[this.options.method]);
 
     const results: VitalLensResult[] = [];
     for await (const frames of frameIterator) {

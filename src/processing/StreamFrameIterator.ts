@@ -1,6 +1,6 @@
-import { Frame, VitalLensOptions } from '../types/core';
+import { VitalLensOptions } from '../types/core';
 import { FrameIteratorBase } from './FrameIterator.base';
-import { browser } from '@tensorflow/tfjs-core';
+import { browser, Tensor, tidy } from '@tensorflow/tfjs-core';
 
 /**
  * Frame iterator for MediaStreams (e.g., live video from a webcam).
@@ -37,7 +37,7 @@ export class StreamFrameIterator extends FrameIteratorBase {
    * Retrieves the next frame from the video stream.
    * @returns A promise resolving to the next frame or null if the iterator is closed.
    */
-  async next(): Promise<Frame | null> {
+  async next(): Promise<Tensor | null> {
     if (this.isClosed || !this.videoElement) {
       return null;
     }
@@ -47,20 +47,19 @@ export class StreamFrameIterator extends FrameIteratorBase {
       return null;
     }
 
-    // TODO: Does this work with WebRTC stream?
-    const tensor = browser.fromPixels(this.videoElement);
+    return tidy(() => {
+      // TODO: Does this work with WebRTC stream?
+      const tensor = browser.fromPixels(this.videoElement!);
 
-    // TODO:
-    // - Needs to pre-process (crop, resize if required)
-    // Maybe:
-    // if (this.width && this.height) {
-    //   return browser.resizeBilinear(tensor, [this.height, this.width]);
-    // }
+      if (this.options.roi) {
+        const { x, y, width, height } = this.options.roi;
+        return tensor.slice([y, x, 0], [height, width, 3]);
+      }
 
-    return {
-      data: tensor,
-      timestamp: performance.now(),
-    };
+      // TODO: Resize if necessary
+
+      return tensor;
+    });
   }
 
   /**

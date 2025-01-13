@@ -1,12 +1,12 @@
-import { VideoInputProcessorBase } from './VideoInputProcessor.base';
+import { FrameIteratorFactoryBase } from './FrameIteratorFactory.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { VitalLensOptions } from '../types/core';
 import { FFmpegWrapper } from '../utils/FFmpegWrapper.browser';
 
 /**
- * Browser-specific implementation of VideoInputProcessor.
+ * Browser-specific implementation of FrameIteratorFactory.
  */
-export class VideoInputProcessor extends VideoInputProcessorBase {
+export class FrameIteratorFactory extends FrameIteratorFactoryBase {
   constructor(options: VitalLensOptions) {
     super(options);
   }

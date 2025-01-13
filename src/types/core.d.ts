@@ -16,7 +16,7 @@ export interface Frame {
  */
 export interface VitalLensOptions {
   method: 'vitallens' | 'pos' | 'chrom' | 'g'; // The processing method to use
-  fps: number; // Target frames per second
+  overrideFpsTarget?: number; // Optionally override method's default fpsTarget
   roi?: {
     x: number; // X-coordinate of the region of interest
     y: number; // Y-coordinate of the region of interest
@@ -43,11 +43,20 @@ export interface VitalLensResult {
  */
 export interface VideoProbeResult {
   fps: number;
-  total_frames: number;
+  totalFrames: number;
   width: number;
   height: number;
   codec: string;
   bitrate: number;
   rotation: number;
   issues: boolean;
+}
+
+export interface VideoProcessingOptions {
+  fpsTarget?: number; // Downsample frames to this fps
+  crop?: { x: number; y: number; width: number; height: number }; // Crop coordinates
+  scale?: { width: number; height: number }; // Resize dimensions
+  trim?: { startFrame: number; endFrame: number }; // Frame range for trimming
+  pixelFormat: "rgb24";
+  scaleAlgorithm: "bicubic" | "bilinear" | "area" | "lanczos";
 }
