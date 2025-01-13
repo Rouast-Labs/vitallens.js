@@ -1,4 +1,4 @@
-import { Frame } from '../types/core';
+import { Frame } from '../types';
 import { FrameBuffer } from './FrameBuffer';
 
 /**

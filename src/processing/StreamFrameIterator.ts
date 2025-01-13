@@ -1,6 +1,6 @@
-import { VitalLensOptions } from '../types/core';
+import { Frame, VitalLensOptions } from '../types/core';
 import { FrameIteratorBase } from './FrameIterator.base';
-import { browser, Tensor, tidy } from '@tensorflow/tfjs-core';
+import { browser, tidy } from '@tensorflow/tfjs-core';
 
 /**
  * Frame iterator for MediaStreams (e.g., live video from a webcam).
@@ -37,7 +37,7 @@ export class StreamFrameIterator extends FrameIteratorBase {
    * Retrieves the next frame from the video stream.
    * @returns A promise resolving to the next frame or null if the iterator is closed.
    */
-  async next(): Promise<Tensor | null> {
+  async next(): Promise<Frame | null> {
     if (this.isClosed || !this.videoElement) {
       return null;
     }
@@ -57,8 +57,11 @@ export class StreamFrameIterator extends FrameIteratorBase {
       }
 
       // TODO: Resize if necessary
-
-      return tensor;
+      
+      return {
+        data: tensor,
+        timestamp: // TODO
+      };
     });
   }
 

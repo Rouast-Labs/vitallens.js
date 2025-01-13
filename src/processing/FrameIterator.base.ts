@@ -1,10 +1,10 @@
-import { Tensor } from '@tensorflow/tfjs-core';
+import { Frame } from "../types";
 
 /**
  * Abstract base class for frame iterators.
  * Handles the logic for extracting frames from a source (e.g., MediaStream or file).
  */
-export abstract class FrameIteratorBase implements AsyncIterable<Tensor> {
+export abstract class FrameIteratorBase implements AsyncIterable<Frame> {
   protected isClosed = false;
 
   /**
@@ -23,13 +23,13 @@ export abstract class FrameIteratorBase implements AsyncIterable<Tensor> {
    * Abstract method for retrieving the next tensor frame.
    * @returns A promise resolving to the next tensor or null if the iterator is stopped.
    */
-  abstract next(): Promise<Tensor | null>;
+  abstract next(): Promise<Frame | null>;
 
   /**
    * Implements the async iterator protocol.
    * @returns An async iterator for frames.
    */
-  [Symbol.asyncIterator](): AsyncIterator<Tensor> {
+  [Symbol.asyncIterator](): AsyncIterator<Frame> {
     return {
       next: async () => {
         if (this.isClosed) {

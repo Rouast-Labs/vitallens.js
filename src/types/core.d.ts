@@ -1,3 +1,5 @@
+import { Tensor } from '@tensorflow/tfjs-core';
+
 /**
  * Represents possible video file inputs.
  */
@@ -7,8 +9,8 @@ export type VideoInput = string | File | Blob;
  * Represents a single frame in the video processing pipeline.
  */
 export interface Frame {
-  data: ImageData | HTMLCanvasElement | string; // Raw data, canvas, or base64
-  timestamp: number; // Timestamp of the frame
+  data: Tensor<tf.Rank.R3> | Tensor<tf.Rank.R4>; // 3D or 4D Tensor
+  timestamp: number; // Timestamp of the frame in milliseconds
 }
 
 /**

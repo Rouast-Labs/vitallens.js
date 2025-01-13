@@ -1,4 +1,4 @@
-import { VideoInput, VitalLensOptions, VideoProbeResult } from '../types/core';
+import { Frame, VideoInput, VitalLensOptions, VideoProbeResult } from '../types/core';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
@@ -38,7 +38,7 @@ export class FileFrameIterator extends FrameIteratorBase {
    * Retrieves the next frame from the video file.
    * @returns A promise resolving to the next frame or null if the iterator is closed or EOF is reached.
    */
-  async next(): Promise<Tensor | null> {
+  async next(): Promise<Frame | null> {
     if (!this.probeInfo) {
       throw new Error('Probe information is not available. Ensure `start()` has been called before `next()`.');
     }
@@ -92,11 +92,14 @@ export class FileFrameIterator extends FrameIteratorBase {
         `Buffer length mismatch. Expected ${expectedBufferLength}, but received ${frameData.length}.`
       );
     }
-    
-    // Convert Uint8Array to Tensor
+
     return tidy(() => {
+      // Convert Uint8Array to Tensor
       const shape = [framesToRead, height, width, 3];
-      return tensor(frameData, shape, 'float32');
+      return {
+        data: tensor(frameData, shape, 'float32'),
+        timestamp: //TODO
+      }
     });
   }
 

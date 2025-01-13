@@ -1,5 +1,5 @@
 import { MethodConfig } from '../config/methodsConfig';
-import { Frame, VitalLensOptions, VideoInput } from './core';
+import { VitalLensOptions, VideoInput, Frame } from './core';
 
 export interface IFrameIteratorFactory {
   createStreamFrameIterator(
