@@ -1,3 +1,4 @@
+import { MethodConfig } from '../config/methodsConfig';
 import { Frame, ROI } from '../types/core';
 
 /**
@@ -6,7 +7,7 @@ import { Frame, ROI } from '../types/core';
 export abstract class Buffer {
   private buffer: Map<number, Frame> = new Map(); // Frame data mapped by timestep index
 
-  constructor(private roi: ROI, private maxFrames: number, private minFrames: number = 0) {
+  constructor(private roi: ROI, private maxFrames: number, private minFrames: number = 0, private methodConfig: MethodConfig) {
     if (minFrames > maxFrames) {
       throw new Error('minFrames cannot be greater than maxFrames.');
     }
@@ -18,7 +19,7 @@ export abstract class Buffer {
    * @param timestepIndex - The timestep index of the frame.
    */
   async add(frame: Frame, timestepIndex: number): Promise<void> {
-    const processedFrame = await this.preprocess(frame, this.roi);
+    const processedFrame = await this.preprocess(frame, this.roi, this.methodConfig);
     this.buffer.set(timestepIndex, processedFrame);
 
     // Maintain the maximum buffer size
@@ -60,6 +61,8 @@ export abstract class Buffer {
    * Abstract method for preprocessing a frame.
    * Must be implemented in subclasses.
    * @param frame - The frame to preprocess.
+   * @param roi - The roi.
+   * @param methodConfig - The method configuration.
    */
-  protected abstract preprocess(frame: Frame, roi: ROI): Promise<Frame>;
+  protected abstract preprocess(frame: Frame, roi: ROI, methodConfig: MethodConfig): Promise<Frame>;
 }

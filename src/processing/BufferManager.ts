@@ -1,6 +1,6 @@
 import { Frame, ROI } from '../types/core';
 import { Buffer } from './Buffer';
-import { MethodConfig } from '../config/methodsConfig';
+import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
 import { FrameBuffer } from './FrameBuffer';
 import { RGBBuffer } from './RGBBuffer';
 
@@ -37,9 +37,9 @@ export class BufferManager {
     if (!this.buffers.has(id)) {
       let newBuffer: Buffer;
       if (method === 'vitallens') {
-        newBuffer = new FrameBuffer(roi, maxFrames, minFrames);
+        newBuffer = new FrameBuffer(roi, maxFrames, minFrames, METHODS_CONFIG[method]);
       } else {
-        newBuffer = new RGBBuffer(roi, maxFrames, minFrames);
+        newBuffer = new RGBBuffer(roi, maxFrames, minFrames, METHODS_CONFIG[method]);
       }
       this.buffers.set(id, { buffer: newBuffer, createdAt: timestepIndex });
     }
@@ -80,7 +80,9 @@ export class BufferManager {
    * @param timestepIndex - The timestep index of the frame.
    */
   add(frame: Frame, timestepIndex: number): void {
-    // TODO: For all managed buffers, add the new frame
+    for (const { buffer, createdAt } of this.buffers.values()) {
+      buffer.add(frame, timestepIndex);
+    }
   }
 
   /**
