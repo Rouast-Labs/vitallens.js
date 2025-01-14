@@ -1,13 +1,13 @@
-import { Frame } from '../types/core';
+import { Frame, ROI } from '../types/core';
 
 /**
  * A class to manage buffering of frames and handling recurrent state.
  */
+// TODO: Make into abstract class Buffer, implemented by FrameBuffer and ROIBuffer
 export class FrameBuffer {
-  private buffer: Frame[] = [];
-  private state: any = null;
+  private buffer: Map<number, Frame> = new Map(); // Frame data mapped by timestep index
 
-  constructor(private maxFrames: number, private minFrames: number = 0) {
+  constructor(private roi: ROI, private maxFrames: number, private minFrames: number = 0) {
     if (minFrames > maxFrames) {
       throw new Error('minFrames cannot be greater than maxFrames.');
     }
@@ -16,25 +16,22 @@ export class FrameBuffer {
   /**
    * Adds a frame to the buffer.
    * @param frame - The frame to add.
+   * @param timestepIndex - The timestep index of the frame.
    */
-  add(frame: Frame): void {
-    this.buffer.push(frame);
+  add(frame: Frame, timestepIndex: number): void {
+    // TODO: Implement preprocess(frame: Frame) in subclasses
+    // - in FrameBuffer: crop and resize
+    // - in ROIBuffer: crop and reduceRoi to RGB
+    this.buffer.set(
+      timestepIndex,
+      this.preprocess(frame)
+    );
 
     // Maintain the maximum buffer size
-    if (this.buffer.length > this.maxFrames) {
-      this.buffer.shift();
+    while (this.buffer.size > this.maxFrames) {
+      const oldestKey = Math.min(...this.buffer.keys());
+      this.buffer.delete(oldestKey);
     }
-  }
-
-  /**
-   * Consumes the buffered frames but retains the last `minFrames` in the buffer.
-   * @returns The consumed frames (including the retained ones).
-   */
-  consume(): Frame[] {
-    const framesToRetain = this.buffer.slice(-(this.minFrames-1)); // Retain the last `(minFrames-1)` frames
-    const framesToReturn = [...this.buffer]; // Return all frames
-    this.buffer = framesToRetain; // Retain only the last `minFrames`
-    return framesToReturn;
   }
 
   /**
@@ -42,30 +39,26 @@ export class FrameBuffer {
    * @returns True if the buffer has enough frames, false otherwise.
    */
   isReady(): boolean {
-    return this.buffer.length >= this.minFrames;
+    return this.buffer.size >= this.minFrames;
   }
-
+  
   /**
-   * Sets the recurrent state.
-   * @param state - The new state to set.
+   * Consumes frames from the buffer but retains the last `minFrames`.
+   * @returns An array of consumed frames.
    */
-  setState(state: any): void {
-    this.state = state;
+  consume(): Frame[] {
+    const keys = Array.from(this.buffer.keys()).sort((a, b) => a - b);
+    const retainCount = Math.min(this.minFrames, this.buffer.size);
+    const retainKeys = keys.slice(-retainCount);
+    const allFrames = keys.map((key) => this.buffer.get(key)!);
+    this.buffer = new Map(retainKeys.map((key) => [key, this.buffer.get(key)!]));
+    return allFrames;
   }
 
   /**
-   * Gets the current recurrent state.
-   * @returns The current state.
-   */
-  getState(): any {
-    return this.state;
-  }
-
-  /**
-   * Clears the buffer and resets the state.
+   * Clears the buffer.
    */
   clear(): void {
-    this.buffer = [];
-    this.state = null;
+    this.buffer.clear();
   }
 }

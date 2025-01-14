@@ -9,11 +9,14 @@ export class StreamFrameIterator extends FrameIteratorBase {
   private videoElement: HTMLVideoElement | null = null;
 
   constructor(
-    private stream: MediaStream,
+    stream?: MediaStream,
+    existingVideoElement?: HTMLVideoElement,
     private options: VitalLensOptions,
-    existingVideoElement?: HTMLVideoElement
   ) {
     super();
+
+    // TODO: How to handle different scenarios where one of stream and existingVideoElement may be undefined
+
     this.videoElement = existingVideoElement || document.createElement('video');
     
     if (!existingVideoElement) {
@@ -50,17 +53,10 @@ export class StreamFrameIterator extends FrameIteratorBase {
     return tidy(() => {
       // TODO: Does this work with WebRTC stream?
       const tensor = browser.fromPixels(this.videoElement!);
-
-      if (this.options.roi) {
-        const { x, y, width, height } = this.options.roi;
-        return tensor.slice([y, x, 0], [height, width, 3]);
-      }
-
-      // TODO: Resize if necessary
       
       return {
         data: tensor,
-        timestamp: // TODO
+        timestamp: performance.now()
       };
     });
   }

@@ -7,9 +7,9 @@ import { FaceDetector } from '../ssd/FaceDetector';
 
 /**
  * Frame iterator for video files (e.g., local file paths, File, or Blob inputs).
- * Yields 4D `Frame`s representing pre-processed segments of the video file
+ * Yields 2D `Frame`s representing RGB signal from pre-processed segments of the video file
  */
-export class FileFrameIterator extends FrameIteratorBase {
+export class FileRGBIterator extends FrameIteratorBase {
   private ffmpeg: IFFmpegWrapper;
   private currentFrameIndex: number = 0;
   private probeInfo: VideoProbeResult | null = null;
@@ -33,7 +33,7 @@ export class FileFrameIterator extends FrameIteratorBase {
    */
   async start(): Promise<void> {
     await this.ffmpeg.init();
-    await this.ffmpeg.loadInput(this.videoInput);    
+    await this.ffmpeg.loadInput(this.videoInput);
     // Probe to get video information
     this.probeInfo = await this.ffmpeg.probeVideo(this.videoInput);
     if (!this.probeInfo) {
@@ -49,15 +49,18 @@ export class FileFrameIterator extends FrameIteratorBase {
       this.faceDetector = new FaceDetector();
       // TODO: Read downsampled video into memory for face detector
       const video = TODO;
-      // TODO: Run face detector (nFrames, 4)
+      // TODO: Run face detector
       const faces = this.faceDetector.run(video);
-      // TODO: Derive roi from faces (nFrames, 4)
+      // TODO: Derive roi from faces
       this.roi = getRoiFromFaceForMethod(faces, method);
     }
+    // TODO:
+    // - Load entire video into memory using union roi (in chunks)
+    // - Reduce entire video into RGB using progressive different face detections (how to implement?)
   }
 
   /**
-   * Retrieves the next frame from the video file.
+   * Retrieves the next rgb frame from the video file.
    * @returns A promise resolving to the next frame or null if the iterator is closed or EOF is reached.
    */
   async next(): Promise<Frame | null> {
@@ -75,58 +78,7 @@ export class FileFrameIterator extends FrameIteratorBase {
       this.probeInfo.totalFrames - startFrameIndex
     );
 
-    // TODO: Representative roi needs to be extracted from relevant frame ids
-    // Like: faces[np.argmin(np.linalg.norm(faces - np.median(faces, axis=0), axis=1))]
-    const roi = getRepresentativeRoi(this.roi, startFrameIndex, framesToRead);
-
-    const frameData = await this.ffmpeg.readVideo(
-      this.videoInput,
-      {
-        fpsTarget: this.fpsTarget,
-        crop: roi,
-        scale: this.methodConfig.inputSize
-        ? { width: this.methodConfig.inputSize, height: this.methodConfig.inputSize }
-        : undefined,
-        trim: { startFrame: startFrameIndex, endFrame: startFrameIndex + framesToRead },
-        pixelFormat: 'rgb24',
-        scaleAlgorithm: 'bicubic',
-      },
-      this.probeInfo
-    );
-
-    if (!frameData) {
-      this.stop();
-      return null;
-    }
-
-    this.currentFrameIndex += framesToRead;
-
-    const width = this.methodConfig.inputSize || this.options.globalRoi?.width; 
-    const height = this.methodConfig.inputSize || this.options.globalRoi?.height;
-    if (!width || !height) {
-      throw new Error(
-        'Unable to determine frame dimensions. Ensure scale or ROI dimensions are provided.'
-      );
-    }
-
-    const dsFramesExpected = Math.ceil(framesToRead / this.dsFactor);
-    const totalPixelsPerFrame = width * height * 3;
-    const expectedBufferLength = dsFramesExpected * totalPixelsPerFrame;
-
-    if (frameData.length !== expectedBufferLength) {
-      throw new Error(
-        `Buffer length mismatch. Expected ${expectedBufferLength}, but received ${frameData.length}.`
-      );
-    }
-
-    return tidy(() => {
-      // Convert Uint8Array to Tensor
-      const shape = [dsFramesExpected, height, width, 3];
-      return {
-        data: tensor(frameData, shape, 'float32'),
-        timestamp: (this.currentFrameIndex / this.probeInfo!.fps) * 1000, // Convert frame index to milliseconds
-      }
-    });
+    // TODO: Serve the next framesToRead of rgb
   }
 
   /**

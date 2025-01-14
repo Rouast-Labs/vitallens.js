@@ -15,11 +15,12 @@ export class VitalLensAPIHandler extends MethodHandler {
 
   /**
    * Sends a buffer of frames to the VitalLens API via WebSocket and processes the response.
-   * @param frames - Array of frames to send.
+   * @param framesChunk - Frame chunk to send.
    * @param state - Optional recurrent state from the previous API call.
    * @returns A promise that resolves to the processed result.
    */
-  async process(frames: Frame[], state?: any): Promise<VitalLensResult> {
+  async process(framesChunk: Frame, state?: any): Promise<VitalLensResult> {
+    // TODO
     const payload = {
       frames: frames.map((frame) => frame.data).join(','), // Concatenate frame data as base64 string
       state,

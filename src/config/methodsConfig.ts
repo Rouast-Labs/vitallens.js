@@ -1,6 +1,6 @@
 export interface MethodConfig {
   fpsTarget: number; // Target inference frames per second
-  inputSize?: number; // Optional: Spatial size for inference 
+  inputSize?: number; // Optional: Spatial size for inference
   minWindowLength: number; // Minimum length of the inference window
   maxWindowLength: number; // Maximum length of the inference window
   requiresState: boolean; // Whether the method requires recurrent state

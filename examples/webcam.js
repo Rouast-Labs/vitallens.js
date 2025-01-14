@@ -5,8 +5,7 @@ const ctx = canvas.getContext('2d');
 
 const options = {
   method: 'pos',
-  fps: 30,
-  roi: { x: 50, y: 50, width: 200, height: 200 },
+  globalRoi: { x: 50, y: 50, width: 200, height: 200 },
 };
 
 const vitallens = new VitalLens(options);

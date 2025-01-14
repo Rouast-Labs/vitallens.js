@@ -1,22 +1,22 @@
+import { Frame } from '../types';
 import { SimpleMethodHandler } from './SimpleMethodHandler';
 
 /**
  * Handler for processing frames using the G algorithm.
  */
 export class GHandler extends SimpleMethodHandler {
-  protected computeVitals(): Record<string, any> {
-    const { r, g, b } = this.signalBuffer;
-
+  protected computeVitals(rgb: Frame): Record<string, any> {
+    
     // Implement G-specific logic to estimate vitals
-    const hr = this.estimateHeartRate(r, g, b);
+    const hr = this.estimateHeartRate(rgb);
 
     return {
       heartRate: hr,
     };
   }
 
-  private estimateHeartRate(r: number[], g: number[], b: number[]): number {
-    // Example computation, replace with actual G logic
+  private estimateHeartRate(rgb: Frame): number {
+    // TODO
     return Math.random() * 40 + 60; // Random HR between 60-100 bpm
   }
 }

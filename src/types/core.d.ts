@@ -9,7 +9,7 @@ export type VideoInput = string | File | Blob;
  * Represents a single frame in the video processing pipeline.
  */
 export interface Frame {
-  data: Tensor<tf.Rank.R3> | Tensor<tf.Rank.R4>; // 3D or 4D Tensor
+  data: Tensor<tf.Rank.R2> | Tensor<tf.Rank.R3> | Tensor<tf.Rank.R4>; // 2D or 3D or 4D Tensor
   timestamp: number; // Timestamp of the frame in milliseconds
 }
 
@@ -17,15 +17,10 @@ export interface Frame {
  * Options for configuring the VitalLens library.
  */
 export interface VitalLensOptions {
+  // TODO: Api key
   method: 'vitallens' | 'pos' | 'chrom' | 'g'; // The processing method to use
   overrideFpsTarget?: number; // Optionally override method's default fpsTarget
-  roi?: {
-    x: number; // X-coordinate of the region of interest
-    y: number; // Y-coordinate of the region of interest
-    width: number; // Width of the region of interest
-    height: number; // Height of the region of interest
-    bufferSize?: number; // Maximum buffer size for frames
-  };
+  globalRoi?: ROI // Optional global roi
 }
 
 /**
@@ -56,9 +51,17 @@ export interface VideoProbeResult {
 
 export interface VideoProcessingOptions {
   fpsTarget?: number; // Downsample frames to this fps
-  crop?: { x: number; y: number; width: number; height: number }; // Crop coordinates
+  crop?: ROI; // Crop coordinates
   scale?: { width: number; height: number }; // Resize dimensions
-  trim?: { startFrame: number; endFrame: number }; // Frame range for trimming
-  pixelFormat: "rgb24";
-  scaleAlgorithm: "bicubic" | "bilinear" | "area" | "lanczos";
+  trim?: { startFrame: number; endFrame: number }; // Frame range for trimming in terms of original video indices.
+  preserveAspectRatio?: boolean;
+  pixelFormat?: "rgb24";
+  scaleAlgorithm?: "bicubic" | "bilinear" | "area" | "lanczos";
+}
+
+export interface ROI {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }

@@ -1,0 +1,33 @@
+import { Tensor, stack } from '@tensorflow/tfjs-core';
+import { Frame } from '../types';
+
+/**
+ * Merges an array of Frame objects into a single Frame.
+ * 
+ * @param frames - An array of Frame objects to merge.
+ * @returns A single Frame with concatenated data and the last timestamp.
+ */
+export function mergeFrames(frames: Frame[]): Frame {
+  if (frames.length === 0) {
+    throw new Error('Cannot merge an empty array of frames.');
+  }
+
+  // Extract the 3D tensors from each frame
+  const tensors: Tensor[] = frames.map(frame => {
+    if (frame.data.rank !== 3) {
+      throw new Error('All frames must have 3D Tensors as data.');
+    }
+    return frame.data;
+  });
+
+  // Concatenate along a new dimension (sequence dimension)
+  const concatenatedData = stack(tensors);
+
+  // Use the last timestamp
+  const lastTimestamp = frames[frames.length - 1].timestamp;
+
+  return {
+    data: concatenatedData,
+    timestamp: lastTimestamp,
+  };
+}

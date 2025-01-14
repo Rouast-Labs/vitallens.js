@@ -13,9 +13,9 @@ export abstract class MethodHandler {
 
   /**
    * Processes the provided buffer of frames and optionally uses the recurrent state.
-   * @param buffer - Array of frames to process.
+   * @param framesChunk - Frame chunk to process.
    * @param state - Optional recurrent state from previous processing.
    * @returns A promise that resolves to the processing result.
    */
-  abstract process(buffer: Frame[], state?: any): Promise<VitalLensResult>;
+  abstract process(framesChunk: Frame, state?: any): Promise<VitalLensResult>;
 }
