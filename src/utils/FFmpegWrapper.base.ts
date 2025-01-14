@@ -54,7 +54,23 @@ export abstract class FFmpegWrapperBase implements IFFmpegWrapper {
   ): string[] {
     const filters: string[] = [];
     const { fps } = probeInfo;
-
+    
+    // Parse options
+    const dsFactor = (options.fpsTarget && options.fpsTarget < fps) ? Math.round(fps / options.fpsTarget) : 1;
+    var targetW = options.crop ? options.crop.width : probeInfo.width;
+    var targetH = options.crop ? options.crop.height : probeInfo.height;
+    if (options.scale) {
+      const preserveAspectRatio = options.preserveAspectRatio || false;
+      if (preserveAspectRatio) {
+        const scaleRatio = Math.max(options.scale.height, options.scale.width) / Math.max(targetW, targetH);
+        targetW = Math.round(targetW * scaleRatio);
+        targetH = Math.round(targetH * scaleRatio);
+      } else {
+        targetW = options.scale.width;
+        targetH = options.scale.height;
+      }
+    }
+    
     // Apply trimming
     if (options.trim) {
       const { startFrame, endFrame } = options.trim;
@@ -63,12 +79,9 @@ export abstract class FFmpegWrapperBase implements IFFmpegWrapper {
     }
 
     // Apply frame downsampling
-    if (options.fpsTarget && fps) {
-      const dsFactor = Math.round(fps / options.fpsTarget);
-      if (dsFactor > 1) {
-        filters.push(`select='not(mod(n\\,${dsFactor}))'`);
-        filters.push("setpts=N/FRAME_RATE/TB");
-      }
+    if (dsFactor > 1) {
+      filters.push(`select='not(mod(n\\,${dsFactor}))'`);
+      filters.push("setpts=N/FRAME_RATE/TB");
     }
 
     // Apply cropping
@@ -79,8 +92,8 @@ export abstract class FFmpegWrapperBase implements IFFmpegWrapper {
 
     // Apply scaling
     if (options.scale) {
-      const { width, height } = options.scale;
-      filters.push(`scale=${width}:${height}`);
+      const scaleAlgorithm = options.scaleAlgorithm || "bicubic";
+      filters.push(`scale=${targetW}:${targetH}:flags=${scaleAlgorithm}`);
     }
 
     return filters;
