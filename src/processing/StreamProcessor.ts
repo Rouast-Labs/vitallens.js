@@ -1,8 +1,7 @@
 import { MethodConfig } from '../config/methodsConfig';
 import { Frame, ROI, VitalLensOptions } from '../types';
-import { FrameBufferManager } from './FrameBufferManager';
+import { BufferManager } from './BufferManager';
 import { FaceDetector } from '../ssd/FaceDetector';
-import { minimum } from '@tensorflow/tfjs';
 
 /**
  * Manages the processing loop for live streams, including frame capture,
@@ -20,7 +19,7 @@ export class StreamProcessor {
     private options: VitalLensOptions,
     private methodConfig: MethodConfig,
     private frameIterator: AsyncIterable<Frame>,
-    private frameBufferManager: FrameBufferManager,
+    private bufferManager: BufferManager,
     private onPredict: (frames: Frame[]) => Promise<void>
   ) {
     // Derive target fps
@@ -65,21 +64,21 @@ export class StreamProcessor {
                 // TODO: Determine if the new face detection has moved at least 50% of its width outside of the existing roi
                 if (roiMovedSignificantly(this.roi, faceDet)) {
                   this.roi = getRoiFromFaceForMethod(faceDet, this.options.method);
-                  this.frameBufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
+                  this.bufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
                 }
               } else {
                 this.roi = getRoiFromFaceForMethod(faceDet, this.options.method);
-                this.frameBufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
+                this.bufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
               }
             });
           }
 
           // Add frame to buffer(s)
-          this.frameBufferManager.add(frame, currentTime);
+          this.bufferManager.add(frame, currentTime);
   
-          if (this.frameBufferManager.isReady() && !this.isPredicting) {
+          if (this.bufferManager.isReady() && !this.isPredicting) {
             this.isPredicting = true;
-            const frames = this.frameBufferManager.consume();
+            const frames = this.bufferManager.consume();
             this.onPredict(frames).finally(() => {
               this.isPredicting = false;
             });
@@ -115,6 +114,6 @@ export class StreamProcessor {
    */
   stop(): void {
     this.isPaused = true;
-    this.frameBuffer.clear();
+    this.bufferManager.cleanup();
   }
 }

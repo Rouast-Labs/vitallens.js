@@ -1,12 +1,14 @@
 import { Frame, ROI } from '../types/core';
-import { FrameBuffer } from './FrameBuffer';
+import { Buffer } from './Buffer';
 import { MethodConfig } from '../config/methodsConfig';
+import { FrameBuffer } from './FrameBuffer';
+import { RGBBuffer } from './RGBBuffer';
 
 /**
  * Manages multiple FrameBuffers for handling different ROIs and method configurations.
  */
-export class FrameBufferManager {
-  private buffers: Map<string, { buffer: FrameBuffer; createdAt: number }>; // Map of buffer ID to buffer and creation timestamp
+export class BufferManager {
+  private buffers: Map<string, { buffer: Buffer; createdAt: number }>; // Map of buffer ID to buffer and creation timestamp
   private state: any = null; // Optional recurrent state
   
   constructor() {
@@ -33,8 +35,13 @@ export class FrameBufferManager {
   addBuffer(roi: ROI, method: string, minFrames: number, maxFrames: number, timestepIndex: number): void {
     const id = this.generateBufferId(roi);
     if (!this.buffers.has(id)) {
-      // TODO: Create instance of FrameBuffer if method is vitallens, otherwise instance of RGBBuffer
-      this.buffers.set(id, { buffer: new FrameBuffer(roi, maxFrames, minFrames), createdAt: timestepIndex });
+      let newBuffer: Buffer;
+      if (method === 'vitallens') {
+        newBuffer = new FrameBuffer(roi, maxFrames, minFrames);
+      } else {
+        newBuffer = new RGBBuffer(roi, maxFrames, minFrames);
+      }
+      this.buffers.set(id, { buffer: newBuffer, createdAt: timestepIndex });
     }
   }
 
@@ -50,8 +57,8 @@ export class FrameBufferManager {
    * Retrieves the most recent buffer that is ready for processing.
    * @returns The ready buffer or null if none are ready.
    */
-  private getReadyBuffer(): FrameBuffer | null {
-    let readyBuffer: FrameBuffer | null = null;
+  private getReadyBuffer(): Buffer | null {
+    let readyBuffer: Buffer | null = null;
     let newestTimestep = 0;
 
     for (const { buffer, createdAt } of this.buffers.values()) {

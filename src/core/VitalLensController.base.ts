@@ -1,4 +1,4 @@
-import { FrameBufferManager } from '../processing/FrameBufferManager';
+import { BufferManager } from '../processing/BufferManager';
 import { StreamProcessor } from '../processing/StreamProcessor';
 import { MethodHandler } from '../methods/MethodHandler';
 import { MethodHandlerFactory } from '../methods/MethodHandlerFactory';
@@ -16,7 +16,7 @@ import { mergeFrames } from '../utils/frameOps';
  */
 export abstract class VitalLensControllerBase implements IVitalLensController {
   protected frameIteratorFactory: IFrameIteratorFactory | null = null;
-  protected frameBufferManager: FrameBufferManager;
+  protected bufferManager: BufferManager;
   protected streamProcessor: StreamProcessor | null = null;
   protected methodHandler: MethodHandler;
   protected methodConfig: MethodConfig;
@@ -26,7 +26,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   constructor(protected options: VitalLensOptions) {
     this.methodConfig = METHODS_CONFIG[this.options.method]
     
-    this.frameBufferManager = new FrameBufferManager();
+    this.bufferManager = new BufferManager();
     
     this.methodHandler = this.createMethodHandler(this.options);
     this.frameIteratorFactory = this.createFrameIteratorFactory(this.options);
@@ -65,14 +65,14 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.options,
       this.methodConfig,
       frameIterator,
-      this.frameBufferManager,
+      this.bufferManager,
       async (frames) => {
         const framesChunk = mergeFrames(frames);
         const result = await this.methodHandler.process(
           framesChunk,
-          this.frameBufferManager.getState()
+          this.bufferManager.getState()
         );
-        this.frameBufferManager.setState(result.state); // Set state (only relevant for VitalLens API)
+        this.bufferManager.setState(result.state); // Set state (only relevant for VitalLens API)
         // TODO: Aggregate and format results
         this.dispatchEvent('vitals', result); // Emit event with results
       }
@@ -94,8 +94,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
 
     const results: VitalLensResult[] = [];
     for await (const framesChunk of frameIterator) {
-      const result = await this.methodHandler.process(framesChunk, this.frameBufferManager.getState());
-      this.frameBufferManager.setState(result.state); // Update state (if relevant)
+      const result = await this.methodHandler.process(framesChunk, this.bufferManager.getState());
+      this.bufferManager.setState(result.state); // Update state (if relevant)
       results.push(result);
     }
 
@@ -133,7 +133,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.streamProcessor = null;
     }
     this.processing = false;
-    this.frameBufferManager.cleanup();
+    this.bufferManager.cleanup();
   }
 
   /**
