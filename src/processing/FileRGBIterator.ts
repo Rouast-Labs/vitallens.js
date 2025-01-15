@@ -1,4 +1,5 @@
-import { Frame, VideoInput, VitalLensOptions, VideoProbeResult, ROI } from '../types/core';
+import { VideoInput, VitalLensOptions, VideoProbeResult, ROI } from '../types/core';
+import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { MethodConfig } from '../config/methodsConfig';
@@ -43,15 +44,20 @@ export class FileRGBIterator extends FrameIteratorBase {
     this.fpsTarget = this.options.overrideFpsTarget ? this.options.overrideFpsTarget : this.methodConfig.fpsTarget;
     this.dsFactor = Math.max(Math.round(this.probeInfo.fps / this.fpsTarget), 1);
     if (this.options.globalRoi) {
-      // TODO: Create roi as (nFrames, 4) by repeating this.options.globalRoi
-      this.roi = repeatRoi(this.op);
+      this.roi = Array(this.probeInfo.totalFrames).fill(this.options.globalRoi);
     } else {
       this.faceDetector = new FaceDetector();
-      // TODO: Read downsampled video into memory for face detector
-      const video = TODO;
-      // TODO: Run face detector
+      const video = await this.ffmpeg.readVideo(
+        this.videoInput,
+        {
+          fpsTarget: this.options.fDetFs ? this.options.fDetFs : 1.0,
+          scale: { width: 320, height: 240 },
+        },
+        this.probeInfo
+      );
+      // TODO: Run face detector (nFrames, 4)
       const faces = this.faceDetector.run(video);
-      // TODO: Derive roi from faces
+      // TODO: Derive roi from faces (nFrames, 4)
       this.roi = getRoiFromFaceForMethod(faces, method);
     }
     // TODO:
@@ -79,6 +85,17 @@ export class FileRGBIterator extends FrameIteratorBase {
     );
 
     // TODO: Serve the next framesToRead of rgb
+
+    const tensorData = tidy(() => {
+      // Convert Uint8Array to Tensor
+      const shape = [dsFramesExpected, height, width, 3];
+      return tensor(frameData, shape, 'float32');
+    });
+
+    return new Frame(
+      tensorData,
+      (this.currentFrameIndex / this.probeInfo!.fps) * 1000
+    );
   }
 
   /**

@@ -1,4 +1,5 @@
-import { Frame, VitalLensOptions } from '../types/core';
+import { VitalLensOptions } from '../types/core';
+import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { browser, tidy } from '@tensorflow/tfjs-core';
 
@@ -50,15 +51,12 @@ export class StreamFrameIterator extends FrameIteratorBase {
       return null;
     }
 
-    return tidy(() => {
+    const tensorData = tidy(() => {
       // TODO: Does this work with WebRTC stream?
-      const tensor = browser.fromPixels(this.videoElement!);
-      
-      return {
-        data: tensor,
-        timestamp: performance.now()
-      };
+      return browser.fromPixels(this.videoElement!);
     });
+
+    return new Frame(tensorData, performance.now());
   }
 
   /**

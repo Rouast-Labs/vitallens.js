@@ -1,17 +1,7 @@
-import { Tensor } from '@tensorflow/tfjs-core';
-
 /**
  * Represents possible video file inputs.
  */
 export type VideoInput = string | File | Blob;
-
-/**
- * Represents a single frame in the video processing pipeline.
- */
-export interface Frame {
-  data: Tensor<tf.Rank.R2> | Tensor<tf.Rank.R3> | Tensor<tf.Rank.R4>; // 2D or 3D or 4D Tensor
-  timestamp: number; // Timestamp of the frame in milliseconds
-}
 
 /**
  * Options for configuring the VitalLens library.
@@ -20,7 +10,8 @@ export interface VitalLensOptions {
   // TODO: Api key
   method: 'vitallens' | 'pos' | 'chrom' | 'g'; // The processing method to use
   overrideFpsTarget?: number; // Optionally override method's default fpsTarget
-  globalRoi?: ROI // Optional global roi
+  globalRoi?: ROI, // Optional global roi
+  fDetFs?: number // Optional face detection frequency
 }
 
 /**
@@ -49,6 +40,9 @@ export interface VideoProbeResult {
   issues: boolean;
 }
 
+/**
+ * Represents video processing options.
+ */
 export interface VideoProcessingOptions {
   fpsTarget?: number; // Downsample frames to this fps
   crop?: ROI; // Crop coordinates
@@ -59,6 +53,9 @@ export interface VideoProcessingOptions {
   scaleAlgorithm?: "bicubic" | "bilinear" | "area" | "lanczos";
 }
 
+/**
+ * Represents a region of interest (ROI).
+ */
 export interface ROI {
   x: number;
   y: number;

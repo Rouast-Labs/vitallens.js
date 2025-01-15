@@ -1,4 +1,4 @@
-import { Frame } from "../types";
+import { Frame } from "./Frame";
 
 /**
  * Abstract base class for frame iterators.

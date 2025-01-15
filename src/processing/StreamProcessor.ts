@@ -1,5 +1,6 @@
 import { MethodConfig } from '../config/methodsConfig';
-import { Frame, ROI, VitalLensOptions } from '../types';
+import { ROI, VitalLensOptions } from '../types';
+import { Frame } from './Frame';
 import { BufferManager } from './BufferManager';
 import { FaceDetector } from '../ssd/FaceDetector';
 
@@ -12,7 +13,9 @@ export class StreamProcessor {
   private isPredicting = false;
   private roi: ROI | null = null;
   private targetFps: number = 30.0;
+  private fDetFs: number = 1.0;
   private lastProcessedTime: number = 0;
+  private lastFaceDetectionTime: number = 0;
   private faceDetector: FaceDetector | null = null;
 
   constructor(
@@ -24,10 +27,10 @@ export class StreamProcessor {
   ) {
     // Derive target fps
     this.targetFps = this.options.overrideFpsTarget ? this.options.overrideFpsTarget : this.methodConfig.fpsTarget;
+    this.fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0;
 
     if (options.globalRoi) {
       this.roi = options.globalRoi;
-      // TODO: Set to use globalRoi
     } else {
       this.faceDetector = new FaceDetector();
     }
@@ -55,14 +58,14 @@ export class StreamProcessor {
         if (done || this.isPaused) break;
 
         if (frame) {
+          frame.retain(); // 1
           this.lastProcessedTime = currentTime;
           
-          if (this.faceDetector && runFaceDetection) {
+          if (this.faceDetector && currentTime - this.lastFaceDetectionTime > 1000 / this.fDetFs) {
             // Run face detection
             this.faceDetector.run(frame, 1, async (faceDet) => {
               if (this.options.method === 'vitallens') {
-                // TODO: Determine if the new face detection has moved at least 50% of its width outside of the existing roi
-                if (roiMovedSignificantly(this.roi, faceDet)) {
+                if (!this.roi || roiMovedSignificantly(this.roi, faceDet)) {
                   this.roi = getRoiFromFaceForMethod(faceDet, this.options.method);
                   this.bufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
                 }
@@ -74,13 +77,18 @@ export class StreamProcessor {
           }
 
           // Add frame to buffer(s)
-          this.bufferManager.add(frame, currentTime);
+          await this.bufferManager.add(frame, currentTime).finally(() => {
+            frame.release(); // 0 (or 1 if in use by face detector)
+          });
   
           if (this.bufferManager.isReady() && !this.isPredicting) {
             this.isPredicting = true;
             const frames = this.bufferManager.consume();
+            // We are taking over the reference count on these frames from the buffer. No need to retain. 
             this.onPredict(frames).finally(() => {
               this.isPredicting = false;
+              // Release the frames
+              frames.forEach((frame) => frame.release());
             });
           }
         }
@@ -116,4 +124,25 @@ export class StreamProcessor {
     this.isPaused = true;
     this.bufferManager.cleanup();
   }
+}
+
+/**
+ * Checks if the ROI has moved significantly from the previous one.
+ */
+function roiMovedSignificantly(prevRoi: ROI, newRoi: ROI): boolean {
+  const dx = Math.abs(prevRoi.x - newRoi.x);
+  const dy = Math.abs(prevRoi.y - newRoi.y);
+  return dx > prevRoi.width * 0.5 || dy > prevRoi.height * 0.5;
+}
+
+/**
+ * Generates an ROI from face detection results for a specific method.
+ */
+function getRoiFromFaceForMethod(faceDet: any, method: string): ROI {
+  return {
+    x: faceDet.boundingBox.x,
+    y: faceDet.boundingBox.y,
+    width: faceDet.boundingBox.width,
+    height: faceDet.boundingBox.height,
+  };
 }

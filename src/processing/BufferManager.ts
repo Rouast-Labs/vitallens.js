@@ -1,6 +1,7 @@
-import { Frame, ROI } from '../types/core';
+import { ROI } from '../types/core';
+import { Frame } from './Frame';
 import { Buffer } from './Buffer';
-import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
+import { METHODS_CONFIG } from '../config/methodsConfig';
 import { FrameBuffer } from './FrameBuffer';
 import { RGBBuffer } from './RGBBuffer';
 
@@ -79,10 +80,12 @@ export class BufferManager {
    * @param frame - The frame to add.
    * @param timestepIndex - The timestep index of the frame.
    */
-  add(frame: Frame, timestepIndex: number): void {
+  async add(frame: Frame, timestepIndex: number): Promise<void> {
+    frame.retain(); // 2 (or 3 if in use by face detector)
     for (const { buffer, createdAt } of this.buffers.values()) {
       buffer.add(frame, timestepIndex);
     }
+    frame.release(); // 1 (or 2 if in use by face detector)
   }
 
   /**
@@ -101,6 +104,7 @@ export class BufferManager {
   private cleanupBuffers(timestepIndex: number): void {
     for (const [id, { buffer, createdAt }] of this.buffers.entries()) {
       if (createdAt < timestepIndex) {
+        buffer.clear();
         this.buffers.delete(id);
       }
     }
@@ -110,6 +114,9 @@ export class BufferManager {
    * Clears all buffers, resets the manager and state.
    */
   cleanup(): void {
+    for (const { buffer } of this.buffers.values()) {
+      buffer.clear(); // Clear and release all frames in the buffer
+    }
     this.buffers.clear();
     this.state = null;
   }
