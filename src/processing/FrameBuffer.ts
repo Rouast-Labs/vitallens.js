@@ -20,7 +20,7 @@ export class FrameBuffer extends Buffer {
 
     try {
       // Assert that the frame data is a 3D tensor
-      if (!frame.data || frame.data.rank !== 3) {
+      if (!frame.data || frame.data.rank !== 3 || frame.data.shape.length != 3) {
         throw new Error(`Frame data must be a 3D tensor. Received rank: ${frame.data?.rank}`);
       }
 
@@ -28,8 +28,8 @@ export class FrameBuffer extends Buffer {
       if (
         roi.x < 0 ||
         roi.y < 0 ||
-        roi.x + roi.width > frame.data.shape![1] ||
-        roi.y + roi.height > frame.data.shape![0]
+        roi.x + roi.width > frame.data.shape[1] ||
+        roi.y + roi.height > frame.data.shape[0]
       ) {
         throw new Error(
           `ROI dimensions are out of bounds. Frame dimensions: [${frame.data.shape[0]}, ${frame.data.shape[1]}], ROI: ${JSON.stringify(roi)}`
@@ -47,7 +47,7 @@ export class FrameBuffer extends Buffer {
       // Resize the cropped tensor if inputSize is specified
       const resized = methodConfig.inputSize
         ? tf.tidy(() => {
-            return tf.image.resizeBilinear(cropped, [methodConfig.inputSize, methodConfig.inputSize]);
+            return tf.image.resizeBilinear(cropped as tf.Tensor3D, [methodConfig.inputSize!, methodConfig.inputSize!]);
           })
         : cropped;
 
@@ -57,7 +57,7 @@ export class FrameBuffer extends Buffer {
       }
 
       // Return the processed frame with the original timestamp
-      return new Frame(resized, frame.timestamp);
+      return new Frame(resized as tf.Tensor3D, frame.timestamp);
     } finally {
       frame.release(); // 3 (or 4 if in use by face detector)
     }

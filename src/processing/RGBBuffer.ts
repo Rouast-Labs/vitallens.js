@@ -20,7 +20,7 @@ export class RGBBuffer extends Buffer {
     
     try {
       // Assert that the frame data is a 3D tensor
-      if (!frame.data || frame.data.rank !== 3) {
+      if (!frame.data || frame.data.rank !== 3 || frame.data.shape.length != 3) {
         throw new Error(`Frame data must be a 3D tensor. Received rank: ${frame.data?.rank}`);
       }
 
@@ -53,7 +53,7 @@ export class RGBBuffer extends Buffer {
       cropped.dispose();
 
       // Return the processed frame with the original timestamp
-      return new Frame(averaged, frame.timestamp);
+      return new Frame(averaged as tf.Tensor1D, frame.timestamp);
     } finally {
       frame.release(); // 3 (or 4 if in use by face detector)
     }
