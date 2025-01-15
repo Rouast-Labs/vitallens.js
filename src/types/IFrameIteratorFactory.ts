@@ -1,13 +1,15 @@
 import { MethodConfig } from '../config/methodsConfig';
-import { VitalLensOptions, VideoInput, Frame } from './core';
+import { VideoInput } from './core';
+import { Frame } from '../processing/Frame';
+import { IFrameIterator } from '../processing/FrameIterator.base';
 
 export interface IFrameIteratorFactory {
   createStreamFrameIterator(
     stream?: MediaStream, 
     videoElement?: HTMLVideoElement
-  ): AsyncIterable<Frame>;
+  ): IFrameIterator;
   createFileFrameIterator(
     videoInput: VideoInput,
     methodConfig: MethodConfig
-  ): AsyncIterable<Frame>;
+  ): IFrameIterator;
 }

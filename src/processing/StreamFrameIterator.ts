@@ -1,4 +1,3 @@
-import { VitalLensOptions } from '../types/core';
 import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { browser, tidy } from '@tensorflow/tfjs-core';
@@ -8,22 +7,28 @@ import { browser, tidy } from '@tensorflow/tfjs-core';
  */
 export class StreamFrameIterator extends FrameIteratorBase {
   private videoElement: HTMLVideoElement | null = null;
+  private stream: MediaStream | null = null;
 
   constructor(
     stream?: MediaStream,
     existingVideoElement?: HTMLVideoElement,
-    private options: VitalLensOptions,
   ) {
     super();
 
-    // TODO: How to handle different scenarios where one of stream and existingVideoElement may be undefined
-
-    this.videoElement = existingVideoElement || document.createElement('video');
-    
-    if (!existingVideoElement) {
-      this.videoElement.srcObject = this.stream;
-      this.videoElement.muted = true;
-      this.videoElement.playsInline = true;
+    if (stream && existingVideoElement) {
+      this.stream = stream;
+      this.videoElement = existingVideoElement;
+    } else if (stream) {
+      this.stream = stream;
+      this.videoElement = null; // Video element will not be managed
+    } else if (existingVideoElement) {
+      this.videoElement = existingVideoElement;
+      if (!existingVideoElement.srcObject) {
+        throw new Error('Existing video element must have a valid MediaStream assigned to srcObject.');
+      }
+      this.stream = existingVideoElement.srcObject as MediaStream;
+    } else {
+      throw new Error('Either a MediaStream or an existing HTMLVideoElement must be provided.');
     }
   }
 
@@ -32,8 +37,16 @@ export class StreamFrameIterator extends FrameIteratorBase {
    */
   async start(): Promise<void> {
     if (!this.videoElement) {
-      throw new Error('Video element is not initialized.');
+      this.videoElement = document.createElement('video');
+      this.videoElement.srcObject = this.stream;
+      this.videoElement.muted = true;
+      this.videoElement.playsInline = true;
     }
+
+    if (!this.videoElement.srcObject) {
+      this.videoElement.srcObject = this.stream;
+    }
+
     await this.videoElement.play();
   }
 
@@ -68,6 +81,8 @@ export class StreamFrameIterator extends FrameIteratorBase {
       this.videoElement.pause();
       this.videoElement.srcObject = null;
     }
-    this.stream.getTracks().forEach((track) => track.stop());
+    if (this.stream) {
+      this.stream.getTracks().forEach((track) => track.stop());
+    }
   }
 }

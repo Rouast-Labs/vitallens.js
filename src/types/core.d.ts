@@ -19,9 +19,10 @@ export interface VitalLensOptions {
  */
 export interface VitalLensResult {
   vitals: {
+    ppgWaveform?: number[],
+    respiratoryWaveform?: number[],
     heartRate?: number;
-    respiratoryRate?: number;
-    [key: string]: any; // Extendable for other vital metrics
+    respiratoryRate?: number; 
   };
   state?: any; // Recurrent state for continued processing
 }

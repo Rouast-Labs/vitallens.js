@@ -1,22 +1,16 @@
-import { Frame } from '../types';
+import { Tensor2D } from '@tensorflow/tfjs';
 import { SimpleMethodHandler } from './SimpleMethodHandler';
 
 /**
  * Handler for processing frames using the G algorithm.
  */
 export class GHandler extends SimpleMethodHandler {
-  protected computeVitals(rgb: Frame): Record<string, any> {
-    
-    // Implement G-specific logic to estimate vitals
-    const hr = this.estimateHeartRate(rgb);
-
-    return {
-      heartRate: hr,
-    };
-  }
-
-  private estimateHeartRate(rgb: Frame): number {
-    // TODO
-    return Math.random() * 40 + 60; // Random HR between 60-100 bpm
+  /**
+   * Implementation of the G algorithm.
+   * @param rgb - Tensor2D with rgb signals to process.
+   */
+  protected algorithm(rgb: Tensor2D): number[] {
+    // TODO: Implement algorithm
+    return [];
   }
 }

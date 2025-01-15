@@ -129,6 +129,7 @@ export class StreamProcessor {
 /**
  * Checks if the ROI has moved significantly from the previous one.
  */
+// TODO: Review this function and use it where needed
 function roiMovedSignificantly(prevRoi: ROI, newRoi: ROI): boolean {
   const dx = Math.abs(prevRoi.x - newRoi.x);
   const dy = Math.abs(prevRoi.y - newRoi.y);
@@ -138,6 +139,7 @@ function roiMovedSignificantly(prevRoi: ROI, newRoi: ROI): boolean {
 /**
  * Generates an ROI from face detection results for a specific method.
  */
+// TODO: Review this function and use it where needed
 function getRoiFromFaceForMethod(faceDet: any, method: string): ROI {
   return {
     x: faceDet.boundingBox.x,

@@ -12,7 +12,7 @@ export abstract class VitalLensBase {
    * Initializes the VitalLens instance with the provided options.
    * @param options - Configuration options for the library.
    */
-  constructor(private options: VitalLensOptions) {
+  constructor(options: VitalLensOptions) {
     this.controller = this.createController(options);
   }
 

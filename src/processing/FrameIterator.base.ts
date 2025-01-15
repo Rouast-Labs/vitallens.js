@@ -1,11 +1,26 @@
 import { Frame } from "./Frame";
+import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * Interface for frame iterators to include ID functionality.
+ */
+export interface IFrameIterator extends AsyncIterable<Frame> {
+  getId(): string;
+}
 
 /**
  * Abstract base class for frame iterators.
  * Handles the logic for extracting frames from a source (e.g., MediaStream or file).
+ * Implements IFrameIterator to expose ID functionality.
  */
-export abstract class FrameIteratorBase implements AsyncIterable<Frame> {
+export abstract class FrameIteratorBase implements IFrameIterator {
   protected isClosed = false;
+  private id: string;
+
+  constructor() {
+    // Generate a unique ID for each iterator
+    this.id = uuidv4();
+  }
 
   /**
    * Starts the iterator by initializing resources (e.g., stream or file reader).
@@ -43,5 +58,13 @@ export abstract class FrameIteratorBase implements AsyncIterable<Frame> {
         return { value: frame, done: false };
       },
     };
+  }
+
+  /**
+   * Returns the unique ID of this iterator.
+   * @returns The unique ID string.
+   */
+  getId(): string {
+    return this.id;
   }
 }

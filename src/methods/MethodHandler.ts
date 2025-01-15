@@ -1,14 +1,16 @@
-import { Frame, VitalLensOptions, VitalLensResult } from '../types/core';
+import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
+import { Frame } from '../processing/Frame';
+import { VitalLensOptions, VitalLensResult } from '../types/core';
 
 /**
  * Abstract base class for all method-specific handlers.
  * Subclasses must implement the `process` method.
  */
 export abstract class MethodHandler {
-  protected options: VitalLensOptions;
+  protected config: MethodConfig;
 
   constructor(options: VitalLensOptions) {
-    this.options = options;
+    this.config = METHODS_CONFIG[options.method];
   }
 
   /**

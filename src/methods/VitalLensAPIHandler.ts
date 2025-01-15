@@ -1,6 +1,7 @@
 import { MethodHandler } from './MethodHandler';
-import { Frame, VitalLensOptions, VitalLensResult } from '../types/core';
+import { VitalLensOptions, VitalLensResult } from '../types/core';
 import { WebSocketClient } from '../utils/WebSocketClient';
+import { Frame } from '../processing/Frame';
 
 /**
  * Handler for processing frames using the VitalLens API via WebSocket.
@@ -20,7 +21,9 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @returns A promise that resolves to the processed result.
    */
   async process(framesChunk: Frame, state?: any): Promise<VitalLensResult> {
-    // TODO
+    // TODO: Frame reference counting
+    // TODO: Adapt to number[] being used in VitalLensResult
+    // TODO: Integrate properly with VitalLensResult
     const payload = {
       frames: frames.map((frame) => frame.data).join(','), // Concatenate frame data as base64 string
       state,

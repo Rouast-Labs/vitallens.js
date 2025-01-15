@@ -1,5 +1,7 @@
 import { MethodHandler } from './MethodHandler';
-import { Frame, VitalLensOptions, VitalLensResult } from '../types/core';
+import { VitalLensOptions, VitalLensResult } from '../types/core';
+import { Frame } from '../processing/Frame';
+import { Tensor2D } from '@tensorflow/tfjs';
 
 /**
  * Base class for simple rPPG methods (e.g., POS, CHROM, G).
@@ -8,25 +10,28 @@ export abstract class SimpleMethodHandler extends MethodHandler {
 
   constructor(options: VitalLensOptions) {
     super(options);
-    // TODO maxBufferSize?
   }
 
   /**
-   * Processes a buffer of frames to compute vitals.
-   * @param rgb - Array of frames to process.
+   * Processes a chunk of rgb signals to compute vitals.
+   * @param rgb - Frame of rgb signals to process.
    * @returns A promise that resolves to the processed result.
    */
   async process(rgb: Frame): Promise<VitalLensResult> {
-    const vitals = this.computeVitals(rgb);
+    rgb.retain();
+    const ppg = this.algorithm(rgb.data as Tensor2D);
+    rgb.release();
     return {
-      vitals,
+      vitals: {
+        ppgWaveform: ppg
+      },
       state: {}, // No recurrent state for handcrafted methods
     };
   }
   
   /**
    * Abstract method for subclasses to implement their specific algorithm.
-   * @param rgb - Array of frames to process.
+   * @param rgb - Tensor2D with rgb signals to process.
    */
-  protected abstract computeVitals(rgb: Frame): Record<string, any>;
+  protected abstract algorithm(rgb: Tensor2D): number[];
 }

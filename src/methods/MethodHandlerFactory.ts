@@ -16,17 +16,15 @@ interface MethodHandlerDependencies {
 export class MethodHandlerFactory {
   /**
    * Creates and returns the appropriate method handler based on the provided options.
-   * @param method - The method to use for vitals estimation (e.g., 'vitallens', 'pos', etc.).
    * @param options - Configuration options for the handler.
    * @param dependencies - Optional dependencies required by specific handlers.
    * @returns An instance of the appropriate method handler.
    */
   static createHandler(
-    method: string,
     options: VitalLensOptions,
     dependencies: MethodHandlerDependencies = {}
   ): MethodHandler {
-    switch (method) {
+    switch (options.method) {
       case 'vitallens': {
         if (!dependencies.webSocketClient) {
           throw new Error('WebSocketClient is required for VitalLensAPIHandler');
@@ -40,7 +38,7 @@ export class MethodHandlerFactory {
       case 'chrom':
         return new CHROMHandler(options);
       default:
-        throw new Error(`Unsupported method: ${method}`);
+        throw new Error(`Unsupported method: ${options.method}`);
     }
   }
 }

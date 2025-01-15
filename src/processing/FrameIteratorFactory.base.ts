@@ -1,10 +1,11 @@
 import { MethodConfig } from '../config/methodsConfig';
-import { Frame, VitalLensOptions, VideoInput } from '../types/core';
+import { VitalLensOptions, VideoInput } from '../types/core';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { FileFrameIterator } from './FileFrameIterator';
 import { FileRGBIterator } from './FileRGBIterator';
 import { StreamFrameIterator } from './StreamFrameIterator';
+import { IFrameIterator } from './FrameIterator.base';
 
 /**
  * Creates iterators for video processing, including frame capture and preprocessing.
@@ -26,12 +27,12 @@ export abstract class FrameIteratorFactoryBase implements IFrameIteratorFactory 
   createStreamFrameIterator(
     stream?: MediaStream,
     videoElement?: HTMLVideoElement,
-  ): AsyncIterable<Frame> {
+  ): IFrameIterator {
     if (!stream && !videoElement) {
       throw new Error('Either a MediaStream or an HTMLVideoElement must be provided.');
     }
     
-    return new StreamFrameIterator(stream, videoElement, this.options);
+    return new StreamFrameIterator(stream, videoElement);
   }
 
   /**
@@ -43,7 +44,7 @@ export abstract class FrameIteratorFactoryBase implements IFrameIteratorFactory 
   createFileFrameIterator(
     videoInput: VideoInput,
     methodConfig: MethodConfig
-  ): AsyncIterable<Frame> {
+  ): IFrameIterator {
     const ffmpeg = this.getFFmpegWrapper();
     if (this.options.method === 'vitallens') {
       return new FileFrameIterator(videoInput, this.options, methodConfig, ffmpeg);

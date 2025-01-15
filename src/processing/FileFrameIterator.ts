@@ -3,7 +3,7 @@ import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { MethodConfig } from '../config/methodsConfig';
-import { tidy, tensor, tensor1d } from '@tensorflow/tfjs-core';
+import { tidy, tensor } from '@tensorflow/tfjs-core';
 import { FaceDetector } from '../ssd/FaceDetector';
 
 /**

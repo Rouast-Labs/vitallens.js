@@ -35,6 +35,7 @@ export class FaceDetector implements IFaceDetector {
   run(frame: Frame, fps: number, onFinish: (detectionResult: any) => Promise<void>): void {
     frame.retain(); // 2 (or 1 if already released by loop)
     try {
+      // TODO: Implement
       const detectionResult: FaceDetectionResult = {
         faceFound: true,
         boundingBox: { x: 100, y: 50, width: 200, height: 200 },
