@@ -31,9 +31,9 @@ export class BufferManager {
    * @param method - The method for the buffer.
    * @param minFrames - Minimum number of frames required for processing.
    * @param maxFrames - Maximum number of frames the buffer can hold.
-   * @param timestepIndex - The current timestep index.
+   * @param timestamp - The current timestamp.
    */
-  addBuffer(roi: ROI, method: string, minFrames: number, maxFrames: number, timestepIndex: number): void {
+  addBuffer(roi: ROI, method: string, minFrames: number, maxFrames: number, timestamp: number): void {
     const id = this.generateBufferId(roi);
     if (!this.buffers.has(id)) {
       let newBuffer: Buffer;
@@ -42,7 +42,7 @@ export class BufferManager {
       } else {
         newBuffer = new RGBBuffer(roi, maxFrames, minFrames, METHODS_CONFIG[method]);
       }
-      this.buffers.set(id, { buffer: newBuffer, createdAt: timestepIndex });
+      this.buffers.set(id, { buffer: newBuffer, createdAt: timestamp });
     }
   }
 
@@ -60,17 +60,17 @@ export class BufferManager {
    */
   private getReadyBuffer(): Buffer | null {
     let readyBuffer: Buffer | null = null;
-    let newestTimestep = 0;
+    let timestamp = 0;
 
     for (const { buffer, createdAt } of this.buffers.values()) {
-      if (buffer.isReady() && createdAt > newestTimestep) {
+      if (buffer.isReady() && createdAt > timestamp) {
         readyBuffer = buffer;
-        newestTimestep = createdAt;
+        timestamp = createdAt;
       }
     }
 
     // Cleanup old buffers
-    this.cleanupBuffers(newestTimestep);
+    this.cleanupBuffers(timestamp);
 
     return readyBuffer;
   }
@@ -78,12 +78,12 @@ export class BufferManager {
   /**
    * Adds a frame to the active buffers.
    * @param frame - The frame to add.
-   * @param timestepIndex - The timestep index of the frame.
+   * @param timestamp - The timestamp of the frame.
    */
-  async add(frame: Frame, timestepIndex: number): Promise<void> {
+  async add(frame: Frame, timestamp: number): Promise<void> {
     frame.retain(); // 2 (or 3 if in use by face detector)
     for (const { buffer, createdAt } of this.buffers.values()) {
-      buffer.add(frame, timestepIndex);
+      buffer.add(frame, timestamp);
     }
     frame.release(); // 1 (or 2 if in use by face detector)
   }
@@ -98,12 +98,12 @@ export class BufferManager {
   }
 
   /**
-   * Cleans up buffers that are older than the given timestep index.
-   * @param timestepIndex - The current timestep index.
+   * Cleans up buffers that are older than the given timestamp.
+   * @param timestamp - The current timestamp.
    */
-  private cleanupBuffers(timestepIndex: number): void {
+  private cleanupBuffers(timestamp: number): void {
     for (const [id, { buffer, createdAt }] of this.buffers.entries()) {
-      if (createdAt < timestepIndex) {
+      if (createdAt < timestamp) {
         buffer.clear();
         this.buffers.delete(id);
       }

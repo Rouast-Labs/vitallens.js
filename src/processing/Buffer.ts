@@ -6,7 +6,7 @@ import { Frame } from './Frame';
  * An abstract class to manage buffering of frames.
  */
 export abstract class Buffer {
-  private buffer: Map<number, Frame> = new Map(); // Frame data mapped by timestep index
+  private buffer: Map<number, Frame> = new Map(); // Frame data mapped by timestamp
 
   constructor(
     private roi: ROI,
@@ -21,15 +21,15 @@ export abstract class Buffer {
   /**
    * Adds a frame to the buffer.
    * @param frame - The frame to add.
-   * @param timestepIndex - The timestep index of the frame.
+   * @param timestamp - The timestamp of the frame.
    */
-  async add(frame: Frame, timestepIndex: number): Promise<void> {
+  async add(frame: Frame, timestamp: number): Promise<void> {
     frame.retain(); // 3 (or 4 if in use by face detector)
     const processedFrame = await this.preprocess(frame, this.roi, this.methodConfig);
     frame.release(); // 2 (or 4 if in use by face detector)
     
     processedFrame.retain(); // 1
-    this.buffer.set(timestepIndex, processedFrame);
+    this.buffer.set(timestamp, processedFrame);
 
     // Maintain the maximum buffer size
     while (this.buffer.size > this.maxFrames) {
