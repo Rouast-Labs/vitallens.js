@@ -25,6 +25,7 @@ export abstract class SimpleMethodHandler extends MethodHandler {
       vitals: {
         ppgWaveform: ppg
       },
+      time: rgb.timestamp,
       state: {}, // No recurrent state for handcrafted methods
     };
   }

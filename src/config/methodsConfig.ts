@@ -1,6 +1,7 @@
 export interface MethodConfig {
   method: 'vitallens' | 'pos' | 'chrom' | 'g';
   fpsTarget: number; // Target inference frames per second
+  roiMethod: 'face' | 'upper_body';
   inputSize?: number; // Optional: Spatial size for inference
   minWindowLength: number; // Minimum length of the inference window
   maxWindowLength: number; // Maximum length of the inference window
@@ -11,6 +12,7 @@ export interface MethodConfig {
 export const METHODS_CONFIG: Record<string, MethodConfig> = {
   vitallens: {
     method: 'vitallens',
+    roiMethod: 'upper_body',
     fpsTarget: 30,
     inputSize: 40,
     minWindowLength: 4,
@@ -20,6 +22,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
   },
   pos: {
     method: 'pos',
+    roiMethod: 'face',
     fpsTarget: 30,
     minWindowLength: 48,
     maxWindowLength: 48,
@@ -28,6 +31,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
   },
   chrom: {
     method: 'chrom',
+    roiMethod: 'face',
     fpsTarget: 30,
     minWindowLength: 48,
     maxWindowLength: 48,
@@ -36,6 +40,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
   },
   g: {
     method: 'g',
+    roiMethod: 'face',
     fpsTarget: 30,
     minWindowLength: 64,
     maxWindowLength: 64,

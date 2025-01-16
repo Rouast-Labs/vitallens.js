@@ -7,11 +7,12 @@ export type VideoInput = string | File | Blob;
  * Options for configuring the VitalLens library.
  */
 export interface VitalLensOptions {
-  // TODO: Api key
-  method: 'vitallens' | 'pos' | 'chrom' | 'g'; // The processing method to use
-  overrideFpsTarget?: number; // Optionally override method's default fpsTarget
-  globalRoi?: ROI, // Optional global roi
-  fDetFs?: number // Optional face detection frequency
+  method: 'vitallens' | 'pos' | 'chrom' | 'g';
+  apiKey?: string;
+  waveformDataMode?: 'incremental' | 'aggregated' | 'complete';
+  overrideFpsTarget?: number;
+  globalRoi?: ROI;
+  fDetFs?: number;
 }
 
 /**
@@ -24,7 +25,8 @@ export interface VitalLensResult {
     heartRate?: number;
     respiratoryRate?: number; 
   };
-  state?: any; // Recurrent state for continued processing
+  time: number[];
+  state?: any;
 }
 
 /**
@@ -45,10 +47,10 @@ export interface VideoProbeResult {
  * Represents video processing options.
  */
 export interface VideoProcessingOptions {
-  fpsTarget?: number; // Downsample frames to this fps
-  crop?: ROI; // Crop coordinates
-  scale?: { width: number; height: number }; // Resize dimensions
-  trim?: { startFrame: number; endFrame: number }; // Frame range for trimming in terms of original video indices.
+  fpsTarget?: number;
+  crop?: ROI;
+  scale?: { width: number; height: number };
+  trim?: { startFrame: number; endFrame: number };
   preserveAspectRatio?: boolean;
   pixelFormat?: "rgb24";
   scaleAlgorithm?: "bicubic" | "bilinear" | "area" | "lanczos";

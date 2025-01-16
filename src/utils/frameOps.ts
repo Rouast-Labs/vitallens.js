@@ -5,7 +5,7 @@ import { Frame } from '../processing/Frame';
  * Merges an array of Frame objects into a single Frame.
  * 
  * @param frames - An array of Frame objects to merge.
- * @returns A single Frame with concatenated data and the last timestamp.
+ * @returns A single Frame with concatenated data and concatenated timestamps.
  */
 export function mergeFrames(frames: Frame[]): Frame {
   if (frames.length === 0) {
@@ -26,11 +26,11 @@ export function mergeFrames(frames: Frame[]): Frame {
     // Concatenate along a new dimension (sequence dimension)
     const concatenatedData = stack(tensors);
 
-    // Use the last timestamp
-    const lastTimestamp = frames[frames.length - 1].timestamp;
+    // Concatenate all timestamps
+    const concatenatedTimestamps = frames.flatMap((frame) => frame.timestamp);
 
     // Return the merged frame
-    return new Frame(concatenatedData, lastTimestamp);
+    return new Frame(concatenatedData, concatenatedTimestamps);
   } finally {
     // Release the original frames after use
     frames.forEach((frame) => frame.release());

@@ -5,6 +5,7 @@ import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { MethodConfig } from '../config/methodsConfig';
 import { tidy, tensor } from '@tensorflow/tfjs-core';
 import { FaceDetector } from '../ssd/FaceDetector';
+import { getROIForMethod, getUnionROI } from '../utils/faceOps';
 
 /**
  * Frame iterator for video files (e.g., local file paths, File, or Blob inputs).
@@ -57,11 +58,12 @@ export class FileRGBIterator extends FrameIteratorBase {
       );
       // TODO: Run face detector (nFrames, 4)
       const faces = this.faceDetector.run(video);
-      // TODO: Derive roi from faces (nFrames, 4)
-      this.roi = getRoiFromFaceForMethod(faces, method);
+      // Derive roi from faces (nFrames, 4)
+      this.roi = faces.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));
     }
     // TODO:
     // - Load entire video into memory using union roi (in chunks)
+    const unionROI = getUnionROI(this.roi);
     // - Reduce entire video into RGB using progressive different face detections (how to implement?)
   }
 
@@ -92,9 +94,14 @@ export class FileRGBIterator extends FrameIteratorBase {
       return tensor(frameData, shape, 'float32');
     });
 
+    // Generate timestamps for each frame in the batch
+    const frameTimestamps = Array.from({ length: dsFramesExpected }, (_, i) => 
+      (startFrameIndex + i) / this.probeInfo!.fps
+    );
+
     return new Frame(
       tensorData,
-      (this.currentFrameIndex / this.probeInfo!.fps) * 1000
+      frameTimestamps
     );
   }
 

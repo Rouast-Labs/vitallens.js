@@ -21,19 +21,20 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @returns A promise that resolves to the processed result.
    */
   async process(framesChunk: Frame, state?: any): Promise<VitalLensResult> {
-    // TODO: Frame reference counting
-    // TODO: Adapt to number[] being used in VitalLensResult
-    // TODO: Integrate properly with VitalLensResult
+    framesChunk.retain();
+    // TODO: Generate base64 string
     const payload = {
       frames: frames.map((frame) => frame.data).join(','), // Concatenate frame data as base64 string
       state,
     };
-
+    framesChunk.release();   
     try {
       const response = await this.webSocketClient.send(payload);
+      // TODO: Parse response and integrate properly with VitalLensResult
       return {
         vitals: response.vitals,
         state: response.state,
+        time: framesChunk.timestamp,
       };
     } catch (error) {
       throw new Error(`VitalLens API error: ${error instanceof Error ? error.message : 'Unknown error'}`);

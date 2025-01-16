@@ -69,7 +69,7 @@ export class StreamFrameIterator extends FrameIteratorBase {
       return browser.fromPixels(this.videoElement!);
     });
 
-    return new Frame(tensorData, performance.now());
+    return new Frame(tensorData, [performance.now()/1000]);
   }
 
   /**

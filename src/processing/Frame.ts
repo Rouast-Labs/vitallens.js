@@ -5,13 +5,13 @@ import * as tf from '@tensorflow/tfjs';
  */
 export class Frame {
   data: tf.Tensor;
-  timestamp: number;
+  timestamp: number[]; // In seconds
   private refCount: number = 0;
 
-  constructor(data: tf.Tensor, timestamp: number) {
+  constructor(data: tf.Tensor, timestamp: number[]) {
     this.data = data;
     this.timestamp = timestamp;
-    this.refCount = 0; // Initialize reference count to 0 when the frame is created
+    this.refCount = 0;
   }
 
   /**

@@ -32,7 +32,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     
     this.methodHandler = this.createMethodHandler(this.options);
     this.frameIteratorFactory = this.createFrameIteratorFactory(this.options);
-    this.vitalsEstimateManager = new VitalsEstimateManager(this.methodConfig);
+    this.vitalsEstimateManager = new VitalsEstimateManager(this.methodConfig, this.options);
   }
 
   /**
@@ -79,8 +79,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
         framesChunk.release();
         this.bufferManager.setState(incrementalResult.state);
         
-        // TODO: Set incrementalResult.
-        const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId());        
+        const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "aggregated");        
         
         this.dispatchEvent('vitals', result);
       }
@@ -104,7 +103,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       const incrementalResult = await this.methodHandler.process(framesChunk, this.bufferManager.getState());
       framesChunk.release();
       this.bufferManager.setState(incrementalResult.state);
-      await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId());        
+      await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "complete");        
     }
 
     return this.vitalsEstimateManager.getResult(frameIterator.getId());

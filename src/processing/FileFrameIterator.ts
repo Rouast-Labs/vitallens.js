@@ -5,6 +5,7 @@ import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { MethodConfig } from '../config/methodsConfig';
 import { tidy, tensor } from '@tensorflow/tfjs-core';
 import { FaceDetector } from '../ssd/FaceDetector';
+import { getRepresentativeROI } from '../utils/faceOps';
 
 /**
  * Frame iterator for video files (e.g., local file paths, File, or Blob inputs).
@@ -57,8 +58,8 @@ export class FileFrameIterator extends FrameIteratorBase {
       );
       // TODO: Run face detector (nFrames, 4)
       const faces = this.faceDetector.run(video);
-      // TODO: Derive roi from faces (nFrames, 4)
-      this.roi = getRoiFromFaceForMethod(faces, method);
+      // Derive roi from faces (nFrames, 4)
+      this.roi = faces.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));
     }
   }
 
@@ -81,11 +82,8 @@ export class FileFrameIterator extends FrameIteratorBase {
       this.probeInfo.totalFrames - startFrameIndex
     );
 
-    // TODO: Representative roi needs to be extracted
-    // Like: faces[np.argmin(np.linalg.norm(faces - np.median(faces, axis=0), axis=1))]
-    const roi = getRepresentativeRoi(
+    const roi = getRepresentativeROI(
       this.roi.slice(startFrameIndex, startFrameIndex + framesToRead),
-      startFrameIndex, framesToRead
     );
 
     const frameData = await this.ffmpeg.readVideo(
@@ -133,10 +131,15 @@ export class FileFrameIterator extends FrameIteratorBase {
       const shape = [dsFramesExpected, height, width, 3];
       return tensor(frameData, shape, 'float32');
     });
+
+    // Generate timestamps for each frame in the batch
+    const frameTimestamps = Array.from({ length: dsFramesExpected }, (_, i) => 
+      (startFrameIndex + i) / this.probeInfo!.fps
+    );
     
     return new Frame(
       tensorData,
-      (this.currentFrameIndex / this.probeInfo!.fps) * 1000
+      frameTimestamps
     );
   }
 

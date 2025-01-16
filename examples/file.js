@@ -2,6 +2,7 @@ import { VitalLens } from 'vitallens.js';
 
 const options = {
   method: 'pos',
+  apiKey: 'YOUR_API_KEY',
   globalRoi: { x: 50, y: 50, width: 200, height: 200 },
 };
 
