@@ -59,7 +59,7 @@ export abstract class VitalLensBase {
    * @param videoInput - The video input to process (string, File, or Blob).
    * @returns The results after processing the video.
    */
-  async processFile(videoInput: VideoInput): Promise<VitalLensResult[]> {
+  async processFile(videoInput: VideoInput): Promise<VitalLensResult> {
     return this.controller.processFile(videoInput);
   }
 

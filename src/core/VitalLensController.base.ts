@@ -106,7 +106,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "complete");        
     }
 
-    return this.vitalsEstimateManager.getResult(frameIterator.getId());
+    return await this.vitalsEstimateManager.getResult(frameIterator.getId());
   }
 
   /**

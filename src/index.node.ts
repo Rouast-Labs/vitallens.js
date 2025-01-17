@@ -1,2 +1,3 @@
 export { VitalLens } from './core/VitalLens.node';
-export type { VitalLensOptions, VitalLensResult, Frame } from './types/core';
+export type { VitalLensOptions, VitalLensResult } from './types/core';
+export { Frame } from './processing/Frame'

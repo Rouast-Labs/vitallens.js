@@ -68,9 +68,9 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
           return;
         }
 
-        const fps = this.extractFrameRate(videoStream.avg_frame_rate);
-        const duration = parseFloat(videoStream.duration) || 0;
-        let totalFrames = parseInt(videoStream.nb_frames, 10);
+        const fps = this.extractFrameRate(videoStream.avg_frame_rate!);
+        const duration = parseFloat(videoStream.duration!) || 0;
+        let totalFrames = parseInt(videoStream.nb_frames!, 10);
 
         if (isNaN(totalFrames)) {
           totalFrames = Math.round(duration * (fps || 0));
@@ -79,7 +79,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
         const width = videoStream.width || 0;
         const height = videoStream.height || 0;
         const codec = videoStream.codec_name || "";
-        const bitrate = parseFloat(videoStream.bit_rate) / 1000 || 0;
+        const bitrate = parseFloat(videoStream.bit_rate!) / 1000 || 0;
 
         let rotation = 0;
         if (videoStream.tags?.rotate) {

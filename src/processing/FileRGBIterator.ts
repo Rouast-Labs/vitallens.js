@@ -6,6 +6,7 @@ import { MethodConfig } from '../config/methodsConfig';
 import { tidy, tensor } from '@tensorflow/tfjs-core';
 import { FaceDetectorAsync } from '../ssd/FaceDetectorAsync';
 import { getROIForMethod, getUnionROI } from '../utils/faceOps';
+import * as tf from '@tensorflow/tfjs';
 
 /**
  * Frame iterator for video files (e.g., local file paths, File, or Blob inputs).
@@ -99,11 +100,17 @@ export class FileRGBIterator extends FrameIteratorBase {
 
     // TODO: Serve the next framesToRead of rgb
 
-    const tensorData = tidy(() => {
-      // Convert Uint8Array to Tensor
-      const shape = [dsFramesExpected, height, width, 3];
-      return tensor(frameData, shape, 'float32');
-    });
+    // const tensorData = tidy(() => {
+    //   // Convert Uint8Array to Tensor
+    //   const shape = [dsFramesExpected, height, width, 3];
+    //   return tensor(frameData, shape, 'float32');
+    // });
+
+    // TODO: Temp data until we can fix this file
+    const dsFramesExpected = 10;
+
+    const mockData = new Float32Array(224 * 224 * 3).fill(0);
+    const tensorData = tf.tensor4d(mockData, [1, 224, 224, 3]);
 
     // Generate timestamps for each frame in the batch
     const frameTimestamps = Array.from({ length: dsFramesExpected }, (_, i) => 

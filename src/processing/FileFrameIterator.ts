@@ -17,7 +17,7 @@ export class FileFrameIterator extends FrameIteratorBase {
   private probeInfo: VideoProbeResult | null = null;
   private fpsTarget: number = 0;
   private dsFactor: number = 0;
-  private faceDetector: FaceDetector | null = null;
+  private faceDetector: FaceDetectorAsync | null = null;
   private roi: ROI[] = [];
 
   constructor(

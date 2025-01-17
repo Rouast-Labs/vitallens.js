@@ -83,7 +83,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
     // TODO: Mirror the result structure from vitallens-python with confidences, units, notes, disclaimer ...
 
-    return this.computeAggregatedResult(sourceId, waveformDataMode, incrementalResult.time, incrementalResult.vitals.ppgWaveform, incrementalResult.vitals.respiratoryWaveform);
+    return await this.computeAggregatedResult(sourceId, waveformDataMode, incrementalResult.time, incrementalResult.vitals.ppgWaveform, incrementalResult.vitals.respiratoryWaveform);
   }
 
   /**
@@ -137,7 +137,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param incrementalResp - The latest incremental respiratory waveform - pass if returning incremental vals.
    * @returns The aggregated VitalLensResult.
    */
-  private computeAggregatedResult(sourceId: string, waveformDataMode: string, incrementalTime?: number[], incrementalPpg?: number[], incrementalResp?: number[]): VitalLensResult {
+  private async computeAggregatedResult(sourceId: string, waveformDataMode: string, incrementalTime?: number[], incrementalPpg?: number[], incrementalResp?: number[]): Promise<VitalLensResult> {
     const waveformBuffer = this.waveformBuffers.get(sourceId)!;
     const timestamps = this.timestamps.get(sourceId);
     const result: VitalLensResult = { vitals: {}, state: null, time: [] };
@@ -174,7 +174,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       if (averagedPpg.size >= this.minBufferSizePpg) {
         const fps = this.getCurrentFps(sourceId, this.bufferSizePpg);
         if (fps) {
-          result.vitals.heartRate = this.estimateHeartRate(averagedPpg.slice(-this.bufferSizePpg), fps);
+          result.vitals.heartRate = await this.estimateHeartRate(averagedPpg.slice(-this.bufferSizePpg), fps);
         }
       }
 
@@ -199,7 +199,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       if (averagedResp.size >= this.minBufferSizeResp) {
         const fps = this.getCurrentFps(sourceId, this.bufferSizeResp);
         if (fps) {
-          result.vitals.respiratoryRate = this.estimateRespiratoryRate(averagedResp.slice(-this.bufferSizeResp), fps);
+          result.vitals.respiratoryRate = await this.estimateRespiratoryRate(averagedResp.slice(-this.bufferSizeResp), fps);
         }
       }
 
@@ -232,8 +232,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param fs - The sampling rate of the waveform tensor (cycles per second)
    * @returns The estimated heart rate in beats per minute.
    */
-  private estimateHeartRate(ppgWaveform: tf.Tensor, fs: number): number {
-    return this.estimateRateFromFFT(ppgWaveform, fs, CALC_HR_MIN/60, CALC_HR_MAX/60);
+  private async estimateHeartRate(ppgWaveform: tf.Tensor, fs: number): Promise<number> {
+    return await this.estimateRateFromFFT(ppgWaveform, fs, CALC_HR_MIN/60, CALC_HR_MAX/60);
   }
 
   /**
@@ -242,8 +242,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param fs - The sampling rate of the waveform tensor (cycles per second)
    * @returns The estimated respiratory rate in breaths per minute.
    */
-  private estimateRespiratoryRate(respiratoryWaveform: tf.Tensor, fs: number): number {
-    return this.estimateRateFromFFT(respiratoryWaveform, fs, CALC_RR_MIN/60, CALC_RR_MAX/60);
+  private async estimateRespiratoryRate(respiratoryWaveform: tf.Tensor, fs: number): Promise<number> {
+    return await this.estimateRateFromFFT(respiratoryWaveform, fs, CALC_RR_MIN/60, CALC_RR_MAX/60);
   }
 
   /**
@@ -255,30 +255,33 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param fMax - The maximum frequency of interest (cycles per second).
    * @returns The estimated rate in cycles per minute.
    */
-  private estimateRateFromFFT(waveform: tf.Tensor, fs: number, fMin: number, fMax: number): number {
+  private async estimateRateFromFFT(waveform: tf.Tensor, fs: number, fMin: number, fMax: number): Promise<number> {
     const fftResult = tf.tidy(() => {
       const fft = tf.spectral.fft(waveform);
       const powerSpectrum = fft.abs().square();
       // Compute the frequency bins
       const numBins = powerSpectrum.size;
       const frequencies = tf.linspace(0, fs / 2, Math.floor(numBins / 2));
-      // Extract the valid range indices
-      const validRange = frequencies.where(
-        frequencies.greaterEqual(fMin).logicalAnd(frequencies.lessEqual(fMax))
-      );
-      const validPower = powerSpectrum.slice(0, validRange.shape[0]);
-      return { validPower, validRange, frequencies };
+      // Mask for valid range
+      const validMask = frequencies.greaterEqual(fMin).logicalAnd(frequencies.lessEqual(fMax));
+      return { powerSpectrum, frequencies, validMask };
     });
 
-    const { validPower, validRange, frequencies } = fftResult;
+    const { powerSpectrum, frequencies, validMask } = fftResult;
 
-    const maxIndex = tf.argMax(validPower).dataSync()[0];
-    const peakFrequency = frequencies.gather(tf.scalar(maxIndex, 'int32')).dataSync()[0];
+    // Extract valid power and frequencies
+    const validPower = await tf.booleanMaskAsync(powerSpectrum, validMask);
+    const validFrequencies = await tf.booleanMaskAsync(frequencies, validMask);
 
-    fftResult.validPower.dispose();
-    fftResult.validRange.dispose();
-    fftResult.frequencies.dispose();
+    const maxIndex = validPower.argMax().dataSync()[0];
+    const peakFrequency = validFrequencies.gather(tf.scalar(maxIndex, 'int32')).dataSync()[0];
 
+    powerSpectrum.dispose();
+    frequencies.dispose();
+    validMask.dispose();
+    validPower.dispose();
+    validFrequencies.dispose();
+    
     return peakFrequency * 60; // Convert to cycles per minute
   }
 
@@ -287,7 +290,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param sourceId - The source identifier.
    * @returns The aggregated VitalLensResult.
    */
-  getResult(sourceId: string): VitalLensResult {
-    return this.computeAggregatedResult(sourceId);
+  async getResult(sourceId: string): Promise<VitalLensResult> {
+    return await this.computeAggregatedResult(sourceId, "complete");
   }
 }

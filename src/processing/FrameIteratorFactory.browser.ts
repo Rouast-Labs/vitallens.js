@@ -1,7 +1,7 @@
 import { FrameIteratorFactoryBase } from './FrameIteratorFactory.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { VitalLensOptions } from '../types/core';
-import { FFmpegWrapper } from '../utils/FFmpegWrapper.browser';
+import FFmpegWrapper from '../utils/FFmpegWrapper.browser';
 
 /**
  * Browser-specific implementation of FrameIteratorFactory.

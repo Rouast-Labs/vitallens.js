@@ -143,7 +143,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
   private extractMetadata(videoStream: any): VideoProbeResult {
     let issues = false;
 
-    const fps = this.extractFrameRate(videoStream);
+    const fps = this.extractFrameRate(videoStream) || 0;
     const duration = parseFloat(videoStream['duration']) || null;
 
     let totalFrames = parseInt(videoStream['nb_frames'], 10);

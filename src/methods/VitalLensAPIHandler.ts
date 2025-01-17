@@ -23,13 +23,13 @@ export class VitalLensAPIHandler extends MethodHandler {
   async process(framesChunk: Frame, state?: any): Promise<VitalLensResult> {
     framesChunk.retain();
     // TODO: Generate base64 string
-    const payload = {
-      frames: frames.map((frame) => frame.data).join(','), // Concatenate frame data as base64 string
-      state,
-    };
+    // const payload = {
+    //   frames: frames.map((frame) => frame.data).join(','), // Concatenate frame data as base64 string
+    //   state,
+    // };
     framesChunk.release();   
     try {
-      const response = await this.webSocketClient.send(payload);
+      const response = await this.webSocketClient.send([]);
       // TODO: Parse response and integrate properly with VitalLensResult
       return {
         vitals: response.vitals,
