@@ -65,18 +65,26 @@ export class StreamProcessor {
           if (this.faceDetector && currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs) {
             // Run face detection
             this.lastFaceDetectionTime = currentTime;
-            this.faceDetector.run(frame, 1, async (faceDet) => {
-              if (this.options.method === 'vitallens') {
-                if (!this.roi || !checkFaceInROI(faceDet, this.roi, [0.6, 1.0])) {
+            this.faceDetector.run(frame, async (dets) => {
+              if (frame.data.shape.length == 3) {
+                const absoluteDet = {
+                  x: Math.round(dets[0].x * frame.data.shape[1]),
+                  y: Math.round(dets[0].y * frame.data.shape[0]),
+                  width: Math.round(dets[0].width * frame.data.shape[1]),
+                  height: Math.round(dets[0].height * frame.data.shape[0]),
+                };
+                if (this.options.method === 'vitallens') {
+                  if (!this.roi || !checkFaceInROI(absoluteDet, this.roi, [0.6, 1.0])) {
+                    if (frame && frame.data.shape.length == 3) {
+                      this.roi = getROIForMethod(absoluteDet, this.methodConfig, { height: frame.data.shape[0], width: frame.data.shape[1] }, true)
+                      this.bufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
+                    }
+                  }
+                } else {
                   if (frame && frame.data.shape.length == 3) {
-                    this.roi = getROIForMethod(faceDet, this.methodConfig, { height: frame.data.shape[0], width: frame.data.shape[1] }, true)
+                    this.roi = getROIForMethod(absoluteDet, this.methodConfig, { height: frame.data.shape[0], width: frame.data.shape[1] }, true)
                     this.bufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
                   }
-                }
-              } else {
-                if (frame && frame.data.shape.length == 3) {
-                  this.roi = getROIForMethod(faceDet, this.methodConfig, { height: frame.data.shape[0], width: frame.data.shape[1] }, true)
-                  this.bufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
                 }
               }
             });

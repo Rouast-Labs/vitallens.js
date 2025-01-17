@@ -4,7 +4,7 @@ import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { MethodConfig } from '../config/methodsConfig';
 import { tidy, tensor } from '@tensorflow/tfjs-core';
-import { FaceDetector } from '../ssd/FaceDetector';
+import { FaceDetectorAsync } from '../ssd/FaceDetectorAsync';
 import { getROIForMethod, getUnionROI } from '../utils/faceOps';
 
 /**
@@ -17,7 +17,7 @@ export class FileRGBIterator extends FrameIteratorBase {
   private probeInfo: VideoProbeResult | null = null;
   private fpsTarget: number = 0;
   private dsFactor: number = 0;
-  private faceDetector: FaceDetector | null = null;
+  private faceDetector: FaceDetectorAsync | null = null;
   private roi: ROI[] = [];
 
   constructor(
@@ -47,7 +47,10 @@ export class FileRGBIterator extends FrameIteratorBase {
     if (this.options.globalRoi) {
       this.roi = Array(this.probeInfo.totalFrames).fill(this.options.globalRoi);
     } else {
-      this.faceDetector = new FaceDetector();
+      this.faceDetector = new FaceDetectorAsync();
+      const fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0
+      this.dsFactor = Math.max(Math.round(this.probeInfo.fps / fDetFs), 1);
+      const nDsFrames = Math.ceil(this.probeInfo.totalFrames / this.dsFactor);
       const video = await this.ffmpeg.readVideo(
         this.videoInput,
         {
@@ -56,10 +59,18 @@ export class FileRGBIterator extends FrameIteratorBase {
         },
         this.probeInfo
       );
-      // TODO: Run face detector (nFrames, 4)
-      const faces = this.faceDetector.run(video);
+      // Run face detector (nFrames, 4)
+      const videoFrames = new Frame(tensor(video, [nDsFrames, 240, 320, 3], 'float32'), []);
+      const faces = await this.faceDetector.detect(videoFrames) as ROI[];
+      // Convert to absolute units
+      const absoluteROIs = faces.map(({ x, y, width: w, height: h }) => ({
+        x: Math.round(x * this.probeInfo!.width),
+        y: Math.round(y * this.probeInfo!.height),
+        width: Math.round(w * this.probeInfo!.width),
+        height: Math.round(h * this.probeInfo!.height),
+      }));
       // Derive roi from faces (nFrames, 4)
-      this.roi = faces.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));
+      this.roi = absoluteROIs.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));
     }
     // TODO:
     // - Load entire video into memory using union roi (in chunks)

@@ -54,6 +54,8 @@
     "@rollup/plugin-commonjs": "^28.0.2",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-typescript": "^12.1.2",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-node": "^4.22.0",
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/jest": "^29.5.14",
     "@types/node-fetch": "^2.6.12",
