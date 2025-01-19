@@ -4,6 +4,7 @@ import { Frame } from './Frame';
 import { BufferManager } from './BufferManager';
 import { FaceDetector } from '../ssd/FaceDetector';
 import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
+import { IFrameIterator } from './FrameIterator.base';
 
 /**
  * Manages the processing loop for live streams, including frame capture,
@@ -22,7 +23,7 @@ export class StreamProcessor {
   constructor(
     private options: VitalLensOptions,
     private methodConfig: MethodConfig,
-    private frameIterator: AsyncIterable<Frame>,
+    private frameIterator: IFrameIterator,
     private bufferManager: BufferManager,
     private onPredict: (frames: Frame[]) => Promise<void>
   ) {
@@ -32,6 +33,7 @@ export class StreamProcessor {
 
     if (options.globalRoi) {
       this.roi = options.globalRoi;
+      this.bufferManager.addBuffer(options.globalRoi, this.methodConfig, 1);
     } else {
       this.faceDetector = new FaceDetector();
     }
@@ -66,6 +68,7 @@ export class StreamProcessor {
             // Run face detection
             this.lastFaceDetectionTime = currentTime;
             this.faceDetector.run(frame, async (dets) => {
+              console.log("FaceDet");
               if (frame.data.shape.length == 3) {
                 const absoluteDet = {
                   x: Math.round(dets[0].x * frame.data.shape[1]),
@@ -77,13 +80,13 @@ export class StreamProcessor {
                   if (!this.roi || !checkFaceInROI(absoluteDet, this.roi, [0.6, 1.0])) {
                     if (frame && frame.data.shape.length == 3) {
                       this.roi = getROIForMethod(absoluteDet, this.methodConfig, { height: frame.data.shape[0], width: frame.data.shape[1] }, true)
-                      this.bufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
+                      this.bufferManager.addBuffer(this.roi, this.methodConfig, this.lastProcessedTime);
                     }
                   }
                 } else {
                   if (frame && frame.data.shape.length == 3) {
                     this.roi = getROIForMethod(absoluteDet, this.methodConfig, { height: frame.data.shape[0], width: frame.data.shape[1] }, true)
-                    this.bufferManager.addBuffer(this.roi, this.options.method, this.methodConfig.minWindowLength, this.methodConfig.maxWindowLength, this.lastProcessedTime);
+                    this.bufferManager.addBuffer(this.roi, this.methodConfig, this.lastProcessedTime);
                   }
                 }
               }
@@ -109,26 +112,10 @@ export class StreamProcessor {
       }
     };
 
+    await this.frameIterator.start();
     processFrames().catch((error) => {
       console.error('Error in stream processing loop:', error);
     });
-  }
-
-  /**
-   * Pauses the processing loop.
-   */
-  pause(): void {
-    this.isPaused = true;
-  }
-
-  /**
-   * Resumes the processing loop.
-   */
-  resume(): void {
-    if (this.isPaused) {
-      this.isPaused = false;
-      this.start();
-    }
   }
 
   /**
@@ -136,6 +123,7 @@ export class StreamProcessor {
    */
   stop(): void {
     this.isPaused = true;
+    this.frameIterator.stop();
     this.bufferManager.cleanup();
   }
 }

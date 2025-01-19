@@ -1,4 +1,3 @@
-import { MethodConfig } from '../config/methodsConfig';
 import { ROI } from '../types/core';
 import { Frame } from './Frame';
 import { Buffer } from './Buffer';
@@ -12,10 +11,9 @@ export class RGBBuffer extends Buffer {
    * Preprocesses a frame by cropping and converting ROI to RGB.
    * @param frame - The frame to preprocess.
    * @param roi - The region of interest for cropping.
-   * @param methodConfig - Configuration for the method, including input size.
    * @returns The processed frame.
    */
-  protected async preprocess(frame: Frame, roi: ROI, methodConfig: MethodConfig): Promise<Frame> {
+  protected async preprocess(frame: Frame, roi: ROI): Promise<Frame> {
     frame.retain(); // 4 (or 5 if in use by face detector)
     
     try {

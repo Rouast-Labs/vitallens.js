@@ -35,7 +35,7 @@ export class StreamFrameIterator extends FrameIteratorBase {
   /**
    * Starts the iterator by initializing the video element and playing the stream.
    */
-  async start(): Promise<void> {
+  async start(): Promise<void> {   
     if (!this.videoElement) {
       this.videoElement = document.createElement('video');
       this.videoElement.srcObject = this.stream;
@@ -47,7 +47,11 @@ export class StreamFrameIterator extends FrameIteratorBase {
       this.videoElement.srcObject = this.stream;
     }
 
-    await this.videoElement.play();
+    try {
+      await this.videoElement.play();
+    } catch (error) {
+      console.error('Failed to start video playback:', error);
+    }
   }
 
   /**

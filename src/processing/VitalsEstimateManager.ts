@@ -1,16 +1,19 @@
-import * as tf from '@tensorflow/tfjs';
 import { MethodConfig } from "../config/methodsConfig";
 import { VitalLensOptions, VitalLensResult } from "../types/core";
 import { IVitalsEstimateManager } from '../types/IVitalsEstimateManager';
-import { AGG_WINDOW_SIZE, CALC_HR_MAX, CALC_HR_MIN, CALC_HR_MIN_WINDOW_SIZE, CALC_HR_WINDOW_SIZE, CALC_RR_MAX, CALC_RR_MIN, CALC_RR_MIN_WINDOW_SIZE, CALC_RR_WINDOW_SIZE } from '../config/constants';
+import { 
+  AGG_WINDOW_SIZE, CALC_HR_MAX, CALC_HR_MIN, CALC_HR_MIN_WINDOW_SIZE, CALC_HR_WINDOW_SIZE, 
+  CALC_RR_MAX, CALC_RR_MIN, CALC_RR_MIN_WINDOW_SIZE, CALC_RR_WINDOW_SIZE 
+} from '../config/constants';
+import FFT from "fft.js";
 
 export class VitalsEstimateManager implements IVitalsEstimateManager {
-  private waveformBuffers: Map<string, { ppg: { sum: tf.Tensor | null; count: tf.Tensor | null }, resp: { sum: tf.Tensor | null; count: tf.Tensor | null } }> = new Map();
+  private waveformBuffers: Map<string, { ppg: { sum: number[]; count: number[] }, resp: { sum: number[]; count: number[] } }> = new Map();
   private timestamps: Map<string, number[]> = new Map();
   private fpsTarget: number;
-  private bufferSizeAgg: number; // Buffer size for Aggregated results
-  private bufferSizePpg: number; // Buffer size for PPG
-  private bufferSizeResp: number; // Buffer size for Resp
+  private bufferSizeAgg: number;
+  private bufferSizePpg: number;
+  private bufferSizeResp: number;
   private minBufferSizePpg: number;
   private minBufferSizeResp: number;
 
@@ -19,7 +22,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param methodConfig - The method configuration.
    */
   constructor(private methodConfig: MethodConfig, private options: VitalLensOptions) {
-    this.fpsTarget = this.options.overrideFpsTarget ? this.options.overrideFpsTarget : this.methodConfig.fpsTarget;
+    this.fpsTarget = this.options.overrideFpsTarget ?? this.methodConfig.fpsTarget;
     this.bufferSizeAgg = this.fpsTarget * AGG_WINDOW_SIZE;
     this.bufferSizePpg = this.fpsTarget * CALC_HR_WINDOW_SIZE;
     this.bufferSizeResp = this.fpsTarget * CALC_RR_WINDOW_SIZE;
@@ -34,7 +37,11 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param defaultWaveformDataMode - The default waveformDataMode to set.
    * @returns The aggregated result.
    */
-  async processIncrementalResult(incrementalResult: VitalLensResult, sourceId: string, defaultWaveformDataMode: string): Promise<VitalLensResult> {
+  async processIncrementalResult(
+    incrementalResult: VitalLensResult,
+    sourceId: string,
+    defaultWaveformDataMode: string
+  ): Promise<VitalLensResult> {
     const { ppgWaveform, respiratoryWaveform } = incrementalResult.vitals;
 
     const waveformDataMode = this.options.waveformDataMode || defaultWaveformDataMode;
@@ -43,43 +50,19 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       throw new Error("No waveform data found in incremental result.");
     }
 
-    if (!this.timestamps.has(sourceId)) {
-      this.timestamps.set(sourceId, []);
-    }
-
+    // Initialize buffers and timestamps for the source ID
+    if (!this.timestamps.has(sourceId)) this.timestamps.set(sourceId, []);
     if (!this.waveformBuffers.has(sourceId)) {
-      this.waveformBuffers.set(sourceId, {
-        ppg: { sum: null, count: null },
-        resp: { sum: null, count: null }
-      });
+      this.waveformBuffers.set(sourceId, { ppg: { sum: [], count: [] }, resp: { sum: [], count: [] } });
     }
 
-    // Aggregate timestamps
-    const currentTimestamps = this.timestamps.get(sourceId)!;
-    const overlap = this.methodConfig.windowOverlap;
-
-    const newTimestamps = incrementalResult.time;
-    const nonOverlappingTimestamps = newTimestamps.slice(overlap);
-
-    currentTimestamps.push(...nonOverlappingTimestamps);
-
-    if (waveformDataMode !== 'complete') {
-      const maxBufferSize = Math.max(this.bufferSizePpg, this.bufferSizeResp);
-      if (currentTimestamps.length > maxBufferSize) {
-        this.timestamps.set(sourceId, currentTimestamps.slice(-maxBufferSize));
-      }
-    }
+    // Update timestamps
+    this.updateTimestamps(sourceId, incrementalResult.time, waveformDataMode);
     
+    // Update waveforms
     const waveformBuffer = this.waveformBuffers.get(sourceId)!;
-
-    // Aggregate waveforms
-    if (ppgWaveform) {
-      this.aggregateWaveform(waveformBuffer.ppg, ppgWaveform, this.bufferSizePpg, waveformDataMode);
-    }
-
-    if (respiratoryWaveform) {
-      this.aggregateWaveform(waveformBuffer.resp, respiratoryWaveform, this.bufferSizeResp, waveformDataMode);
-    }
+    if (ppgWaveform) this.updateWaveform(waveformBuffer.ppg, ppgWaveform, this.bufferSizePpg, waveformDataMode);
+    if (respiratoryWaveform) this.updateWaveform(waveformBuffer.resp, respiratoryWaveform, this.bufferSizeResp, waveformDataMode);
 
     // TODO: Mirror the result structure from vitallens-python with confidences, units, notes, disclaimer ...
 
@@ -87,45 +70,79 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   }
 
   /**
-   * Aggregates waveforms by maintaining a sum and count for overlap handling.
+   * Updates the stored timestamps for a given source ID
+   * @param sourceId - The unique identifier for the data source (e.g., streamId or videoId).
+   * @param newTimestamps - An array of new timestamps to be appended.
+   * @param waveformDataMode - Defines the mode for waveform data management:
+   */
+  private updateTimestamps(
+    sourceId: string,
+    newTimestamps: number[],
+    waveformDataMode: string
+  ): void {
+    const currentTimestamps = this.timestamps.get(sourceId)!;
+    const overlap = Math.min(this.methodConfig.windowOverlap, currentTimestamps.length);
+    const nonOverlappingTimestamps = newTimestamps.slice(overlap);
+    currentTimestamps.push(...nonOverlappingTimestamps);
+    if (waveformDataMode === "complete") return;
+    const maxBufferSize = Math.max(this.bufferSizePpg, this.bufferSizeResp);
+    if (currentTimestamps.length > maxBufferSize) {
+      this.timestamps.set(sourceId, currentTimestamps.slice(-maxBufferSize));
+    }
+  }
+
+  /**
+   * Updates waveforms by maintaining a sum and count for overlap handling.
    * @param buffer - The existing waveform buffer with sum and count tensors.
    * @param incremental - The new incremental waveform tensor.
-   * @param waveformDataMode - Sets how much of waveforms is returned to user.
    * @param maxBufferSize - The maximum buffer size for the waveform.
+   * @param waveformDataMode - Sets how much of waveforms is returned to user.
    */
-  private aggregateWaveform(buffer: { sum: tf.Tensor | null; count: tf.Tensor | null }, incremental: number[], maxBufferSize: number, waveformDataMode: string): void {
+  private updateWaveform(
+    buffer: { sum: number[]; count: number[] },
+    incremental: number[],
+    maxBufferSize: number,
+    waveformDataMode: string
+  ): void {
     const overlap = this.methodConfig.windowOverlap;
-    const incrementalTensor = tf.tensor(incremental);
+    const overlapSize = Math.min(overlap, buffer.sum.length);
 
-    if (!buffer.sum || !buffer.count) {
-      buffer.sum = incrementalTensor;
-      buffer.count = tf.onesLike(incremental);
+    // Initialize sum and count arrays if not already set
+    if (buffer.sum.length === 0 || buffer.count.length === 0) {
+      buffer.sum = [...incremental];
+      buffer.count = Array(incremental.length).fill(1);
       return;
     }
+    
+    // Handle the overlapping region
+    const existingTailSum = buffer.sum.slice(-overlapSize);
+    const incrementalHead = incremental.slice(0, overlapSize);
+    
+    const updatedTailSum = existingTailSum.map((val, idx) => val + incrementalHead[idx]);
+    const updatedTailCount = buffer.count.slice(-overlapSize).map((val) => val + 1);
+    
+    // Handle the non-overlapping region
+    const nonOverlappingSum = incremental.slice(overlapSize);
+    const nonOverlappingCount = Array(nonOverlappingSum.length).fill(1);
+    
+    // Concatenate updated and non-overlapping regions
+    buffer.sum = [
+      ...buffer.sum.slice(0, -overlapSize), // Keep the initial part
+      ...updatedTailSum, // Update the overlapping part
+      ...nonOverlappingSum, // Append the new non-overlapping region
+    ];
 
-    tf.tidy(() => {
-      const overlapSize = overlap;
+    buffer.count = [
+      ...buffer.count.slice(0, -overlapSize), // Keep the initial part
+      ...updatedTailCount, // Update the overlapping part
+      ...nonOverlappingCount, // Append the new non-overlapping region
+    ];
 
-      const existingTailSum = buffer.sum!.slice(-overlapSize);
-      const incrementalHead = incrementalTensor.slice(0, overlapSize);
-
-      const updatedTailSum = tf.add(existingTailSum, incrementalHead);
-      const updatedTailCount = tf.add(buffer.count!.slice(-overlapSize), tf.onesLike(incrementalHead));
-
-      const nonOverlappingSum = incrementalTensor.slice(overlapSize);
-      const nonOverlappingCount = tf.onesLike(nonOverlappingSum.shape[0]);
-
-      const newSum = tf.concat([buffer.sum!.slice(0, -overlapSize), updatedTailSum, nonOverlappingSum]);
-      const newCount = tf.concat([buffer.count!.slice(0, -overlapSize), updatedTailCount, nonOverlappingCount]);
-
-      buffer.sum!.dispose();
-      buffer.count!.dispose();
-
-      buffer.sum = waveformDataMode === 'complete' ? newSum : newSum.slice(-maxBufferSize);
-      buffer.count = waveformDataMode === 'complete' ? newCount : newCount.slice(-maxBufferSize);
-    });
-
-    incrementalTensor.dispose();
+    // Trim buffers to maximum size if necessary
+    if (waveformDataMode !== "complete" && buffer.sum.length > maxBufferSize) {
+      buffer.sum = buffer.sum.slice(-maxBufferSize);
+      buffer.count = buffer.count.slice(-maxBufferSize);
+    }
   }
 
   /**
@@ -137,7 +154,13 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param incrementalResp - The latest incremental respiratory waveform - pass if returning incremental vals.
    * @returns The aggregated VitalLensResult.
    */
-  private async computeAggregatedResult(sourceId: string, waveformDataMode: string, incrementalTime?: number[], incrementalPpg?: number[], incrementalResp?: number[]): Promise<VitalLensResult> {
+  private async computeAggregatedResult(
+    sourceId: string,
+    waveformDataMode: string,
+    incrementalTime?: number[],
+    incrementalPpg?: number[],
+    incrementalResp?: number[]
+  ): Promise<VitalLensResult> {
     const waveformBuffer = this.waveformBuffers.get(sourceId)!;
     const timestamps = this.timestamps.get(sourceId);
     const result: VitalLensResult = { vitals: {}, state: null, time: [] };
@@ -145,7 +168,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (timestamps) {
       switch (waveformDataMode) {
         case 'incremental':
-          result.time = incrementalTime ? incrementalTime : [];
+          const overlapSize = incrementalTime ? Math.min(this.methodConfig.windowOverlap, incrementalTime.length) : 0;
+          result.time = incrementalTime ? incrementalTime.slice(overlapSize) : [];
           break;
         case 'aggregated':
           result.time = timestamps.slice(-this.bufferSizeAgg);
@@ -156,54 +180,49 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       }
     }
     
-    if (waveformBuffer.ppg.sum && waveformBuffer.ppg.count) {
-      const averagedPpg = tf.tidy(() => tf.div(waveformBuffer.ppg.sum!, waveformBuffer.ppg.count!));
-      
+    if (waveformBuffer) {
+      // PPG
+      const averagedPpg = waveformBuffer.ppg.sum.map((val, i) => val / waveformBuffer.ppg.count[i]);
       switch (waveformDataMode) {
         case 'incremental':
-          result.vitals.ppgWaveform = incrementalPpg ? incrementalPpg : [];
+          const overlapSize = incrementalPpg ? Math.min(this.methodConfig.windowOverlap, incrementalPpg.length) : 0;
+          result.vitals.ppgWaveform = incrementalPpg ? incrementalPpg.slice(overlapSize) : [];
           break;
         case 'aggregated':
-          result.vitals.ppgWaveform = Array.from(averagedPpg.slice(-this.bufferSizeAgg).dataSync());
+          result.vitals.ppgWaveform = averagedPpg.slice(-this.bufferSizeAgg);
           break;
         case 'complete':
-          result.vitals.ppgWaveform = Array.from(averagedPpg.dataSync());
+          result.vitals.ppgWaveform = averagedPpg;
           break;
       }
-      
-      if (averagedPpg.size >= this.minBufferSizePpg) {
+      if (waveformBuffer.ppg.sum.length >= this.minBufferSizePpg) {
         const fps = this.getCurrentFps(sourceId, this.bufferSizePpg);
         if (fps) {
-          result.vitals.heartRate = await this.estimateHeartRate(averagedPpg.slice(-this.bufferSizePpg), fps);
+          result.vitals.heartRate = this.estimateHeartRate(averagedPpg.slice(-this.bufferSizePpg), fps);
         }
       }
 
-      averagedPpg.dispose();
-    }
-
-    if (waveformBuffer.resp.sum && waveformBuffer.resp.count) {
-      const averagedResp = tf.tidy(() => tf.div(waveformBuffer.resp.sum!, waveformBuffer.resp.count!));
-      
+      // RESP
+      const averagedResp = waveformBuffer.resp.sum.map((val, i) => val / waveformBuffer.resp.count[i]);
       switch (waveformDataMode) {
         case 'incremental':
-          result.vitals.respiratoryWaveform = incrementalResp ? incrementalResp : [];
+          const overlapSize = incrementalResp ? Math.min(this.methodConfig.windowOverlap, incrementalResp.length) : 0;
+          result.vitals.respiratoryWaveform = incrementalResp ? incrementalResp.slice(overlapSize) : [];
           break;
         case 'aggregated':
-          result.vitals.respiratoryWaveform = Array.from(averagedResp.slice(-this.bufferSizeAgg).dataSync());
+          result.vitals.respiratoryWaveform = averagedResp.slice(-this.bufferSizeAgg);
           break;
         case 'complete':
-          result.vitals.respiratoryWaveform = Array.from(averagedResp.dataSync());
+          result.vitals.respiratoryWaveform = averagedResp;
           break;
       }
       
-      if (averagedResp.size >= this.minBufferSizeResp) {
+      if (waveformBuffer.resp.sum.length >= this.minBufferSizeResp) {
         const fps = this.getCurrentFps(sourceId, this.bufferSizeResp);
         if (fps) {
-          result.vitals.respiratoryRate = await this.estimateRespiratoryRate(averagedResp.slice(-this.bufferSizeResp), fps);
+          result.vitals.respiratoryRate = this.estimateRespiratoryRate(averagedResp.slice(-this.bufferSizeResp), fps);
         }
       }
-
-      averagedResp.dispose();
     }
 
     return result;
@@ -220,7 +239,6 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (!timestamps || timestamps.length < 2) {
       return null;
     }
-  
     const timeDiffs = timestamps.slice(1).map((t, i) => t - timestamps[i]);
     const avgTimeDiff = timeDiffs.reduce((acc, val) => acc + val, 0) / timeDiffs.length;
     return avgTimeDiff > 0 ? 1 / avgTimeDiff : null;
@@ -232,8 +250,10 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param fs - The sampling rate of the waveform tensor (cycles per second)
    * @returns The estimated heart rate in beats per minute.
    */
-  private async estimateHeartRate(ppgWaveform: tf.Tensor, fs: number): Promise<number> {
-    return await this.estimateRateFromFFT(ppgWaveform, fs, CALC_HR_MIN/60, CALC_HR_MAX/60);
+  private estimateHeartRate(ppgWaveform: number[], fs: number): number {
+    const heartRate = this.estimateRateFromFFT(ppgWaveform, fs, CALC_HR_MIN / 60, CALC_HR_MAX / 60);
+    if (heartRate === null) throw new Error("Failed to estimate heart rate.");
+    return heartRate;
   }
 
   /**
@@ -242,47 +262,73 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param fs - The sampling rate of the waveform tensor (cycles per second)
    * @returns The estimated respiratory rate in breaths per minute.
    */
-  private async estimateRespiratoryRate(respiratoryWaveform: tf.Tensor, fs: number): Promise<number> {
-    return await this.estimateRateFromFFT(respiratoryWaveform, fs, CALC_RR_MIN/60, CALC_RR_MAX/60);
+  private estimateRespiratoryRate(respiratoryWaveform: number[], fs: number): number {
+    const respiratoryRate = this.estimateRateFromFFT(respiratoryWaveform, fs, CALC_RR_MIN / 60, CALC_RR_MAX / 60);
+    if (respiratoryRate === null) throw new Error("Failed to estimate respiratory rate.");
+    return respiratoryRate;
   }
 
   /**
    * Estimates a rate (e.g., heart rate or respiratory rate in 1/min) from a waveform using FFT,
    * constrained by min and max frequencies.
-   * @param waveform - The input waveform tensor.
-   * @param fs - The sampling rate of the waveform tensor (cycles per second)
-   * @param fMin - The minimum frequency of interest (cycles per second).
-   * @param fMax - The maximum frequency of interest (cycles per second).
-   * @returns The estimated rate in cycles per minute.
+   *
+   * @param waveform - The input waveform as a number array.
+   * @param samplingFrequency - The sampling rate of the waveform (Hz).
+   * @param minFrequency - The minimum frequency of interest (Hz).
+   * @param maxFrequency - The maximum frequency of interest (Hz).
+   * @param desiredResolutionHz - (Optional) Desired frequency resolution in Hz.
+   * @returns The estimated rate in cycles per minute, or null if no dominant frequency is found.
    */
-  private async estimateRateFromFFT(waveform: tf.Tensor, fs: number, fMin: number, fMax: number): Promise<number> {
-    const fftResult = tf.tidy(() => {
-      const fft = tf.spectral.fft(waveform);
-      const powerSpectrum = fft.abs().square();
-      // Compute the frequency bins
-      const numBins = powerSpectrum.size;
-      const frequencies = tf.linspace(0, fs / 2, Math.floor(numBins / 2));
-      // Mask for valid range
-      const validMask = frequencies.greaterEqual(fMin).logicalAnd(frequencies.lessEqual(fMax));
-      return { powerSpectrum, frequencies, validMask };
-    });
+  private estimateRateFromFFT(
+    waveform: number[],
+    samplingFrequency: number,
+    minFrequency: number,
+    maxFrequency: number,
+    desiredResolutionHz?: number
+  ): number | null {
+    if (waveform.length === 0 || samplingFrequency <= 0 || minFrequency >= maxFrequency) {
+      throw new Error("Invalid waveform data, sampling frequency, or frequency range.");
+    }
 
-    const { powerSpectrum, frequencies, validMask } = fftResult;
+    // Calculate the required FFT size to achieve the desired resolution
+    let fftSize: number = Math.pow(2, Math.ceil(Math.log2(waveform.length)));
+    if (desiredResolutionHz) {
+      const desiredFftSize = Math.ceil(samplingFrequency / desiredResolutionHz);
+      fftSize = Math.max(fftSize, Math.pow(2, Math.ceil(Math.log2(desiredFftSize))));
+    }
+  
+    const paddedSignal: number[] = [...waveform, ...Array(fftSize - waveform.length).fill(0)];
+    const fft = new FFT(fftSize);
+  
+    const complexArray: any[] = fft.createComplexArray();
+    const outputArray: any[] = fft.createComplexArray();
+    fft.toComplexArray(paddedSignal, complexArray);
+  
+    fft.realTransform(outputArray, paddedSignal);
+  
+    const magnitudes: number[] = [];
+    for (let i = 0; i < fftSize / 2; i++) {
+      const real = outputArray[2 * i];
+      const imag = outputArray[2 * i + 1];
+      magnitudes.push(Math.sqrt(real ** 2 + imag ** 2));
+    }
+  
+    const nyquist: number = samplingFrequency / 2;
+    const frequencies: number[] = Array.from({ length: magnitudes.length }, (_, i) => (i / magnitudes.length) * nyquist);
 
-    // Extract valid power and frequencies
-    const validPower = await tf.booleanMaskAsync(powerSpectrum, validMask);
-    const validFrequencies = await tf.booleanMaskAsync(frequencies, validMask);
-
-    const maxIndex = validPower.argMax().dataSync()[0];
-    const peakFrequency = validFrequencies.gather(tf.scalar(maxIndex, 'int32')).dataSync()[0];
-
-    powerSpectrum.dispose();
-    frequencies.dispose();
-    validMask.dispose();
-    validPower.dispose();
-    validFrequencies.dispose();
-    
-    return peakFrequency * 60; // Convert to cycles per minute
+    const filtered = frequencies
+      .map((freq, index) => ({ freq, magnitude: magnitudes[index] }))
+      .filter(({ freq }) => freq >= minFrequency && freq <= maxFrequency);
+  
+    if (filtered.length === 0) {
+      return null;
+    }
+  
+    const { freq: dominantFrequency } = filtered.reduce((max, current) =>
+      current.magnitude > max.magnitude ? current : max
+    );
+  
+    return dominantFrequency * 60;
   }
 
   /**

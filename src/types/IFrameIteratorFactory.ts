@@ -1,6 +1,5 @@
 import { MethodConfig } from '../config/methodsConfig';
 import { VideoInput } from './core';
-import { Frame } from '../processing/Frame';
 import { IFrameIterator } from '../processing/FrameIterator.base';
 
 export interface IFrameIteratorFactory {

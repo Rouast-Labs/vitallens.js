@@ -78,14 +78,12 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
         );
         framesChunk.release();
         this.bufferManager.setState(incrementalResult.state);
-        
+
         const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "aggregated");        
         
         this.dispatchEvent('vitals', result);
       }
     );
-
-    await this.streamProcessor.start();
   }
 
   /**
@@ -114,7 +112,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   start(): void {
     if (!this.processing && this.streamProcessor) {
-      this.streamProcessor.resume();
+      this.streamProcessor.start();
       this.processing = true;
     }
   }
@@ -124,7 +122,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   pause(): void {
     if (this.processing && this.streamProcessor) {
-      this.streamProcessor.pause();
+      this.streamProcessor.stop();
       this.processing = false;
     }
   }

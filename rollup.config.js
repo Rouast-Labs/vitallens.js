@@ -1,6 +1,7 @@
 import typescript from '@rollup/plugin-typescript';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
+import json from '@rollup/plugin-json';
 import { terser } from 'rollup-plugin-terser';
 
 export default [
@@ -47,7 +48,7 @@ export default [
     },
     plugins: [
       typescript(),
-      nodeResolve({ browser: true }), // let it pick browser-friendly deps
+      nodeResolve({ browser: true, preferBuiltins: false }),
       commonjs(),
       terser(),
     ],

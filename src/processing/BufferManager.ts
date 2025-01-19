@@ -1,7 +1,7 @@
 import { ROI } from '../types/core';
 import { Frame } from './Frame';
 import { Buffer } from './Buffer';
-import { METHODS_CONFIG } from '../config/methodsConfig';
+import { MethodConfig } from '../config/methodsConfig';
 import { FrameBuffer } from './FrameBuffer';
 import { RGBBuffer } from './RGBBuffer';
 
@@ -28,19 +28,17 @@ export class BufferManager {
   /**
    * Adds a new buffer for a given ROI and method configuration.
    * @param roi - The ROI for the new buffer.
-   * @param method - The method for the buffer.
-   * @param minFrames - Minimum number of frames required for processing.
-   * @param maxFrames - Maximum number of frames the buffer can hold.
+   * @param methodConfig - The method config.
    * @param timestamp - The current timestamp.
    */
-  addBuffer(roi: ROI, method: string, minFrames: number, maxFrames: number, timestamp: number): void {
+  addBuffer(roi: ROI, methodConfig: MethodConfig, timestamp: number): void {
     const id = this.generateBufferId(roi);
     if (!this.buffers.has(id)) {
       let newBuffer: Buffer;
-      if (method === 'vitallens') {
-        newBuffer = new FrameBuffer(roi, maxFrames, minFrames, METHODS_CONFIG[method]);
+      if (methodConfig.method === 'vitallens') {
+        newBuffer = new FrameBuffer(roi, methodConfig);
       } else {
-        newBuffer = new RGBBuffer(roi, maxFrames, minFrames, METHODS_CONFIG[method]);
+        newBuffer = new RGBBuffer(roi, methodConfig);
       }
       this.buffers.set(id, { buffer: newBuffer, createdAt: timestamp });
     }

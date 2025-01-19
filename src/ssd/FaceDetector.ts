@@ -6,7 +6,7 @@ import { IFaceDetector } from "../types/IFaceDetector";
 /**
  * Face detector class, implementing detection via a machine learning model.
  */
-export class FaceDetector {
+export class FaceDetector implements IFaceDetector {
   private model: tf.GraphModel | null = null;
 
   constructor(

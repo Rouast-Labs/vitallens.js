@@ -1,10 +1,11 @@
 import { VitalLens } from '../dist/vitallens.browser.js';
 
+const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 const options = {
-  method: 'pos',
+  method: 'g',
   globalRoi: { x: 50, y: 50, width: 200, height: 200 },
 };
 
@@ -13,7 +14,9 @@ const vitallens = new VitalLens(options);
 async function startWebcam() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    await vitallens.addStream(stream);
+    video.srcObject = stream;
+
+    await vitallens.addStream(stream, video);
 
     vitallens.addEventListener('vitals', (result) => {
       console.log('Vitals:', result);
@@ -27,7 +30,7 @@ async function startWebcam() {
 }
 
 function drawVitals(result) {
-  const video = document.querySelector('video'); // Video element created by vitallens.js
+  const video = document.querySelector('video');
   if (!video) return;
 
   canvas.width = video.videoWidth;

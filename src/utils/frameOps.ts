@@ -15,11 +15,8 @@ export function mergeFrames(frames: Frame[]): Frame {
   frames.forEach((frame) => frame.retain());
 
   try {
-    // Extract the 3D tensors from each frame
+    // Extract the 1D or 3D tensors from each frame
     const tensors: Tensor[] = frames.map((frame) => {
-      if (frame.data.rank !== 3) {
-        throw new Error('All frames must have 3D Tensors as data.');
-      }
       return frame.data;
     });
 

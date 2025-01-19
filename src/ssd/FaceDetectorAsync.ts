@@ -1,5 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
-import * as path from 'path';
+// import * as path from 'path';
 import { Frame } from "../processing/Frame";
 import { ROI } from "../types/core";
 import { IFaceDetector } from "../types/IFaceDetector";
@@ -22,7 +22,9 @@ export class FaceDetectorAsync implements IFaceDetector {
    * Loads the face detection model and logs initialization parameters.
    */
   private async init(): Promise<void> {
-    const modelPath = path.resolve(__dirname, '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json'); // Adjust as needed
+    console.error("Init ML model");
+    // const modelPath = path.resolve(__dirname, '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json'); // Adjust as needed
+    const modelPath = "TODO";
     try {
       this.model = await tf.loadGraphModel(`file://${modelPath}`);
     } catch (error) {

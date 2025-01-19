@@ -1,4 +1,3 @@
-import { MethodConfig } from '../config/methodsConfig';
 import { ROI } from '../types/core';
 import { Frame } from './Frame';
 import { Buffer } from './Buffer';
@@ -12,10 +11,9 @@ export class FrameBuffer extends Buffer {
    * Preprocesses a frame by cropping and resizing it.
    * @param frame - The frame to preprocess.
    * @param roi - The region of interest for cropping.
-   * @param methodConfig - Configuration for the method, including input size.
    * @returns The processed frame.
    */
-  protected async preprocess(frame: Frame, roi: ROI, methodConfig: MethodConfig): Promise<Frame> {
+  protected async preprocess(frame: Frame, roi: ROI): Promise<Frame> {
     frame.retain(); // 4 (or 5 if in use by face detector)
 
     try {
@@ -45,9 +43,9 @@ export class FrameBuffer extends Buffer {
       });
 
       // Resize the cropped tensor if inputSize is specified
-      const resized = methodConfig.inputSize
+      const resized = this.methodConfig.inputSize
         ? tf.tidy(() => {
-            return tf.image.resizeBilinear(cropped as tf.Tensor3D, [methodConfig.inputSize!, methodConfig.inputSize!]);
+            return tf.image.resizeBilinear(cropped as tf.Tensor3D, [this.methodConfig.inputSize!, this.methodConfig.inputSize!]);
           })
         : cropped;
 

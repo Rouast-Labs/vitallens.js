@@ -10,12 +10,7 @@ export abstract class Buffer {
 
   constructor(
     private roi: ROI,
-    private maxFrames: number,
-    private minFrames: number = 0,
-    private methodConfig: MethodConfig) {
-    if (minFrames > maxFrames) {
-      throw new Error('minFrames cannot be greater than maxFrames.');
-    }
+    protected methodConfig: MethodConfig) {
   }
 
   /**
@@ -32,7 +27,7 @@ export abstract class Buffer {
     this.buffer.set(timestamp, processedFrame);
 
     // Maintain the maximum buffer size
-    while (this.buffer.size > this.maxFrames) {
+    while (this.buffer.size > this.methodConfig.maxWindowLength) {
       const oldestKey = Math.min(...this.buffer.keys());
       const oldFrame = this.buffer.get(oldestKey);
       this.buffer.delete(oldestKey);
@@ -47,7 +42,7 @@ export abstract class Buffer {
    * @returns True if the buffer has enough frames, false otherwise.
    */
   isReady(): boolean {
-    return this.buffer.size >= this.minFrames;
+    return this.buffer.size >= this.methodConfig.minWindowLength;
   }
   
   /**
@@ -56,7 +51,7 @@ export abstract class Buffer {
    */
   consume(): Frame[] {
     const keys = Array.from(this.buffer.keys()).sort((a, b) => a - b);
-    const retainCount = Math.min(this.minFrames, this.buffer.size);
+    const retainCount = Math.min(this.methodConfig.minWindowLength, this.buffer.size);
     const retainKeys = keys.slice(-retainCount);
 
     const consumedFrames = keys.map((key) => {
