@@ -10,6 +10,7 @@ import { API_ENDPOINT } from '../config/constants';
 import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
 import { mergeFrames } from '../utils/frameOps';
 import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
+import { IFaceDetector } from '../types/IFaceDetector';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -22,6 +23,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   protected methodHandler: MethodHandler;
   protected methodConfig: MethodConfig;
   protected vitalsEstimateManager: VitalsEstimateManager;
+  protected faceDetector: IFaceDetector;
   private processing = false;
   protected eventListeners: { [event: string]: ((data: any) => void)[] } = {};
 
@@ -33,12 +35,18 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     this.methodHandler = this.createMethodHandler(this.options);
     this.frameIteratorFactory = this.createFrameIteratorFactory(this.options);
     this.vitalsEstimateManager = new VitalsEstimateManager(this.methodConfig, this.options);
+    this.faceDetector = this.createFaceDetector();
   }
 
   /**
    * Subclasses must return the appropriate FrameIteratorFactory instance.
    */
   protected abstract createFrameIteratorFactory(options: VitalLensOptions): IFrameIteratorFactory;
+
+  /**
+   * Subclasses must return the appropriate FaceDetector instance.
+   */
+  protected abstract createFaceDetector(): IFaceDetector;
 
   /**
    * Creates the appropriate method handler based on the options.
@@ -69,6 +77,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.methodConfig,
       frameIterator,
       this.bufferManager,
+      this.faceDetector,
       async (frames) => {
         const framesChunk = mergeFrames(frames);
         framesChunk.retain();
@@ -94,7 +103,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   async processFile(videoInput: VideoInput): Promise<VitalLensResult> {
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
 
-    const frameIterator = this.frameIteratorFactory.createFileFrameIterator(videoInput, this.methodConfig);
+    const frameIterator = this.frameIteratorFactory.createFileFrameIterator(videoInput, this.methodConfig, this.faceDetector);
 
     for await (const framesChunk of frameIterator) {
       framesChunk.retain();

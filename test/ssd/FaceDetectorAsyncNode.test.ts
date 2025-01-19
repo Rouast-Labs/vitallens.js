@@ -1,5 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
-import { FaceDetectorAsync } from '../../src/ssd/FaceDetectorAsync';
+import { FaceDetectorAsync } from '../../src/ssd/FaceDetectorAsync.node';
 import { Frame } from '../../src/processing/Frame';
 import { ROI } from '../../src/types/core';
 

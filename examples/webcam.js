@@ -3,6 +3,7 @@ import { VitalLens } from '../dist/vitallens.browser.js';
 // Configuration
 const options = {
   method: 'g',
+  fDetFs: 0.1,
   // globalRoi: { x: 50, y: 50, width: 200, height: 200 },
 };
 

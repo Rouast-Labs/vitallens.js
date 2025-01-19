@@ -4,9 +4,9 @@ import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { MethodConfig } from '../config/methodsConfig';
 import { tidy, tensor } from '@tensorflow/tfjs-core';
-import { FaceDetectorAsync } from '../ssd/FaceDetectorAsync';
 import { getROIForMethod, getUnionROI } from '../utils/faceOps';
 import * as tf from '@tensorflow/tfjs';
+import { IFaceDetector } from '../types/IFaceDetector';
 
 /**
  * Frame iterator for video files (e.g., local file paths, File, or Blob inputs).
@@ -18,13 +18,13 @@ export class FileRGBIterator extends FrameIteratorBase {
   private probeInfo: VideoProbeResult | null = null;
   private fpsTarget: number = 0;
   private dsFactor: number = 0;
-  private faceDetector: FaceDetectorAsync | null = null;
   private roi: ROI[] = [];
 
   constructor(
     private videoInput: VideoInput,
     private options: VitalLensOptions,
     private methodConfig: MethodConfig,
+    private faceDetector: IFaceDetector,
     ffmpegWrapper: IFFmpegWrapper
   ) {
     super();
@@ -48,7 +48,6 @@ export class FileRGBIterator extends FrameIteratorBase {
     if (this.options.globalRoi) {
       this.roi = Array(this.probeInfo.totalFrames).fill(this.options.globalRoi);
     } else {
-      this.faceDetector = new FaceDetectorAsync();
       const fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0
       this.dsFactor = Math.max(Math.round(this.probeInfo.fps / fDetFs), 1);
       const nDsFrames = Math.ceil(this.probeInfo.totalFrames / this.dsFactor);

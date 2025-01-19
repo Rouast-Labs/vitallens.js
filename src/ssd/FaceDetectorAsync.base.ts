@@ -1,5 +1,4 @@
 import * as tf from '@tensorflow/tfjs';
-// import * as path from 'path';
 import { Frame } from "../processing/Frame";
 import { ROI } from "../types/core";
 import { IFaceDetector } from "../types/IFaceDetector";
@@ -7,8 +6,8 @@ import { IFaceDetector } from "../types/IFaceDetector";
 /**
  * Face detector class, implementing detection via a machine learning model.
  */
-export class FaceDetectorAsync implements IFaceDetector {
-  private model: tf.GraphModel | null = null;
+export abstract class FaceDetectorAsyncBase implements IFaceDetector {
+  protected model: tf.GraphModel | null = null;
 
   constructor(
     private maxFaces: number = 1,
@@ -19,18 +18,9 @@ export class FaceDetectorAsync implements IFaceDetector {
   }
 
   /**
-   * Loads the face detection model and logs initialization parameters.
+   * Subclasses must init the model appropriately.
    */
-  private async init(): Promise<void> {
-    console.error("Init ML model");
-    // const modelPath = path.resolve(__dirname, '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json'); // Adjust as needed
-    const modelPath = "TODO";
-    try {
-      this.model = await tf.loadGraphModel(`file://${modelPath}`);
-    } catch (error) {
-      console.error("Failed to load the face detection model:", error);
-    }
-  }
+  protected abstract init(): Promise<void>;
 
   /**
    * Runs face detection on the provided frame and returns an array of ROIs.
@@ -48,11 +38,14 @@ export class FaceDetectorAsync implements IFaceDetector {
     try {
 
       const input = tf.tidy(() => {
+        let x;
         if (frame.data.rank === 3) {
-          return tf.expandDims(frame.data.toFloat().sub(127.0).div(128.0), 0);
+          x = tf.expandDims(frame.data.toFloat().sub(127.0).div(128.0), 0);
         } else {
-          return frame.data.toFloat().sub(127.0).div(128.0)
+          x = frame.data.toFloat().sub(127.0).div(128.0);
         }
+        // Resize to input size
+        return tf.image.resizeBilinear(x as tf.Tensor4D, [240, 320]);
       });
 
       // Perform inference

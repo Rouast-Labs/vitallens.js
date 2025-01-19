@@ -6,6 +6,7 @@ import { FileFrameIterator } from './FileFrameIterator';
 import { FileRGBIterator } from './FileRGBIterator';
 import { StreamFrameIterator } from './StreamFrameIterator';
 import { IFrameIterator } from './FrameIterator.base';
+import { IFaceDetector } from '../types/IFaceDetector';
 
 /**
  * Creates iterators for video processing, including frame capture and preprocessing.
@@ -43,13 +44,14 @@ export abstract class FrameIteratorFactoryBase implements IFrameIteratorFactory 
    */
   createFileFrameIterator(
     videoInput: VideoInput,
-    methodConfig: MethodConfig
+    methodConfig: MethodConfig,
+    faceDetector: IFaceDetector,
   ): IFrameIterator {
     const ffmpeg = this.getFFmpegWrapper();
     if (this.options.method === 'vitallens') {
-      return new FileFrameIterator(videoInput, this.options, methodConfig, ffmpeg);
+      return new FileFrameIterator(videoInput, this.options, methodConfig, faceDetector, ffmpeg);
     } else {
-      return new FileRGBIterator(videoInput, this.options, methodConfig, ffmpeg);
+      return new FileRGBIterator(videoInput, this.options, methodConfig, faceDetector, ffmpeg);
     }
   }
 }

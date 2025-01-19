@@ -2,9 +2,10 @@ import { MethodConfig } from '../config/methodsConfig';
 import { ROI, VitalLensOptions } from '../types';
 import { Frame } from './Frame';
 import { BufferManager } from './BufferManager';
-import { FaceDetector } from '../ssd/FaceDetector';
 import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
 import { IFrameIterator } from './FrameIterator.base';
+import { IFaceDetector } from '../types/IFaceDetector';
+import * as tf from '@tensorflow/tfjs';
 
 /**
  * Manages the processing loop for live streams, including frame capture,
@@ -18,13 +19,14 @@ export class StreamProcessor {
   private fDetFs: number = 1.0;
   private lastProcessedTime: number = 0; // In seconds
   private lastFaceDetectionTime: number = 0; // In seconds
-  private faceDetector: FaceDetector | null = null;
+  private faceDetector: IFaceDetector | null = null;
 
   constructor(
     private options: VitalLensOptions,
     private methodConfig: MethodConfig,
     private frameIterator: IFrameIterator,
     private bufferManager: BufferManager,
+    faceDetector: IFaceDetector,
     private onPredict: (frames: Frame[]) => Promise<void>
   ) {
     // Derive target fps
@@ -35,7 +37,7 @@ export class StreamProcessor {
       this.roi = options.globalRoi;
       this.bufferManager.addBuffer(options.globalRoi, this.methodConfig, 1);
     } else {
-      this.faceDetector = new FaceDetector();
+      this.faceDetector = faceDetector;
     }
   }
 
@@ -69,6 +71,7 @@ export class StreamProcessor {
             this.lastFaceDetectionTime = currentTime;
             this.faceDetector.run(frame, async (dets) => {
               console.log("FaceDet");
+              console.log(`Number of tensors: ${tf.memory().numTensors}`);
               if (frame.data.shape.length == 3) {
                 const absoluteDet = {
                   x: Math.round(dets[0].x * frame.data.shape[1]),

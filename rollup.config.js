@@ -1,7 +1,7 @@
 import typescript from '@rollup/plugin-typescript';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
-import json from '@rollup/plugin-json';
+import url from '@rollup/plugin-url';
 import { terser } from 'rollup-plugin-terser';
 
 export default [
@@ -16,7 +16,7 @@ export default [
     },
     plugins: [
       typescript(),
-      nodeResolve(),       // no browser: true, since it's for Node
+      nodeResolve(),
       commonjs(),
       terser(),
     ],
@@ -47,6 +47,11 @@ export default [
       inlineDynamicImports: true,
     },
     plugins: [
+      url({
+        include: ['models/**/*'],
+        limit: Infinity,
+        emitFiles: false,
+      }),
       typescript(),
       nodeResolve({ browser: true, preferBuiltins: false }),
       commonjs(),
@@ -68,7 +73,7 @@ export default [
         compilerOptions: {
           declaration: false,
           declarationMap: false,
-          declarationDir: null
+          declarationDir: null,
         },
       }),
       nodeResolve({ browser: true }),
