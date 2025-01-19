@@ -20,12 +20,14 @@ export abstract class SimpleMethodHandler extends MethodHandler {
   async process(rgb: Frame): Promise<VitalLensResult> {
     rgb.retain();
     const ppg = this.algorithm(rgb.data as Tensor2D);
+    const roi = rgb.roi;
     rgb.release();
     return {
       vitals: {
         ppgWaveform: ppg
       },
       time: rgb.timestamp,
+      face: roi,
       state: {}, // No recurrent state for handcrafted methods
     };
   }

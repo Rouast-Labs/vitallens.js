@@ -1,5 +1,6 @@
 import { Tensor, stack } from '@tensorflow/tfjs-core';
 import { Frame } from '../processing/Frame';
+import { ROI } from '../types/core';
 
 /**
  * Merges an array of Frame objects into a single Frame.
@@ -16,9 +17,7 @@ export function mergeFrames(frames: Frame[]): Frame {
 
   try {
     // Extract the 1D or 3D tensors from each frame
-    const tensors: Tensor[] = frames.map((frame) => {
-      return frame.data;
-    });
+    const tensors: Tensor[] = frames.map((frame) => frame.data);
 
     // Concatenate along a new dimension (sequence dimension)
     const concatenatedData = stack(tensors);
@@ -26,8 +25,11 @@ export function mergeFrames(frames: Frame[]): Frame {
     // Concatenate all timestamps
     const concatenatedTimestamps = frames.flatMap((frame) => frame.timestamp);
 
+    // Concatenate all ROIs into a single array
+    const concatenatedROIs: ROI[] = frames.flatMap((frame) => frame.roi);
+
     // Return the merged frame
-    return new Frame(concatenatedData, concatenatedTimestamps);
+    return new Frame(concatenatedData, concatenatedTimestamps, concatenatedROIs);
   } finally {
     // Release the original frames after use
     frames.forEach((frame) => frame.release());

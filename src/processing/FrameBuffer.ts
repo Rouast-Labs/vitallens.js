@@ -55,7 +55,7 @@ export class FrameBuffer extends Buffer {
       }
 
       // Return the processed frame with the original timestamp
-      return new Frame(resized as tf.Tensor3D, frame.timestamp);
+      return new Frame(resized as tf.Tensor3D, frame.timestamp, [roi]);
     } finally {
       frame.release(); // 3 (or 4 if in use by face detector)
     }

@@ -1,5 +1,5 @@
 import { MethodConfig } from "../config/methodsConfig";
-import { VitalLensOptions, VitalLensResult } from "../types/core";
+import { ROI, VitalLensOptions, VitalLensResult } from "../types/core";
 import { IVitalsEstimateManager } from '../types/IVitalsEstimateManager';
 import { 
   AGG_WINDOW_SIZE, CALC_HR_MAX, CALC_HR_MIN, CALC_HR_MIN_WINDOW_SIZE, CALC_HR_WINDOW_SIZE, 
@@ -10,6 +10,7 @@ import FFT from "fft.js";
 export class VitalsEstimateManager implements IVitalsEstimateManager {
   private waveformBuffers: Map<string, { ppg: { sum: number[]; count: number[] }, resp: { sum: number[]; count: number[] } }> = new Map();
   private timestamps: Map<string, number[]> = new Map();
+  private faces: Map<string, ROI[]> = new Map();
   private fpsTarget: number;
   private bufferSizeAgg: number;
   private bufferSizePpg: number;
@@ -50,14 +51,18 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       throw new Error("No waveform data found in incremental result.");
     }
 
-    // Initialize buffers and timestamps for the source ID
+    // Initialize buffers, timestamps, and faces for the source ID
     if (!this.timestamps.has(sourceId)) this.timestamps.set(sourceId, []);
+    if (!this.faces.has(sourceId)) this.faces.set(sourceId, []);
     if (!this.waveformBuffers.has(sourceId)) {
       this.waveformBuffers.set(sourceId, { ppg: { sum: [], count: [] }, resp: { sum: [], count: [] } });
     }
 
     // Update timestamps
     this.updateTimestamps(sourceId, incrementalResult.time, waveformDataMode);
+
+    // Update faces
+    if (incrementalResult.face) this.updateFaces(sourceId, incrementalResult.face, waveformDataMode);
     
     // Update waveforms
     const waveformBuffer = this.waveformBuffers.get(sourceId)!;
@@ -66,7 +71,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
     // TODO: Mirror the result structure from vitallens-python with confidences, units, notes, disclaimer ...
 
-    return await this.computeAggregatedResult(sourceId, waveformDataMode, incrementalResult.time, incrementalResult.vitals.ppgWaveform, incrementalResult.vitals.respiratoryWaveform);
+    return await this.computeAggregatedResult(sourceId, waveformDataMode, incrementalResult.time, incrementalResult.vitals.ppgWaveform, incrementalResult.vitals.respiratoryWaveform, incrementalResult.face);
   }
 
   /**
@@ -88,6 +93,28 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     const maxBufferSize = Math.max(this.bufferSizePpg, this.bufferSizeResp);
     if (currentTimestamps.length > maxBufferSize) {
       this.timestamps.set(sourceId, currentTimestamps.slice(-maxBufferSize));
+    }
+  }
+
+  /**
+   * Updates the stored faces for a given source ID
+   * @param sourceId - The unique identifier for the data source (e.g., streamId or videoId).
+   * @param newFaces - An array of new faces to be appended.
+   * @param waveformDataMode - Defines the mode for waveform data management:
+   */
+  private updateFaces(
+    sourceId: string,
+    newFaces: ROI[],
+    waveformDataMode: string
+  ): void {
+    const currentFaces = this.faces.get(sourceId)!;
+    const overlap = Math.min(this.methodConfig.windowOverlap, currentFaces.length);
+    const nonOverlappingFaces = newFaces.slice(overlap);
+    currentFaces.push(...nonOverlappingFaces);
+    if (waveformDataMode === "complete") return;
+    const maxBufferSize = Math.max(this.bufferSizePpg, this.bufferSizeResp);
+    if (currentFaces.length > maxBufferSize) {
+      this.faces.set(sourceId, currentFaces.slice(-maxBufferSize));
     }
   }
 
@@ -152,6 +179,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param incrementalTime - The latest incremental timestamps - pass if returning incremental vals.
    * @param incrementalPpg - The latest incremental PPG waveform - pass if returning incremental vals.
    * @param incrementalResp - The latest incremental respiratory waveform - pass if returning incremental vals.
+   * @param incrementalFace - The latest incremental faces - pass if returning incremental vals.
    * @returns The aggregated VitalLensResult.
    */
   private async computeAggregatedResult(
@@ -159,10 +187,12 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     waveformDataMode: string,
     incrementalTime?: number[],
     incrementalPpg?: number[],
-    incrementalResp?: number[]
+    incrementalResp?: number[],
+    incrementalFace?: ROI[]
   ): Promise<VitalLensResult> {
     const waveformBuffer = this.waveformBuffers.get(sourceId)!;
     const timestamps = this.timestamps.get(sourceId);
+    const faces = this.faces.get(sourceId);
     const result: VitalLensResult = { vitals: {}, state: null, time: [] };
 
     if (timestamps) {
@@ -176,6 +206,21 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           break;
         case 'complete':
           result.time = timestamps;
+          break;
+      }
+    }
+
+    if (faces) {
+      switch (waveformDataMode) {
+        case 'incremental':
+          const overlapSize = incrementalFace ? Math.min(this.methodConfig.windowOverlap, incrementalFace.length) : 0;
+          result.face = incrementalFace ? incrementalFace.slice(overlapSize) : [];
+          break;
+        case 'aggregated':
+          result.face = faces.slice(-this.bufferSizeAgg);
+          break;
+        case 'complete':
+          result.face = faces;
           break;
       }
     }

@@ -26,6 +26,12 @@ export interface VitalLensResult {
     respiratoryRate?: number; 
   };
   time: number[];
+  face?: Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
   state?: any;
 }
 

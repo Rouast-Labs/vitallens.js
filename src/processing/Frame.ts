@@ -1,4 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
+import { ROI } from '../types';
 
 /**
  * Represents a single frame in the video processing pipeline.
@@ -6,11 +7,13 @@ import * as tf from '@tensorflow/tfjs';
 export class Frame {
   data: tf.Tensor;
   timestamp: number[]; // In seconds
+  roi: ROI[];
   private refCount: number = 0;
 
-  constructor(data: tf.Tensor, timestamp: number[]) {
+  constructor(data: tf.Tensor, timestamp: number[], roi?: ROI[]) {
     this.data = data;
     this.timestamp = timestamp;
+    this.roi = roi ? roi : [];
     this.refCount = 0;
   }
 

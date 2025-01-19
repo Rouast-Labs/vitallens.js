@@ -51,7 +51,7 @@ export class RGBBuffer extends Buffer {
       cropped.dispose();
 
       // Return the processed frame with the original timestamp
-      return new Frame(averaged as tf.Tensor1D, frame.timestamp);
+      return new Frame(averaged as tf.Tensor1D, frame.timestamp, [roi]);
     } finally {
       frame.release(); // 3 (or 4 if in use by face detector)
     }

@@ -27,6 +27,7 @@ export class VitalLensAPIHandler extends MethodHandler {
     //   frames: frames.map((frame) => frame.data).join(','), // Concatenate frame data as base64 string
     //   state,
     // };
+    const roi = framesChunk.roi;
     framesChunk.release();   
     try {
       const response = await this.webSocketClient.send([]);
@@ -35,6 +36,7 @@ export class VitalLensAPIHandler extends MethodHandler {
         vitals: response.vitals,
         state: response.state,
         time: framesChunk.timestamp,
+        face: roi,
       };
     } catch (error) {
       throw new Error(`VitalLens API error: ${error instanceof Error ? error.message : 'Unknown error'}`);

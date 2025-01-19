@@ -2,7 +2,6 @@ import { VitalsEstimateManager } from '../../src/processing/VitalsEstimateManage
 import { MethodConfig } from '../../src/config/methodsConfig';
 import { VitalLensOptions } from '../../src/types/core';
 import { jest } from '@jest/globals';
-import FFT from "fft.js";
 
 describe('VitalsEstimateManager', () => {
   let methodConfig: MethodConfig;
@@ -45,6 +44,7 @@ describe('VitalsEstimateManager', () => {
     beforeEach(() => {
       jest.spyOn(manager as any, 'updateWaveform').mockImplementation((...args) => {});
       jest.spyOn(manager as any, 'updateTimestamps').mockImplementation((...args) => {});
+      jest.spyOn(manager as any, 'updateFaces').mockImplementation((...args) => {});
       jest.spyOn(manager as any, 'computeAggregatedResult').mockImplementation(async (...args) => {
         return {
           vitals: {
@@ -52,6 +52,11 @@ describe('VitalsEstimateManager', () => {
             respiratoryWaveform: [4, 5, 6],
           },
           time: [1000, 1001, 1002],
+          face: [
+            {x: 0, y: 10, width: 20, height: 20},
+            {x: 0, y: 10, width: 20, height: 20},
+            {x: 0, y: 10, width: 20, height: 20}
+          ]
         };
       });
     });
@@ -87,6 +92,14 @@ describe('VitalsEstimateManager', () => {
 
     it('should update timestamps and waveforms', async () => {
       manager['timestamps'].set('source1', [996, 997, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005]);
+      manager['faces'].set('source1', [
+        {x: 0, y: 10, width: 20, height: 20},
+        {x: 0, y: 10, width: 20, height: 20},
+        {x: 0, y: 10, width: 20, height: 20},
+        {x: 0, y: 10, width: 20, height: 20},
+        {x: 0, y: 10, width: 20, height: 20},
+        {x: 0, y: 10, width: 20, height: 20}
+      ])
       manager['waveformBuffers'].set('source1', {
         ppg: {
           sum: [1, 2, 3, 4, 5, 6],
@@ -100,19 +113,28 @@ describe('VitalsEstimateManager', () => {
   
       const incrementalResult = {
         vitals: { ppgWaveform: [1, 2, 3, 4, 5, 6], respiratoryWaveform: [4, 5, 6, 7, 8, 9] },
-        time: [1001, 1002, 1003, 1004, 1005, 1006],
+        time: [1001, 1002, 1003, 1004, 1005, 1006], face: [
+          {x: 0, y: 10, width: 20, height: 20},
+          {x: 0, y: 10, width: 20, height: 20},
+          {x: 0, y: 10, width: 20, height: 20},
+          {x: 0, y: 10, width: 20, height: 20},
+          {x: 0, y: 10, width: 20, height: 20},
+          {x: 0, y: 10, width: 20, height: 20}
+        ]
       };
   
       const result = await manager.processIncrementalResult(incrementalResult, 'source1', 'complete');
   
       expect(manager['updateTimestamps']).toHaveBeenCalledWith('source1', incrementalResult.time, 'complete');
+      expect(manager['updateFaces']).toHaveBeenCalledWith('source1', incrementalResult.face, 'complete');
       expect(manager['updateWaveform']).toHaveBeenCalledTimes(2); // Called for both PPG and respiratory waveforms
       expect(manager['computeAggregatedResult']).toHaveBeenCalledWith(
         'source1',
         'complete',
         incrementalResult.time,
         incrementalResult.vitals.ppgWaveform,
-        incrementalResult.vitals.respiratoryWaveform
+        incrementalResult.vitals.respiratoryWaveform,
+        incrementalResult.face
       );
       expect(result).toEqual({
         vitals: {
@@ -120,6 +142,10 @@ describe('VitalsEstimateManager', () => {
           respiratoryWaveform: [4, 5, 6],
         },
         time: [1000, 1001, 1002],
+        face: [
+          {x: 0, y: 10, width: 20, height: 20},
+          {x: 0, y: 10, width: 20, height: 20},
+          {x: 0, y: 10, width: 20, height: 20}],
       });
     });
   });
