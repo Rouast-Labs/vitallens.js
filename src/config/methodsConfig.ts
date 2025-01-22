@@ -1,12 +1,13 @@
 export interface MethodConfig {
   method: 'vitallens' | 'pos' | 'chrom' | 'g';
-  fpsTarget: number; // Target inference frames per second
+  fpsTarget: number;
   roiMethod: 'face' | 'upper_body';
-  inputSize?: number; // Optional: Spatial size for inference
-  minWindowLength: number; // Minimum length of the inference window
-  maxWindowLength: number; // Maximum length of the inference window
-  windowOverlap: number; // Overlap of inference windows
-  requiresState: boolean; // Whether the method requires recurrent state
+  inputSize?: number;
+  minWindowLength: number;
+  minWindowLengthState?: number;
+  maxWindowLength: number;
+  windowOverlap: number;
+  requiresState: boolean;
 }
 
 export const METHODS_CONFIG: Record<string, MethodConfig> = {
@@ -15,7 +16,8 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     roiMethod: 'upper_body',
     fpsTarget: 30,
     inputSize: 40,
-    minWindowLength: 4,
+    minWindowLength: 16,
+    minWindowLengthState: 4,
     maxWindowLength: 900,
     windowOverlap: 0,
     requiresState: true
@@ -44,7 +46,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     fpsTarget: 30,
     minWindowLength: 64,
     maxWindowLength: 64,
-    windowOverlap: 47,
+    windowOverlap: 0,
     requiresState: false
   },
 };

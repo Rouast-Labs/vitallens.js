@@ -1,11 +1,11 @@
 import * as tf from '@tensorflow/tfjs-node'; // Use tfjs-node for performance and file handling
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { FaceDetectorAsync } from '../../src/ssd/FaceDetectorAsync';
+import { FaceDetectorAsync } from '../../src/ssd/FaceDetectorAsync.node';
 import { Frame } from '../../src/processing/Frame';
 import { ROI } from '../../src/types/core';
 
-describe('FaceDetectorAsync Integration Test', () => {
+describe('FaceDetectorAsync.node Integration Test', () => {
   let faceDetector: FaceDetectorAsync;
 
   beforeAll(async () => {
@@ -28,7 +28,7 @@ describe('FaceDetectorAsync Integration Test', () => {
     const resizedImage = tf.image.resizeBilinear(imageTensor, [240, 320]); // Resize to [240, 320]
     
     // Create a Frame instance
-    const frame = new Frame(resizedImage, [0]);
+    const frame = Frame.fromTensor(resizedImage, [0]);
 
     // Run face detection
     const results: ROI[] = await faceDetector.detect(frame);
@@ -62,7 +62,7 @@ describe('FaceDetectorAsync Integration Test', () => {
     const batchedImage = tf.concat([singleImageBatch, singleImageBatch], 0); // Batch size 2
 
     // Create a Frame instance
-    const frame = new Frame(batchedImage, [0, 1]); // Indexes for two images in the batch
+    const frame = Frame.fromTensor(batchedImage, [0, 1]);
 
     // Run face detection
     const results: ROI[] = await faceDetector.detect(frame);

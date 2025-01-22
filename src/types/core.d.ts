@@ -19,20 +19,40 @@ export interface VitalLensOptions {
  * Represents the result of a prediction or processing.
  */
 export interface VitalLensResult {
-  vitals: {
-    ppgWaveform?: number[],
-    respiratoryWaveform?: number[],
-    heartRate?: number;
-    respiratoryRate?: number; 
+  face: {
+    coordinates?: Array<[number, number, number, number]>; // (x, y, width, height) for each frame TODO - change to x1, y1, x2, y2
+    confidence?: number[];
+    note?: string;
+  };
+  vital_signs: {
+    heart_rate?: {
+      value: number;
+      unit: string;
+      confidence: number;
+      note: string;
+    };
+    respiratory_rate?: {
+      value: number;
+      unit: string;
+      confidence: number;
+      note: string;
+    };
+    ppg_waveform?: {
+      data: number[];
+      unit: string;
+      confidence: number[];
+      note: string;
+    };
+    respiratory_waveform?: {
+      data: number[];
+      unit: string;
+      confidence: number[];
+      note: string;
+    };
   };
   time: number[];
-  face?: Array<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>;
-  state?: any;
+  state?: any[];
+  message: string;
 }
 
 /**

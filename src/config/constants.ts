@@ -1,5 +1,4 @@
-// TODO: Change to actual endpoint
-export const API_ENDPOINT = 'wss://api.vitallens.com';
+export const API_ENDPOINT = 'wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/';
 
 // Vitals estimation constraints [1/min]
 export const CALC_HR_MIN = 40;

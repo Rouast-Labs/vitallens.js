@@ -54,9 +54,15 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @returns The method handler instance.
    */
   protected createMethodHandler(options: VitalLensOptions): MethodHandler {
+    if (options.method === 'vitallens' && !options.apiKey) {
+      throw new Error(
+        'An API key is required to use method=vitallens, but was not provided. ' +
+        'Get one for free at https://www.rouast.com/api.'
+      );
+    }
     const dependencies = {
       webSocketClient: options.method === 'vitallens'
-        ? new WebSocketClient(API_ENDPOINT)
+        ? new WebSocketClient(API_ENDPOINT, this.options.apiKey!)
         : undefined,
     };
     return MethodHandlerFactory.createHandler(options, dependencies);
@@ -70,6 +76,9 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   async addStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
 
+    // TODO: Support multiple streams
+    // - separate buffer and state management per id in buffer manager
+
     const frameIterator = this.frameIteratorFactory.createStreamFrameIterator(stream, videoElement);
 
     this.streamProcessor = new StreamProcessor(
@@ -79,18 +88,20 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.bufferManager,
       this.faceDetector,
       async (frames) => {
-        const framesChunk = mergeFrames(frames);
-        framesChunk.retain();
-        const incrementalResult = await this.methodHandler.process(
-          framesChunk,
-          this.bufferManager.getState()
-        );
-        framesChunk.release();
-        this.bufferManager.setState(incrementalResult.state);
-
-        const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "aggregated");        
-        
-        this.dispatchEvent('vitals', result);
+        if (this.methodHandler.getReady()) {
+          const framesChunk = mergeFrames(frames);
+          const incrementalResult = await this.methodHandler.process(
+            framesChunk,
+            this.bufferManager.getState()
+          );
+          if (incrementalResult) {
+            console.log("incrementalResult:", incrementalResult);
+            this.bufferManager.setState(incrementalResult.state);
+            const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "aggregated");        
+            console.log("result:", result);
+            this.dispatchEvent('vitals', result);
+          }
+        }
       }
     );
   }
@@ -104,14 +115,16 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
 
     const frameIterator = this.frameIteratorFactory.createFileFrameIterator(videoInput, this.methodConfig, this.faceDetector);
+    // TODO init methodHandler
 
     for await (const framesChunk of frameIterator) {
-      framesChunk.retain();
       const incrementalResult = await this.methodHandler.process(framesChunk, this.bufferManager.getState());
-      framesChunk.release();
-      this.bufferManager.setState(incrementalResult.state);
-      await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "complete");        
+      if (incrementalResult) {
+        this.bufferManager.setState(incrementalResult.state);
+        await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "complete");   
+      }
     }
+    // TODO cleanup methodHandler
 
     return await this.vitalsEstimateManager.getResult(frameIterator.getId());
   }
@@ -121,6 +134,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   start(): void {
     if (!this.processing && this.streamProcessor) {
+      this.methodHandler.init();
       this.streamProcessor.start();
       this.processing = true;
     }
@@ -133,6 +147,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     if (this.processing && this.streamProcessor) {
       this.streamProcessor.stop();
       this.processing = false;
+      this.methodHandler.cleanup();
     }
   }
 
@@ -146,6 +161,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     }
     this.processing = false;
     this.bufferManager.cleanup();
+    this.methodHandler.cleanup();
   }
 
   /**

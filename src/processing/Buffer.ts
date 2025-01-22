@@ -19,21 +19,14 @@ export abstract class Buffer {
    * @param timestamp - The timestamp of the frame.
    */
   async add(frame: Frame, timestamp: number): Promise<void> {
-    frame.retain(); // 3 (or 4 if in use by face detector)
     const processedFrame = await this.preprocess(frame, this.roi, this.methodConfig);
-    frame.release(); // 2 (or 4 if in use by face detector)
     
-    processedFrame.retain(); // 1
     this.buffer.set(timestamp, processedFrame);
 
     // Maintain the maximum buffer size
     while (this.buffer.size > this.methodConfig.maxWindowLength) {
       const oldestKey = Math.min(...this.buffer.keys());
-      const oldFrame = this.buffer.get(oldestKey);
       this.buffer.delete(oldestKey);
-      if (oldFrame) {
-        oldFrame.release(); // 0
-      }
     }
   }
 
@@ -43,6 +36,18 @@ export abstract class Buffer {
    */
   isReady(): boolean {
     return this.buffer.size >= this.methodConfig.minWindowLength;
+  }
+
+  /**
+   * Checks if the buffer is ready for processing given state.
+   * @returns True if the buffer has enough frames given state, false otherwise.
+   */
+  isReadyState(): boolean {
+    if (this.methodConfig.minWindowLengthState) {
+      return this.buffer.size >= this.methodConfig.minWindowLengthState;
+    } else {
+      return this.isReady();
+    }
   }
   
   /**
@@ -57,14 +62,7 @@ export abstract class Buffer {
     const consumedFrames = keys.map((key) => {
       const frame = this.buffer.get(key)!;
       if (!retainKeys.includes(key)) {
-        // Do not release frames that are passed to the caller.
-        // The caller will be instructed to "take over" our reference count.
-        // When the caller is done it will release these frames.
         this.buffer.delete(key);
-      } else {
-        // Retain frames that are kept in the buffer.
-        // When the caller is done with these frames, it will release them but we still have our reference.
-        frame.retain(); 
       }
       return frame;
     });
@@ -77,9 +75,6 @@ export abstract class Buffer {
    * Clears the buffer.
    */
   clear(): void {
-    for (const frame of this.buffer.values()) {
-      frame.release(); // 0
-    }
     this.buffer.clear();
   }
 

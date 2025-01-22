@@ -8,9 +8,17 @@ import {
 import FFT from "fft.js";
 
 export class VitalsEstimateManager implements IVitalsEstimateManager {
-  private waveformBuffers: Map<string, { ppg: { sum: number[]; count: number[] }, resp: { sum: number[]; count: number[] } }> = new Map();
+  private waveforms: Map<string, { 
+    ppgData: { sum: number[]; count: number[] },
+    ppgConf: { sum: number[]; count: number[] },
+    respData: { sum: number[]; count: number[] },
+    respConf: { sum: number[]; count: number[] }
+  }> = new Map();
+  private waveformNotes: Map<string, { ppg: string, resp: string }> = new Map();
   private timestamps: Map<string, number[]> = new Map();
-  private faces: Map<string, ROI[]> = new Map();
+  private faces: Map<string, { coordinates: [number, number, number, number][], confidence: number[] }> = new Map();
+  private faceNote: Map<string, string> = new Map();
+  private message: Map<string, string> = new Map();
   private fpsTarget: number;
   private bufferSizeAgg: number;
   private bufferSizePpg: number;
@@ -43,21 +51,29 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     sourceId: string,
     defaultWaveformDataMode: string
   ): Promise<VitalLensResult> {
-    const { ppgWaveform, respiratoryWaveform } = incrementalResult.vitals;
-
+    const ppgWaveformData = incrementalResult.vital_signs?.ppg_waveform?.data;
+    const ppgWaveformConf = incrementalResult.vital_signs?.ppg_waveform?.confidence;
+    const respiratoryWaveformData = incrementalResult.vital_signs?.respiratory_waveform?.data;
+    const respiratoryWaveformConf = incrementalResult.vital_signs?.respiratory_waveform?.confidence;
     const waveformDataMode = this.options.waveformDataMode || defaultWaveformDataMode;
 
-    if (!ppgWaveform && !respiratoryWaveform) {
+    if ((!ppgWaveformData || !ppgWaveformConf) && (!respiratoryWaveformData || !respiratoryWaveformConf)) {
       throw new Error("No waveform data found in incremental result.");
     }
 
     // Initialize buffers, timestamps, and faces for the source ID
     if (!this.timestamps.has(sourceId)) this.timestamps.set(sourceId, []);
-    if (!this.faces.has(sourceId)) this.faces.set(sourceId, []);
-    if (!this.waveformBuffers.has(sourceId)) {
-      this.waveformBuffers.set(sourceId, { ppg: { sum: [], count: [] }, resp: { sum: [], count: [] } });
+    if (!this.faces.has(sourceId)) this.faces.set(sourceId, { coordinates: [], confidence: [] });
+    if (!this.waveforms.has(sourceId)) {
+      this.waveforms.set(sourceId, {
+        ppgData: { sum: [], count: [] }, ppgConf: { sum: [], count: [] },
+        respData: { sum: [], count: [] }, respConf: { sum: [], count: [] }
+      });
     }
-
+    if (!this.waveformNotes.has(sourceId)) this.waveformNotes.set(sourceId, { ppg: "", resp: "" });
+    if (!this.faceNote.has(sourceId)) this.faceNote.set(sourceId, "");
+    if (!this.message.has(sourceId)) this.message.set(sourceId, "");
+  
     // Update timestamps
     this.updateTimestamps(sourceId, incrementalResult.time, waveformDataMode);
 
@@ -65,14 +81,100 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (incrementalResult.face) this.updateFaces(sourceId, incrementalResult.face, waveformDataMode);
     
     // Update waveforms
-    const waveformBuffer = this.waveformBuffers.get(sourceId)!;
-    if (ppgWaveform) this.updateWaveform(waveformBuffer.ppg, ppgWaveform, this.bufferSizePpg, waveformDataMode);
-    if (respiratoryWaveform) this.updateWaveform(waveformBuffer.resp, respiratoryWaveform, this.bufferSizeResp, waveformDataMode);
+    this.updateWaveforms(sourceId, incrementalResult.vital_signs, waveformDataMode);
 
-    // TODO: Mirror the result structure from vitallens-python with confidences, units, notes, disclaimer ...
+    if (incrementalResult.message) this.message.set(sourceId, incrementalResult.message);
 
-    return await this.computeAggregatedResult(sourceId, waveformDataMode, incrementalResult.time, incrementalResult.vitals.ppgWaveform, incrementalResult.vitals.respiratoryWaveform, incrementalResult.face);
+    return await this.computeAggregatedResult(sourceId, waveformDataMode, incrementalResult);
   }
+
+  /**
+   * Updates an array of values by handling overlap and trimming to a maximum buffer size.   *
+   * @template T - The type of the elements in the array (e.g., number, ROI, etc.).
+   * @param currentValues - The existing array of values to update.
+   * @param addValues - The new values to add to the existing array.
+   * @param waveformDataMode - The mode that determines how the array is updated:
+   * @returns A new array containing the updated values, with overlap handled and trimmed to the buffer size if required.
+   */
+  private getUpdatedValues<T>(
+    currentValues: T[],
+    addValues: T[],
+    waveformDataMode: string
+  ): T[] {
+    const overlap = Math.min(this.methodConfig.windowOverlap, currentValues.length);
+    const maxBufferSize = Math.max(this.bufferSizePpg, this.bufferSizeResp);
+    const nonOverlappingValues = addValues.slice(overlap);
+    const updatedValues = [...currentValues, ...nonOverlappingValues];
+    if (waveformDataMode === "complete") {
+      return updatedValues;
+    }
+    if (updatedValues.length > maxBufferSize) {
+      return updatedValues.slice(-maxBufferSize);
+    }
+    return updatedValues;
+  }
+
+  /**
+   * Updates sum and count arrays by handling overlap and trimming to a maximum buffer size.
+   * @param currentBuffer - The existing buffer containing sum and count arrays.
+   * @param incremental - The new incremental values to add to the buffer.
+   * @param waveformDataMode - Determines if trimming to max buffer size is needed.
+   * @param maxBufferSize - The maximum buffer size for the updated arrays.
+   * @returns An object containing the updated sum and count arrays.
+   */
+  private getUpdatedSumCount(
+    currentBuffer: { sum: number[]; count: number[] },
+    incremental: number[],
+    waveformDataMode: string,
+    maxBufferSize: number,
+  ): { sum: number[]; count: number[] } {
+    // Destructure sum and count from current buffer
+    let { sum: currentSum, count: currentCount } = currentBuffer;
+
+    // Initialize sum and count arrays if not already set
+    if (currentSum.length === 0 || currentCount.length === 0) {
+      return {
+        sum: [...incremental],
+        count: Array(incremental.length).fill(1),
+      };
+    }
+
+    const overlap = this.methodConfig.windowOverlap;
+    const overlapSize = Math.min(overlap, currentSum.length);
+
+    // Handle the overlapping region
+    const existingTailSum = currentSum.slice(-overlapSize);
+    const incrementalHead = incremental.slice(0, overlapSize);
+
+    const updatedTailSum = existingTailSum.map((val, idx) => val + incrementalHead[idx]);
+    const updatedTailCount = currentCount.slice(-overlapSize).map((val) => val + 1);
+
+    // Handle the non-overlapping region
+    const nonOverlappingSum = incremental.slice(overlapSize);
+    const nonOverlappingCount = Array(nonOverlappingSum.length).fill(1);
+
+    // Concatenate updated and non-overlapping regions
+    let updatedSum = [
+      ...currentSum.slice(0, -overlapSize), // Keep the initial part
+      ...updatedTailSum, // Update the overlapping part
+      ...nonOverlappingSum, // Append the new non-overlapping region
+    ];
+
+    let updatedCount = [
+      ...currentCount.slice(0, -overlapSize), // Keep the initial part
+      ...updatedTailCount, // Update the overlapping part
+      ...nonOverlappingCount, // Append the new non-overlapping region
+    ];
+
+    // Trim buffers to maximum size if necessary
+    if (waveformDataMode !== "complete" && updatedSum.length > maxBufferSize) {
+      updatedSum = updatedSum.slice(-maxBufferSize);
+      updatedCount = updatedCount.slice(-maxBufferSize);
+    }
+
+    return { sum: updatedSum, count: updatedCount };
+  }
+
 
   /**
    * Updates the stored timestamps for a given source ID
@@ -82,18 +184,12 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    */
   private updateTimestamps(
     sourceId: string,
-    newTimestamps: number[],
+    newTimestamps: VitalLensResult["time"],
     waveformDataMode: string
   ): void {
     const currentTimestamps = this.timestamps.get(sourceId)!;
-    const overlap = Math.min(this.methodConfig.windowOverlap, currentTimestamps.length);
-    const nonOverlappingTimestamps = newTimestamps.slice(overlap);
-    currentTimestamps.push(...nonOverlappingTimestamps);
-    if (waveformDataMode === "complete") return;
-    const maxBufferSize = Math.max(this.bufferSizePpg, this.bufferSizeResp);
-    if (currentTimestamps.length > maxBufferSize) {
-      this.timestamps.set(sourceId, currentTimestamps.slice(-maxBufferSize));
-    }
+    const updatedTimestamps = this.getUpdatedValues(currentTimestamps, newTimestamps, waveformDataMode);
+    this.timestamps.set(sourceId, updatedTimestamps);
   }
 
   /**
@@ -104,102 +200,87 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    */
   private updateFaces(
     sourceId: string,
-    newFaces: ROI[],
+    newFaces: VitalLensResult["face"],
     waveformDataMode: string
   ): void {
     const currentFaces = this.faces.get(sourceId)!;
-    const overlap = Math.min(this.methodConfig.windowOverlap, currentFaces.length);
-    const nonOverlappingFaces = newFaces.slice(overlap);
-    currentFaces.push(...nonOverlappingFaces);
-    if (waveformDataMode === "complete") return;
-    const maxBufferSize = Math.max(this.bufferSizePpg, this.bufferSizeResp);
-    if (currentFaces.length > maxBufferSize) {
-      this.faces.set(sourceId, currentFaces.slice(-maxBufferSize));
+    if (newFaces.confidence && newFaces.coordinates) {
+      const updatedFaceCoordinates = this.getUpdatedValues(currentFaces.coordinates, newFaces.coordinates, waveformDataMode);
+      const updatedFaceConfidences = this.getUpdatedValues(currentFaces.confidence, newFaces.confidence, waveformDataMode);
+      this.faces.set(sourceId, { coordinates: updatedFaceCoordinates, confidence: updatedFaceConfidences }); 
     }
+    if (newFaces.note) this.faceNote.set(sourceId, newFaces.note);
   }
 
   /**
-   * Updates waveforms by maintaining a sum and count for overlap handling.
-   * @param buffer - The existing waveform buffer with sum and count tensors.
-   * @param incremental - The new incremental waveform tensor.
-   * @param maxBufferSize - The maximum buffer size for the waveform.
-   * @param waveformDataMode - Sets how much of waveforms is returned to user.
+   * Updates the waveform buffers for a given source ID.
+   * @param sourceId - The identifier for the data source (e.g., device or session ID).
+   * @param newVitals - New waveform data and confidence values from `VitalLensResult.vital_signs`.
+   * @param waveformDataMode - Specifies whether to trim buffers ("incremental") or keep all data ("complete").
    */
-  private updateWaveform(
-    buffer: { sum: number[]; count: number[] },
-    incremental: number[],
-    maxBufferSize: number,
+  private updateWaveforms(
+    sourceId: string,
+    newVitals: VitalLensResult["vital_signs"],
     waveformDataMode: string
   ): void {
-    const overlap = this.methodConfig.windowOverlap;
-    const overlapSize = Math.min(overlap, buffer.sum.length);
+    const currentWaveforms = this.waveforms.get(sourceId) || {
+      ppgData: { sum: [], count: [] }, ppgConf: { sum: [], count: [] },
+      respData: { sum: [], count: [] }, respConf: { sum: [], count: [] }
+    };
+    const currentWaveformNotes = this.waveformNotes.get(sourceId) || { ppg: "", resp: "" }
 
-    // Initialize sum and count arrays if not already set
-    if (buffer.sum.length === 0 || buffer.count.length === 0) {
-      buffer.sum = [...incremental];
-      buffer.count = Array(incremental.length).fill(1);
-      return;
+    let updatedPpgData = currentWaveforms.ppgData;
+    let updatedPpgConf = currentWaveforms.ppgConf;
+    let updatedRespData = currentWaveforms.respData;
+    let updatedRespConf = currentWaveforms.respConf;
+    let ppgNote = currentWaveformNotes.ppg;
+    let respNote = currentWaveformNotes.resp;
+
+    if (newVitals.ppg_waveform?.data && newVitals.ppg_waveform?.confidence){
+      updatedPpgData = this.getUpdatedSumCount(currentWaveforms.ppgData, newVitals.ppg_waveform.data, waveformDataMode, this.bufferSizePpg);
+      updatedPpgConf = this.getUpdatedSumCount(currentWaveforms.ppgConf, newVitals.ppg_waveform.confidence, waveformDataMode, this.bufferSizePpg);
+    }
+
+    if (newVitals.ppg_waveform?.note) ppgNote = newVitals.ppg_waveform.note;
+
+    if (newVitals.respiratory_waveform?.data && newVitals.respiratory_waveform?.confidence){
+      updatedRespData = this.getUpdatedSumCount(currentWaveforms.respData, newVitals.respiratory_waveform.data, waveformDataMode, this.bufferSizeResp);
+      updatedRespConf = this.getUpdatedSumCount(currentWaveforms.respConf, newVitals.respiratory_waveform.confidence, waveformDataMode, this.bufferSizeResp);
     }
     
-    // Handle the overlapping region
-    const existingTailSum = buffer.sum.slice(-overlapSize);
-    const incrementalHead = incremental.slice(0, overlapSize);
+    if (newVitals.respiratory_waveform?.note) respNote = newVitals.respiratory_waveform.note;
     
-    const updatedTailSum = existingTailSum.map((val, idx) => val + incrementalHead[idx]);
-    const updatedTailCount = buffer.count.slice(-overlapSize).map((val) => val + 1);
-    
-    // Handle the non-overlapping region
-    const nonOverlappingSum = incremental.slice(overlapSize);
-    const nonOverlappingCount = Array(nonOverlappingSum.length).fill(1);
-    
-    // Concatenate updated and non-overlapping regions
-    buffer.sum = [
-      ...buffer.sum.slice(0, -overlapSize), // Keep the initial part
-      ...updatedTailSum, // Update the overlapping part
-      ...nonOverlappingSum, // Append the new non-overlapping region
-    ];
+    this.waveforms.set(sourceId, {
+      ppgData: updatedPpgData, ppgConf: updatedPpgConf,
+      respData: updatedRespData, respConf: updatedRespConf
+    });
 
-    buffer.count = [
-      ...buffer.count.slice(0, -overlapSize), // Keep the initial part
-      ...updatedTailCount, // Update the overlapping part
-      ...nonOverlappingCount, // Append the new non-overlapping region
-    ];
-
-    // Trim buffers to maximum size if necessary
-    if (waveformDataMode !== "complete" && buffer.sum.length > maxBufferSize) {
-      buffer.sum = buffer.sum.slice(-maxBufferSize);
-      buffer.count = buffer.count.slice(-maxBufferSize);
-    }
+    this.waveformNotes.set(sourceId, { ppg: ppgNote, resp: respNote });
   }
 
   /**
    * Computes the aggregated result by performing FFT and extracting vitals.
    * @param sourceId - The source identifier.
    * @param waveformDataMode - Sets how much of waveforms is returned to user.
-   * @param incrementalTime - The latest incremental timestamps - pass if returning incremental vals.
-   * @param incrementalPpg - The latest incremental PPG waveform - pass if returning incremental vals.
-   * @param incrementalResp - The latest incremental respiratory waveform - pass if returning incremental vals.
-   * @param incrementalFace - The latest incremental faces - pass if returning incremental vals.
+   * @param incrementalResult - The latest incremental result - pass if returning incrementally
    * @returns The aggregated VitalLensResult.
    */
   private async computeAggregatedResult(
     sourceId: string,
     waveformDataMode: string,
-    incrementalTime?: number[],
-    incrementalPpg?: number[],
-    incrementalResp?: number[],
-    incrementalFace?: ROI[]
+    incrementalResult?: any
   ): Promise<VitalLensResult> {
-    const waveformBuffer = this.waveformBuffers.get(sourceId)!;
+    const waveforms = this.waveforms.get(sourceId)!;
+    const waveformNotes = this.waveformNotes.get(sourceId)!;
     const timestamps = this.timestamps.get(sourceId);
     const faces = this.faces.get(sourceId);
-    const result: VitalLensResult = { vitals: {}, state: null, time: [] };
+    const result: VitalLensResult = { face: {}, vital_signs: {}, time: [], message: "" };
 
     if (timestamps) {
       switch (waveformDataMode) {
         case 'incremental':
-          const overlapSize = incrementalTime ? Math.min(this.methodConfig.windowOverlap, incrementalTime.length) : 0;
-          result.time = incrementalTime ? incrementalTime.slice(overlapSize) : [];
+          const overlapSize = incrementalResult.time ? Math.min(this.methodConfig.windowOverlap, incrementalResult.time.length) : 0;
+          result.time = incrementalResult.time ? incrementalResult.time.slice(overlapSize) : [];
           break;
         case 'aggregated':
           result.time = timestamps.slice(-this.bufferSizeAgg);
@@ -213,59 +294,116 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (faces) {
       switch (waveformDataMode) {
         case 'incremental':
-          const overlapSize = incrementalFace ? Math.min(this.methodConfig.windowOverlap, incrementalFace.length) : 0;
-          result.face = incrementalFace ? incrementalFace.slice(overlapSize) : [];
+          const overlapSize = incrementalResult.face.coordinates ? Math.min(this.methodConfig.windowOverlap, incrementalResult.face.coordinates.length) : 0;
+          result.face.coordinates = incrementalResult.face.coordinates ? incrementalResult.face.coordinates.slice(overlapSize) : [];
+          result.face.confidence = incrementalResult.face.confidence ? incrementalResult.face.confidence.slice(overlapSize) : [];
           break;
         case 'aggregated':
-          result.face = faces.slice(-this.bufferSizeAgg);
+          result.face.coordinates = faces.coordinates.slice(-this.bufferSizeAgg);
+          result.face.confidence = faces.confidence.slice(-this.bufferSizeAgg);
           break;
         case 'complete':
-          result.face = faces;
+          result.face.coordinates = faces.coordinates;
+          result.face.confidence = faces.confidence;
           break;
       }
+      result.face.note = "Face detection coordinates for this face, along with live confidence levels.";
     }
     
-    if (waveformBuffer) {
+    if (waveforms) {
       // PPG
-      const averagedPpg = waveformBuffer.ppg.sum.map((val, i) => val / waveformBuffer.ppg.count[i]);
+      const averagedPpgData = waveforms.ppgData.sum.map((val, i) => val / waveforms.ppgData.count[i]);
+      const averagedPpgConf = waveforms.ppgConf.sum.map((val, i) => val / waveforms.ppgConf.count[i]);
       switch (waveformDataMode) {
         case 'incremental':
-          const overlapSize = incrementalPpg ? Math.min(this.methodConfig.windowOverlap, incrementalPpg.length) : 0;
-          result.vitals.ppgWaveform = incrementalPpg ? incrementalPpg.slice(overlapSize) : [];
+          const overlapSize = incrementalResult.vital_signs.ppg_waveform.data
+            ? Math.min(this.methodConfig.windowOverlap, incrementalResult.vital_signs.ppg_waveform.data.length)
+            : 0;
+          result.vital_signs.ppg_waveform = {
+            data: incrementalResult.vital_signs.ppg_waveform.data
+              ? incrementalResult.vital_signs.ppg_waveform.data.slice(overlapSize)
+              : [],
+            confidence: incrementalResult.vital_signs.ppg_waveform.confidence
+              ? incrementalResult.vital_signs.ppg_waveform.confidence.slice(overlapSize)
+              : [],
+            unit: "unitless",
+            note: waveformNotes.ppg
+          };
           break;
         case 'aggregated':
-          result.vitals.ppgWaveform = averagedPpg.slice(-this.bufferSizeAgg);
+          result.vital_signs.ppg_waveform = {
+            data: averagedPpgData.slice(-this.bufferSizeAgg),
+            confidence: averagedPpgConf.slice(-this.bufferSizeAgg),
+            unit: "unitless",
+            note: waveformNotes.ppg
+          };
           break;
         case 'complete':
-          result.vitals.ppgWaveform = averagedPpg;
+          result.vital_signs.ppg_waveform = {
+            data: averagedPpgData,
+            confidence: averagedPpgConf,
+            unit: "unitless",
+            note: waveformNotes.ppg
+          };
           break;
       }
-      if (waveformBuffer.ppg.sum.length >= this.minBufferSizePpg) {
+      if (waveforms.ppgData.sum.length >= this.minBufferSizePpg) {
         const fps = this.getCurrentFps(sourceId, this.bufferSizePpg);
         if (fps) {
-          result.vitals.heartRate = this.estimateHeartRate(averagedPpg.slice(-this.bufferSizePpg), fps);
+          result.vital_signs.heart_rate = {
+            value: this.estimateHeartRate(averagedPpgData.slice(-this.bufferSizePpg), fps),
+            confidence: averagedPpgConf.slice(-this.bufferSizePpg).reduce((a, b) => a + b, 0) / this.bufferSizePpg, // Mean confidence
+            unit: "bpm",
+            note: "Estimate of the heart rate, derived from ppg_waveform.",
+          };
         }
       }
 
       // RESP
-      const averagedResp = waveformBuffer.resp.sum.map((val, i) => val / waveformBuffer.resp.count[i]);
+      const averagedRespData = waveforms.respData.sum.map((val, i) => val / waveforms.respData.count[i]);
+      const averagedRespConf = waveforms.respConf.sum.map((val, i) => val / waveforms.respConf.count[i]);
       switch (waveformDataMode) {
         case 'incremental':
-          const overlapSize = incrementalResp ? Math.min(this.methodConfig.windowOverlap, incrementalResp.length) : 0;
-          result.vitals.respiratoryWaveform = incrementalResp ? incrementalResp.slice(overlapSize) : [];
+          const overlapSize = incrementalResult.vital_signs.respiratory_waveform.data
+            ? Math.min(this.methodConfig.windowOverlap, incrementalResult.vital_signs.respiratory_waveform.data.length)
+            : 0;
+          result.vital_signs.respiratory_waveform = {
+            data: incrementalResult.vital_signs.respiratory_waveform.data
+              ? incrementalResult.vital_signs.respiratory_waveform.data.slice(overlapSize)
+              : [],
+            confidence: incrementalResult.vital_signs.respiratory_waveform.confidence
+              ? incrementalResult.vital_signs.respiratory_waveform.confidence.slice(overlapSize)
+              : [],
+            unit: "unitless",
+            note: waveformNotes.resp
+          };
           break;
         case 'aggregated':
-          result.vitals.respiratoryWaveform = averagedResp.slice(-this.bufferSizeAgg);
+          result.vital_signs.respiratory_waveform = {
+            data: averagedRespData.slice(-this.bufferSizeAgg),
+            confidence: averagedRespConf.slice(-this.bufferSizeAgg),
+            unit: "unitless",
+            note: waveformNotes.resp
+          };
           break;
         case 'complete':
-          result.vitals.respiratoryWaveform = averagedResp;
+          result.vital_signs.respiratory_waveform = {
+            data: averagedRespData,
+            confidence: averagedRespConf,
+            unit: "unitless",
+            note: waveformNotes.resp
+          };
           break;
       }
-      
-      if (waveformBuffer.resp.sum.length >= this.minBufferSizeResp) {
+      if (waveforms.respData.sum.length >= this.minBufferSizeResp) {
         const fps = this.getCurrentFps(sourceId, this.bufferSizeResp);
         if (fps) {
-          result.vitals.respiratoryRate = this.estimateRespiratoryRate(averagedResp.slice(-this.bufferSizeResp), fps);
+          result.vital_signs.respiratory_rate = {
+            value: this.estimateRespiratoryRate(averagedRespData.slice(-this.bufferSizeResp), fps),
+            confidence: averagedRespConf.slice(-this.bufferSizeResp).reduce((a, b) => a + b, 0) / this.bufferSizeResp, // Mean confidence
+            unit: "bpm",
+            note: "Estimate of the respiratory rate, derived from respiratory_waveform.",
+          };
         }
       }
     }

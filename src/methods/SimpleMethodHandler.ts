@@ -1,7 +1,6 @@
 import { MethodHandler } from './MethodHandler';
 import { VitalLensOptions, VitalLensResult } from '../types/core';
 import { Frame } from '../processing/Frame';
-import { Tensor2D } from '@tensorflow/tfjs';
 
 /**
  * Base class for simple rPPG methods (e.g., POS, CHROM, G).
@@ -13,22 +12,51 @@ export abstract class SimpleMethodHandler extends MethodHandler {
   }
 
   /**
+   * Initialise the method.
+   */
+  async init(): Promise<void> {
+    // Nothing needs to be initialized for simple methods.
+  }
+
+  /**
+   * Cleanup the method.
+   */
+  async cleanup(): Promise<void> {
+    // Nothing needs to be initialized for simple methods.
+  }
+  
+  /**
+   * Get readiness state.
+   * @returns Whether the method is ready for prediction.
+   */
+  getReady(): boolean {
+    // Always ready
+    return true;
+  }
+
+  /**
    * Processes a chunk of rgb signals to compute vitals.
    * @param rgb - Frame of rgb signals to process.
    * @returns A promise that resolves to the processed result.
    */
   async process(rgb: Frame): Promise<VitalLensResult> {
-    rgb.retain();
-    const ppg = this.algorithm(rgb.data as Tensor2D);
-    const roi = rgb.roi;
-    rgb.release();
+    const ppg = this.algorithm(rgb);
     return {
-      vitals: {
-        ppgWaveform: ppg
+      face: {
+        coordinates: rgb.getROI().map(roi => [roi.x, roi.y, roi.width, roi.height]),
+        confidence: new Array(ppg.length).fill(1.0),
+        note: "Face detection coordinates for this face, along with live confidence levels. This method is not capable of providing a confidence estimate, hence returning 1.",
       },
-      time: rgb.timestamp,
-      face: roi,
-      state: {}, // No recurrent state for handcrafted methods
+      vital_signs: {
+        ppg_waveform: {
+          data: ppg,
+          unit: "bpm",
+          confidence: new Array(ppg.length).fill(1.0),
+          note: `Estimate of the ppg waveform using ${this.getMethodName()}. This method is not capable of providing a confidence estimate, hence returning 1.`
+        },
+      },
+      time: rgb.getTimestamp(),
+      message: "The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes."
     };
   }
   
@@ -36,5 +64,5 @@ export abstract class SimpleMethodHandler extends MethodHandler {
    * Abstract method for subclasses to implement their specific algorithm.
    * @param rgb - Tensor2D with rgb signals to process.
    */
-  protected abstract algorithm(rgb: Tensor2D): number[];
+  protected abstract algorithm(rgb: Frame): number[];
 }

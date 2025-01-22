@@ -3,7 +3,6 @@ import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { MethodConfig } from '../config/methodsConfig';
-import { tidy, tensor } from '@tensorflow/tfjs-core';
 import { getRepresentativeROI, getROIForMethod } from '../utils/faceOps';
 import { IFaceDetector } from '../types/IFaceDetector';
 
@@ -59,7 +58,8 @@ export class FileFrameIterator extends FrameIteratorBase {
         this.probeInfo
       );
       // Run face detector (nFrames, 4)
-      const videoFrames = new Frame(tensor(video, [nDsFrames, 240, 320, 3], 'float32'), []);
+      // TODO: Make sure frame data is correct
+      const videoFrames = Frame.fromUint8Array(video, [nDsFrames, 240, 320, 3]);
       const faces = await this.faceDetector.detect(videoFrames) as ROI[];
       // Convert to absolute units
       const absoluteROIs = faces.map(({ x, y, width: w, height: h }) => ({
@@ -136,21 +136,14 @@ export class FileFrameIterator extends FrameIteratorBase {
       );
     }
 
-    const tensorData = tidy(() => {
-      // Convert Uint8Array to Tensor
-      const shape = [dsFramesExpected, height, width, 3];
-      return tensor(frameData, shape, 'float32');
-    });
+    const shape = [dsFramesExpected, height, width, 3];
 
     // Generate timestamps for each frame in the batch
     const frameTimestamps = Array.from({ length: dsFramesExpected }, (_, i) => 
       (startFrameIndex + i) / this.probeInfo!.fps
     );
-    
-    return new Frame(
-      tensorData,
-      frameTimestamps
-    );
+
+    return Frame.fromUint8Array(frameData, shape, frameTimestamps);
   }
 
   /**

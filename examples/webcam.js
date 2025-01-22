@@ -2,9 +2,10 @@ import { VitalLens } from '../dist/vitallens.browser.js';
 
 // Configuration
 const options = {
-  method: 'g',
-  fDetFs: 0.1,
-  // globalRoi: { x: 50, y: 50, width: 200, height: 200 },
+  method: 'vitallens',
+  // fDetFs: 0.1,
+  apiKey: "YOUR_AP_KEY",
+  globalRoi: { x: 200, y: 70, width: 250, height: 300 },
 };
 
 const vitallens = new VitalLens(options);
@@ -30,8 +31,8 @@ function drawVitals(canvas, video, result, fps) {
   ctx.fillText(`FPS: ${fps}`, 10, 25);
 
   // Draw ROIs
-  if (result.face && result.face.length > 0) {
-    for (const roi of result.face) {
+  if (result.face && result.face.coordinates.length > 0) {
+    for (const roi of result.face.coordinates) {
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'red';
       ctx.globalAlpha = 0.6;
@@ -49,7 +50,7 @@ function drawVitals(canvas, video, result, fps) {
   // Draw Heart Rate
   ctx.fillStyle = 'red';
   ctx.globalAlpha = 1;
-  ctx.fillText(`Heart Rate: ${result.vitals.heartRate || 'N/A'} bpm`, 10, 50);
+  ctx.fillText(`Heart Rate: ${result.vital_signs.heart_rate.value || 'N/A'} bpm`, 10, 50);
 }
 
 async function detectVitals(video, canvas) {

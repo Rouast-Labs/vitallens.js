@@ -1,4 +1,4 @@
-import { Tensor, stack } from '@tensorflow/tfjs-core';
+import * as tf from '@tensorflow/tfjs-core';
 import { Frame } from '../processing/Frame';
 import { ROI } from '../types/core';
 
@@ -13,25 +13,21 @@ export function mergeFrames(frames: Frame[]): Frame {
     throw new Error('Cannot merge an empty array of frames.');
   }
 
-  frames.forEach((frame) => frame.retain());
+  // Merge data using tf.tidy to manage memory
+  const concatenatedTensor = tf.tidy(() => {
+    const tensors = frames.map((frame) => frame.getTensor());
+    return tf.stack(tensors); // Stack along a new dimension
+  });
 
-  try {
-    // Extract the 1D or 3D tensors from each frame
-    const tensors: Tensor[] = frames.map((frame) => frame.data);
+  // Concatenate all timestamps
+  const concatenatedTimestamps = frames.flatMap((frame) => frame.getTimestamp());
 
-    // Concatenate along a new dimension (sequence dimension)
-    const concatenatedData = stack(tensors);
+  // Concatenate all ROIs into a single array
+  const concatenatedROIs: ROI[] = frames.flatMap((frame) => frame.getROI());
 
-    // Concatenate all timestamps
-    const concatenatedTimestamps = frames.flatMap((frame) => frame.timestamp);
+  // Convert the tensor back to raw data for the new Frame
+  const mergedFrame = Frame.fromTensor(concatenatedTensor, concatenatedTimestamps, concatenatedROIs);
+  concatenatedTensor.dispose();
 
-    // Concatenate all ROIs into a single array
-    const concatenatedROIs: ROI[] = frames.flatMap((frame) => frame.roi);
-
-    // Return the merged frame
-    return new Frame(concatenatedData, concatenatedTimestamps, concatenatedROIs);
-  } finally {
-    // Release the original frames after use
-    frames.forEach((frame) => frame.release());
-  }
+  return mergedFrame;
 }

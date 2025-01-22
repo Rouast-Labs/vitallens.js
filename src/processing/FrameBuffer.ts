@@ -14,50 +14,52 @@ export class FrameBuffer extends Buffer {
    * @returns The processed frame.
    */
   protected async preprocess(frame: Frame, roi: ROI): Promise<Frame> {
-    frame.retain(); // 4 (or 5 if in use by face detector)
-
-    try {
-      // Assert that the frame data is a 3D tensor
-      if (!frame.data || frame.data.rank !== 3 || frame.data.shape.length != 3) {
-        throw new Error(`Frame data must be a 3D tensor. Received rank: ${frame.data?.rank}`);
+    // Assert that the frame data is a 3D tensor
+      const shape = frame.getShape();
+      if (shape.length !== 3) {
+        throw new Error(`Frame data must be a 3D tensor. Received rank: ${shape.length}`);
       }
-
+      
       // Validate ROI dimensions
       if (
         roi.x < 0 ||
         roi.y < 0 ||
-        roi.x + roi.width > frame.data.shape[1] ||
-        roi.y + roi.height > frame.data.shape[0]
+        roi.x + roi.width > shape[1] ||
+        roi.y + roi.height > shape[0]
       ) {
         throw new Error(
-          `ROI dimensions are out of bounds. Frame dimensions: [${frame.data.shape[0]}, ${frame.data.shape[1]}], ROI: ${JSON.stringify(roi)}`
+          `ROI dimensions are out of bounds. Frame dimensions: [${shape[0]}, ${shape[1]}], ROI: ${JSON.stringify(roi)}`
         );
       }
 
-      // Crop the tensor based on the ROI
-      const cropped = tf.tidy(() => {
-        return frame.data.slice(
+      // Perform all operations in one tf.tidy block
+      const processedFrame = tf.tidy(() => {
+        // Convert raw data back to a tensor
+        const tensor = frame.getTensor();
+
+        // Crop the tensor based on the ROI
+        const cropped = tensor.slice(
           [roi.y, roi.x, 0], // Start point [y, x, channel]
-          [roi.height, roi.width, frame.data.shape[2] || 1] // Size [height, width, depth]
+          [roi.height, roi.width, shape[2] || 1] // Size [height, width, depth]
         );
+
+        // Resize the cropped tensor if inputSize is specified
+        const resized = this.methodConfig.inputSize
+          ? tf.image.resizeBilinear(cropped as tf.Tensor3D, [
+              this.methodConfig.inputSize!,
+              this.methodConfig.inputSize!,
+            ])
+          : cropped;
+
+        // Create the new Frame from the processed tensor
+        return resized;
       });
 
-      // Resize the cropped tensor if inputSize is specified
-      const resized = this.methodConfig.inputSize
-        ? tf.tidy(() => {
-            return tf.image.resizeBilinear(cropped as tf.Tensor3D, [this.methodConfig.inputSize!, this.methodConfig.inputSize!]);
-          })
-        : cropped;
+      // TODO: Make sure frame data is correct
+      const result = Frame.fromTensor(processedFrame as tf.Tensor3D, frame.getTimestamp(), [roi])
 
-      // Dispose of the cropped tensor if resizing was performed
-      if (resized !== cropped) {
-        cropped.dispose();
-      }
+      processedFrame.dispose();
 
-      // Return the processed frame with the original timestamp
-      return new Frame(resized as tf.Tensor3D, frame.timestamp, [roi]);
-    } finally {
-      frame.release(); // 3 (or 4 if in use by face detector)
-    }
+      return result;
   }
 }

@@ -59,11 +59,19 @@ export class BufferManager {
   private getReadyBuffer(): Buffer | null {
     let readyBuffer: Buffer | null = null;
     let timestamp = 0;
+    let hasState = this.state !== null;
 
     for (const { buffer, createdAt } of this.buffers.values()) {
-      if (buffer.isReady() && createdAt > timestamp) {
-        readyBuffer = buffer;
-        timestamp = createdAt;
+      if (hasState) {
+        if (buffer.isReadyState() && createdAt > timestamp) {
+          readyBuffer = buffer;
+          timestamp = createdAt;
+        }  
+      } else {
+        if (buffer.isReady() && createdAt > timestamp) {
+          readyBuffer = buffer;
+          timestamp = createdAt;
+        }
       }
     }
 
@@ -79,11 +87,9 @@ export class BufferManager {
    * @param timestamp - The timestamp of the frame.
    */
   async add(frame: Frame, timestamp: number): Promise<void> {
-    frame.retain(); // 2 (or 3 if in use by face detector)
     for (const { buffer, createdAt } of this.buffers.values()) {
       buffer.add(frame, timestamp);
     }
-    frame.release(); // 1 (or 2 if in use by face detector)
   }
 
   /**
@@ -133,5 +139,9 @@ export class BufferManager {
    */
   getState(): any {
     return this.state;
+  }
+
+  getNBuffers(): number {
+    return this.buffers.size;
   }
 }

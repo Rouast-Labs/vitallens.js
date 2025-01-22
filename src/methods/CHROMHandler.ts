@@ -1,4 +1,4 @@
-import { Tensor2D } from '@tensorflow/tfjs';
+import { Frame } from '../processing/Frame';
 import { SimpleMethodHandler } from './SimpleMethodHandler';
 
 /**
@@ -6,10 +6,17 @@ import { SimpleMethodHandler } from './SimpleMethodHandler';
  */
 export class CHROMHandler extends SimpleMethodHandler {
   /**
+   * Get the method name. Subclasses must implement this.
+   * @returns The method name.
+   */
+  protected getMethodName(): string {
+    return "CHROM";
+  }
+  /**
    * Implementation of the CHROM algorithm.
    * @param rgb - Tensor2D with rgb signals to process.
    */
-  protected algorithm(rgb: Tensor2D): number[] {
+  protected algorithm(rgb: Frame): number[] {
     // TODO: Implement algorithm
     return [];
   }

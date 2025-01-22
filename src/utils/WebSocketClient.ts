@@ -2,69 +2,86 @@
  * Utility class for managing WebSocket communication.
  */
 export class WebSocketClient {
-  private socket: WebSocket;
+  private socket: WebSocket | null = null;
+  private url: string;
   private isConnected: boolean = false;
 
-  constructor(private url: string) {
+  constructor(url: string, apiKey: string) {
+    this.url = `${url}?x-api-key=${encodeURIComponent(apiKey)}`;
+  }
+
+  /**
+   * Connects to the WebSocket server.
+   */
+  async connect(): Promise<void> {
+    if (this.isConnected) return;
+
     this.socket = new WebSocket(this.url);
-    this.initialize();
+
+    return new Promise((resolve, reject) => {
+      this.socket!.onopen = () => {
+        this.isConnected = true;
+        console.log("WebSocket connected");
+        resolve();
+      };
+
+      this.socket!.onerror = (error) => {
+        reject(new Error(`WebSocket failed to connect: ${error}`));
+      };
+
+      this.socket!.onclose = () => {
+        console.log("WebSocket closed");
+        this.isConnected = false;
+      };
+    });
   }
 
   /**
-   * Initializes WebSocket event listeners for connection handling.
-   */
-  private initialize(): void {
-    this.socket.onopen = () => {
-      this.isConnected = true;
-    };
-
-    this.socket.onclose = () => {
-      this.isConnected = false;
-    };
-
-    this.socket.onerror = (error) => {
-      console.error(`WebSocket error: ${error}`);
-    };
-  }
-
-  /**
-   * Sends a message through the WebSocket and waits for a response.
+   * Sends a payload to the server and waits for a response.
    * @param payload - The data to send.
-   * @returns A promise that resolves with the response.
+   * @returns The server's response as a JSON-parsed object.
    */
-  async send(payload: any): Promise<any> {
-    if (!this.isConnected) {
+  async send(payload: Record<string, unknown>): Promise<any> {
+    if (!this.isConnected || !this.socket) {
       throw new Error('WebSocket is not connected');
     }
 
+    const message = JSON.stringify(payload);
+
     return new Promise((resolve, reject) => {
-      this.socket.onmessage = (event) => {
+      this.socket!.onmessage = (event) => {
         try {
+          console.log("Received response");
           const response = JSON.parse(event.data);
           resolve(response);
         } catch (error) {
-          reject(new Error('Failed to parse WebSocket response'));
+          reject(new Error(`Failed to parse WebSocket response: ${error}`));
         }
       };
 
-      this.socket.onerror = (error) => {
+      this.socket!.onerror = (error) => {
         reject(new Error(`WebSocket error: ${error}`));
       };
 
-      try {
-        this.socket.send(JSON.stringify(payload));
-      } catch (error) {
-        reject(new Error('Failed to send message through WebSocket'));
-      }
+      this.socket!.send(message);
     });
+  }
+
+  /**
+   * TODO
+   * @returns 
+   */
+  getIsConnected(): boolean {
+    return this.isConnected;  
   }
 
   /**
    * Closes the WebSocket connection.
    */
   close(): void {
-    if (this.isConnected) {
+    if (this.socket) {
       this.socket.close();
+      this.isConnected = false;
     }
   }
 }
