@@ -68,8 +68,8 @@ export class WebSocketClient {
   }
 
   /**
-   * TODO
-   * @returns 
+   * Check connection status
+   * @returns true of WebSocket is connected, else false.
    */
   getIsConnected(): boolean {
     return this.isConnected;  

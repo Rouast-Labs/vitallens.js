@@ -70,6 +70,9 @@ export class VitalLensAPIHandler extends MethodHandler {
         ...(state && { state: JSON.stringify(state) }),
       };
       // Send the payload via WebSocket.
+      // TODO: Most of the time socket just closes - Why?
+      console.log("About to send payload:", payload);
+      console.log("payload.frame:", payload.frames);
       const response = await this.webSocketClient.send(payload);
       // Parse the WebSocket response.
       if (!response || typeof response.statusCode !== 'number') {

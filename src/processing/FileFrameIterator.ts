@@ -58,7 +58,6 @@ export class FileFrameIterator extends FrameIteratorBase {
         this.probeInfo
       );
       // Run face detector (nFrames, 4)
-      // TODO: Make sure frame data is correct
       const videoFrames = Frame.fromUint8Array(video, [nDsFrames, 240, 320, 3]);
       const faces = await this.faceDetector.detect(videoFrames) as ROI[];
       // Convert to absolute units

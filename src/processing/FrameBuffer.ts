@@ -55,8 +55,7 @@ export class FrameBuffer extends Buffer {
         return resized;
       });
 
-      // TODO: Make sure frame data is correct
-      const result = Frame.fromTensor(processedFrame as tf.Tensor3D, frame.getTimestamp(), [roi])
+      const result = Frame.fromTensor(processedFrame, frame.getTimestamp(), [roi])
 
       processedFrame.dispose();
 

@@ -2,6 +2,25 @@ import * as tf from '@tensorflow/tfjs';
 import { ROI } from '../types';
 
 /**
+ * Determines the size (number of elements) from an ArrayBuffer of raw data.
+ * @param rawData The raw data
+ * @param dtype The data type
+ * @returns The number of elements in the raw data
+ */
+function getActualSizeFromRawData(rawData: ArrayBuffer, dtype: tf.DataType): number {
+  switch (dtype) {
+    case 'uint8':
+      return new Uint8Array(rawData).length;
+    case 'int32':
+      return new Int32Array(rawData).length;
+    case 'float32':
+      return new Float32Array(rawData).length;
+    default:
+      throw new Error(`Unsupported dtype: ${dtype}`);
+  }
+}
+
+/**
  * Represents one or multiple frames in the video processing pipeline.
  */
 export class Frame {
@@ -26,28 +45,19 @@ export class Frame {
    * @param roi - Optional regions of interest.
    */
   static fromTensor(tensor: tf.Tensor, timestamp?: number[], roi?: ROI[]): Frame {
-    const rawData = tensor.dataSync().buffer;
+    const typedData = tensor.dataSync() as Float32Array | Int32Array | Uint8Array;
     const expectedSize = tensor.shape.reduce((a, b) => a * b);
+    const exactBuffer = typedData.buffer.slice(
+      typedData.byteOffset,
+      typedData.byteOffset + typedData.byteLength
+    );
     
-    var actualSize;
-    switch (tensor.dtype) {
-      case 'uint8':
-        actualSize = new Uint8Array(rawData).length;
-        break;
-      case 'int32':
-        actualSize = new Int32Array(rawData).length;
-        break;
-      case 'float32':
-        actualSize = new Float32Array(rawData).length;
-        break;
-      default:
-        throw new Error(`Unsupported dtype: ${tensor.dtype}`);
-    }
+    const actualSize = getActualSizeFromRawData(exactBuffer, tensor.dtype);
     if (expectedSize !== actualSize) {
-      console.warn(`Mismatch in tensor size: expected ${expectedSize}, but got ${actualSize}`);
+      throw new Error(`Mismatch in tensor size: expected ${expectedSize}, but got ${actualSize}`);
     }
 
-    return new Frame(rawData, tensor.shape, tensor.dtype, timestamp, roi);
+    return new Frame(exactBuffer, tensor.shape, tensor.dtype, timestamp, roi);
   }
 
   /**
@@ -65,6 +75,13 @@ export class Frame {
     roi?: ROI[]
   ): Frame {
     const rawData = array.buffer; // Use the underlying ArrayBuffer
+
+    const expectedSize = shape.reduce((a, b) => a * b);
+    const actualSize = getActualSizeFromRawData(rawData, 'uint8');
+    if (expectedSize !== actualSize) {
+      throw new Error(`Mismatch in raw data size: expected ${expectedSize}, but got ${actualSize}`);
+    }
+    
     return new Frame(rawData, shape, 'uint8' as tf.DataType, timestamp, roi);
   }
 
@@ -78,21 +95,11 @@ export class Frame {
     const expectedSize = this.shape.reduce((a, b) => a * b);
     const actualSize = typedArray.length;
   
-    if (actualSize === expectedSize) {
-      return tf.tensor(typedArray, this.shape, this.dtype);
+    if (expectedSize !== actualSize) {
+      throw new Error(`Mismatch in tensor size: expected ${expectedSize}, but got ${actualSize}`);
     }
-  
-    if (actualSize < expectedSize) {
-      throw new Error(`Mismatch in raw data size: expected ${expectedSize}, but got ${actualSize}. Shape: ${this.shape}, DType: ${this.dtype}`);
-    }
-  
-    const offset = actualSize - expectedSize;
-    console.warn(
-      `Mismatch in raw data size: expected ${expectedSize}, but got ${actualSize}. Shape: ${this.shape}, DType: ${this.dtype}. Ignoring first ${offset} elements.`
-    );
-  
-    // TODO: Make sure frame data is correct
-    return tf.tensor(typedArray.slice(offset), this.shape, this.dtype);
+
+    return tf.tensor(typedArray, this.shape, this.dtype);
   }
 
   /**
@@ -109,6 +116,19 @@ export class Frame {
       default:
         throw new Error(`Unsupported dtype: ${this.dtype}`);
     }
+  }
+
+  /**
+   * Returns the data as a Uint8Array
+   * @returns The data as a Uint8Array
+   */
+  private getUint8Array() {
+    if (this.dtype === 'uint8') return new Uint8Array(this.rawData);
+
+    const TypedArrayClass = this.getTypedArrayClass();
+    const typedArray = new TypedArrayClass(this.rawData);
+  
+    return new Uint8Array(typedArray);
   }
 
   /**
@@ -153,26 +173,15 @@ export class Frame {
    */
   getBase64Data(): string {
     // Ensure the raw data is in Uint8Array form
-    const uint8Array = this.rawData instanceof Uint8Array
-      ? this.rawData
-      : new Uint8Array(this.rawData);
+    const uint8Array = this.getUint8Array();
     
       // Calculate the expected size based on the shape
     const expectedSize = this.shape.reduce((a, b) => a * b);
-    
-    // Check for offsets or mismatched sizes
-    let offset = 0;
-    if (uint8Array.length > expectedSize) {
-      console.warn(`Mismatch in raw data size: expected ${expectedSize}, but got ${uint8Array.length}. Ignoring first ${uint8Array.length - expectedSize} elements.`);
-      offset = uint8Array.length - expectedSize;
-    } else if (uint8Array.length < expectedSize) {
+    if (uint8Array.length !== expectedSize) {
       throw new Error(`Mismatch in raw data size: expected ${expectedSize}, but got ${uint8Array.length}`);
     }
 
-    // Adjust for any offset and slice to the expected size
-    const adjustedArray = uint8Array.slice(offset);
-
     // Convert to Base64
-    return btoa(String.fromCharCode(...adjustedArray));
+    return btoa(String.fromCharCode(...uint8Array));
   }
 }
