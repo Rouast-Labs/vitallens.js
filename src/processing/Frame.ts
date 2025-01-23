@@ -122,7 +122,7 @@ export class Frame {
    * Returns the data as a Uint8Array
    * @returns The data as a Uint8Array
    */
-  private getUint8Array() {
+  getUint8Array() {
     if (this.dtype === 'uint8') return new Uint8Array(this.rawData);
 
     const TypedArrayClass = this.getTypedArrayClass();
@@ -164,24 +164,5 @@ export class Frame {
    */
   getROI(): ROI[] {
     return this.roi;
-  }
-
-  /**
-   * Converts the raw data of the frame to a Base64-encoded string.
-   * If the raw data is already a Uint8Array, it directly encodes it; otherwise,
-   * it creates a Uint8Array from the raw buffer.
-   */
-  getBase64Data(): string {
-    // Ensure the raw data is in Uint8Array form
-    const uint8Array = this.getUint8Array();
-    
-      // Calculate the expected size based on the shape
-    const expectedSize = this.shape.reduce((a, b) => a * b);
-    if (uint8Array.length !== expectedSize) {
-      throw new Error(`Mismatch in raw data size: expected ${expectedSize}, but got ${uint8Array.length}`);
-    }
-
-    // Convert to Base64
-    return btoa(String.fromCharCode(...uint8Array));
   }
 }

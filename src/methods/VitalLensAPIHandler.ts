@@ -52,28 +52,28 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @param state - Optional recurrent state from the previous API call.
    * @returns A promise that resolves to the processed result.
    */
-  async process(framesChunk: Frame, state?: any): Promise<VitalLensResult | undefined> {
+  async process(framesChunk: Frame, state?: Float32Array): Promise<VitalLensResult | undefined> {
     if (!this.webSocketClient.getIsConnected()) {
       return undefined;
     }
     
     try {
+      // Capture the start time
+      const startTime = performance.now();
       // Store the roi.
       const roi = framesChunk.getROI();
-      const videoBase64 = framesChunk.getBase64Data();
-      // Prepare the payload.
-      const payload = {
-        action: 'sendFrames',
-        version: 'vitallens-dev',
-        frames: videoBase64,
-        origin: 'vitallens.js',
-        ...(state && { state: JSON.stringify(state) }),
-      };
+      const metadata = {
+        'action': 'sendFrames',
+        'version': 'vitallens-dev',
+        'origin': 'vitallens.js' 
+      }
       // Send the payload via WebSocket.
-      // TODO: Most of the time socket just closes - Why?
-      console.log("About to send payload:", payload);
-      console.log("payload.frame:", payload.frames);
-      const response = await this.webSocketClient.send(payload);
+      console.log(`Sending a request for ${framesChunk.getShape()[0]} frames`);
+      const response = await this.webSocketClient.sendFrames(metadata, framesChunk.getUint8Array(), state);
+      // Capture the end time and calculate the duration
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      console.log(`WebSocket response received in ${duration.toFixed(2)} ms`);
       // Parse the WebSocket response.
       if (!response || typeof response.statusCode !== 'number') {
         throw new VitalLensAPIError('Invalid response format');
@@ -101,10 +101,6 @@ export class VitalLensAPIHandler extends MethodHandler {
       const vitalSigns = parsedResponse.vital_signs || {};
       const face = parsedResponse.face || {};
       const newState = parsedResponse.state || [];
-      const message = parsedResponse.message || 'No message';
-
-      // Log the parsed response.
-      console.log("Parsed response:", { vitalSigns, newState, state, face, message });
 
       return {
         face: {

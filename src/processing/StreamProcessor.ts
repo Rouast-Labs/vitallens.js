@@ -1,10 +1,11 @@
 import { MethodConfig } from '../config/methodsConfig';
-import { ROI, VitalLensOptions } from '../types';
-import { Frame } from './Frame';
+import { ROI, VitalLensOptions, VitalLensResult } from '../types';
 import { BufferManager } from './BufferManager';
 import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
 import { IFrameIterator } from './FrameIterator.base';
 import { IFaceDetector } from '../types/IFaceDetector';
+import { mergeFrames } from '../utils/frameOps';
+import { MethodHandler } from '../methods/MethodHandler';
 
 /**
  * Manages the processing loop for live streams, including frame capture,
@@ -19,6 +20,7 @@ export class StreamProcessor {
   private lastProcessedTime: number = 0; // In seconds
   private lastFaceDetectionTime: number = 0; // In seconds
   private faceDetector: IFaceDetector | null = null;
+  private methodHandler: MethodHandler;
 
   constructor(
     private options: VitalLensOptions,
@@ -26,12 +28,13 @@ export class StreamProcessor {
     private frameIterator: IFrameIterator,
     private bufferManager: BufferManager,
     faceDetector: IFaceDetector,
-    private onPredict: (frames: Frame[]) => Promise<void>
+    methodHandler: MethodHandler,
+    private onPredict: (result: VitalLensResult) => Promise<void>
   ) {
+    this.methodHandler = methodHandler;
     // Derive target fps
     this.targetFps = this.options.overrideFpsTarget ? this.options.overrideFpsTarget : this.methodConfig.fpsTarget;
     this.fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0;
-
     if (options.globalRoi) {
       this.roi = options.globalRoi;
       this.bufferManager.addBuffer(options.globalRoi, this.methodConfig, 1);
@@ -67,10 +70,7 @@ export class StreamProcessor {
           if (this.faceDetector && currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs) {
             // Run face detection
             this.lastFaceDetectionTime = currentTime;
-            console.log("FaceDet started");
             this.faceDetector.run(frame, async (dets) => {
-              console.log("FaceDet finished");
-              console.log(`Number of buffers: ${this.bufferManager.getNBuffers()}`);
               if (frame.getShape().length === 3) {
                 const absoluteDet = {
                   x: Math.round(dets[0].x * frame.getShape()[1]),
@@ -98,17 +98,26 @@ export class StreamProcessor {
           // Add frame to buffer(s)
           await this.bufferManager.add(frame, currentTime);
   
-          if (this.bufferManager.isReady() && !this.isPredicting) {
-            console.log("Predict");
+          if (this.bufferManager.isReady() && this.methodHandler.getReady() && !this.isPredicting) {
             this.isPredicting = true;
-            const frames = this.bufferManager.consume();
-            // We are taking over the reference count on these frames from the buffer. No need to retain. 
-            console.log("Entering StreamProcessor.onPredict");
-            await this.onPredict(frames).finally(() => {
-              console.log("onPredict.finally");
-              this.isPredicting = false;
-            });
-            console.log("Exiting StreamProcessor.onPredict");
+            // Consume frames and prepare for prediction
+            const frames = this.bufferManager.consume();       
+            const framesChunk = mergeFrames(frames);
+            // Run the prediction in the background 
+            this.methodHandler
+              .process(framesChunk, this.bufferManager.getState())
+              .then((incrementalResult) => {
+                if (incrementalResult) {
+                  this.bufferManager.setState(incrementalResult.state);
+                  this.onPredict(incrementalResult);
+                }
+              })
+              .catch((error) => {
+                console.error("Error during prediction:", error);
+              })
+              .finally(() => {
+                this.isPredicting = false;
+              });
           }
         }
       }

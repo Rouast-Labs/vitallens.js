@@ -8,7 +8,6 @@ import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { IVitalLensController } from '../types/IVitalLensController';
 import { API_ENDPOINT } from '../config/constants';
 import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
-import { mergeFrames } from '../utils/frameOps';
 import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
 import { IFaceDetector } from '../types/IFaceDetector';
 
@@ -87,21 +86,10 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       frameIterator,
       this.bufferManager,
       this.faceDetector,
-      async (frames) => {
-        if (this.methodHandler.getReady()) {
-          const framesChunk = mergeFrames(frames);
-          const incrementalResult = await this.methodHandler.process(
-            framesChunk,
-            this.bufferManager.getState()
-          );
-          if (incrementalResult) {
-            console.log("incrementalResult:", incrementalResult);
-            this.bufferManager.setState(incrementalResult.state);
-            const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "aggregated");        
-            console.log("result:", result);
-            this.dispatchEvent('vitals', result);
-          }
-        }
+      this.methodHandler,
+      async (incrementalResult) => {
+        const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "aggregated");
+        this.dispatchEvent('vitals', result);
       }
     );
   }

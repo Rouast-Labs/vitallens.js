@@ -116,33 +116,6 @@ describe('Frame Class', () => {
     tensor.dispose();
   });
 
-  test('getBase64Data converts raw data to Base64 if initialized from uint8 array', () => {
-    const array = new Uint8Array([72, 101, 108, 108, 111]); // "Hello" in ASCII
-    const frame = new Frame(array.buffer, [1, 5], 'uint8' as tf.DataType);
-
-    expect(frame.getBase64Data()).toBe('SGVsbG8='); // Base64 encoding of "Hello"
-  });
-
-  test('getBase64Data converts raw data to Base64 if initialized from int32 array', () => {
-    const tensor = tf.tensor([72, 101, 108, 108, 111], [5, 1], 'int32'); // "Hello" in ASCII
-    const frame = Frame.fromTensor(tensor);
-
-    expect(frame.getBase64Data()).toBe('SGVsbG8='); // Base64 encoding of "Hello"
-  });
-
-  test('getBase64Data handles mismatched sizes by throwing an error', () => {
-    // [1,5] shape needs 5 elements, but we have 7
-    const array = new Uint8Array([72, 101, 108, 108, 111, 0, 0]); // "Hello" + extra
-    const frame = new Frame(array.buffer, [1, 5], 'uint8' as tf.DataType);
-
-    // According to your current implementation, if the size doesn't match exactly,
-    // it throws an error in getBase64Data.
-    // Adjust this test if you want different behavior (like ignoring padding).
-    expect(() => frame.getBase64Data()).toThrowError(
-      /Mismatch in raw data size: expected 5, but got 7/
-    );
-  });
-
   test('getTensor throws error for insufficient raw data', () => {
     const rawData = new Uint8Array([1, 2, 3]).buffer; // Smaller than shape
     // shape: [2, 1, 3] => expects 6 elements
