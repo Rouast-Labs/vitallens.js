@@ -10,6 +10,7 @@ export interface VitalLensOptions {
   method: 'vitallens' | 'pos' | 'chrom' | 'g';
   apiKey?: string;
   waveformDataMode?: 'incremental' | 'aggregated' | 'complete';
+  requestMode?: 'websocket' | 'rest';
   overrideFpsTarget?: number;
   globalRoi?: ROI;
   fDetFs?: number;

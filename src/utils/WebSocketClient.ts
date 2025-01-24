@@ -1,15 +1,7 @@
+import { uint8ArrayToBase64 } from "./frameOps";
+
 const MESSAGE_SIZE = 32 * 1024; // Max. 128 KB per message
 const MAX_OVERHEAD = 256; // Max. overhead per message
-
-function uint8ArrayToBase64(uint8Array: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 65536; // Process in 64 KB chunks
-  for (let i = 0; i < uint8Array.length; i += chunkSize) {
-    const chunk = uint8Array.subarray(i, i + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-  return btoa(binary);
-}
 
 /**
  * Utility class for managing WebSocket communication.
@@ -57,13 +49,13 @@ export class WebSocketClient {
    * @returns The server's response as a JSON-parsed object.
    */
   async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<any> {
+    // TODO: Also make sure less than 900 frames
     if (!this.isConnected || !this.socket) {
       throw new Error('WebSocket is not connected');
     }
 
     const messageId = this.generateUniqueMessageId();
     const base64Frames = uint8ArrayToBase64(frames);
-    // Split base64Frames into chunks of MESSAGE_SIZE
     const availableSizePerMessage = MESSAGE_SIZE - MAX_OVERHEAD;
     const totalChunks = Math.ceil(base64Frames.length / availableSizePerMessage);
     const chunkSize = Math.ceil(base64Frames.length / totalChunks);
@@ -102,8 +94,7 @@ export class WebSocketClient {
           data: chunkData,
         };
 
-        const payloadString = JSON.stringify(chunkPayload);
-        this.socket!.send(payloadString);
+        this.socket!.send(JSON.stringify(chunkPayload));
       }
 
       // Encode state to Base64 if provided

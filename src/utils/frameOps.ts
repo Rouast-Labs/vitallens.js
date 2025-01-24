@@ -31,3 +31,13 @@ export function mergeFrames(frames: Frame[]): Frame {
 
   return mergedFrame;
 }
+
+export function uint8ArrayToBase64(uint8Array: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 65536; // Process in 64 KB chunks
+  for (let i = 0; i < uint8Array.length; i += chunkSize) {
+    const chunk = uint8Array.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}

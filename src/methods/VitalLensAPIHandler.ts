@@ -1,32 +1,39 @@
-import { MethodHandler } from './MethodHandler';
 import { VitalLensOptions, VitalLensResult } from '../types/core';
+import { MethodHandler } from './MethodHandler';
 import { WebSocketClient } from '../utils/WebSocketClient';
+import { RestClient } from '../utils/RestClient';
 import { Frame } from '../processing/Frame';
 import { VitalLensAPIError, VitalLensAPIKeyError, VitalLensAPIQuotaExceededError } from '../utils/errors';
 
 /**
- * Handler for processing frames using the VitalLens API via WebSocket.
+ * Handler for processing frames using the VitalLens API via WebSocket or REST.
  */
 export class VitalLensAPIHandler extends MethodHandler {
-  private webSocketClient: WebSocketClient;
+  private client: WebSocketClient | RestClient;
+  private options: VitalLensOptions;
 
-  constructor(webSocketClient: WebSocketClient, options: VitalLensOptions) {
+  constructor(client: WebSocketClient | RestClient, options: VitalLensOptions) {
     super(options);
-    this.webSocketClient = webSocketClient;
+    this.client = client;
+    this.options = options;
   }
 
   /**
    * Initialise the method.
    */
   async init(): Promise<void> {
-    this.webSocketClient.connect();
+    if (this.client instanceof WebSocketClient) {
+      await this.client.connect();
+    }
   }
 
   /**
    * Cleanup the method.
    */
   async cleanup(): Promise<void> {
-    this.webSocketClient.close();
+    if (this.client instanceof WebSocketClient) {
+      this.client.close();
+    }
   }
 
   /**
@@ -34,8 +41,10 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @returns Whether the method is ready for prediction.
    */
   getReady(): boolean {
-    // Ready if WebSocket is connected.
-    return this.webSocketClient.getIsConnected();
+    if (this.client instanceof WebSocketClient) {
+      return this.client.getIsConnected();
+    }
+    return true; // REST client is always ready
   }
 
   /**
@@ -47,40 +56,49 @@ export class VitalLensAPIHandler extends MethodHandler {
   }
 
   /**
-   * Sends a buffer of frames to the VitalLens API via WebSocket and processes the response.
+   * Sends a buffer of frames to the VitalLens API via the selected client and processes the response.
    * @param framesChunk - Frame chunk to send, already in shape (n_frames, 40, 40, 3).
    * @param state - Optional recurrent state from the previous API call.
    * @returns A promise that resolves to the processed result.
    */
   async process(framesChunk: Frame, state?: Float32Array): Promise<VitalLensResult | undefined> {
-    if (!this.webSocketClient.getIsConnected()) {
+    if (this.client instanceof WebSocketClient && !this.client.getIsConnected()) {
       return undefined;
     }
     
     try {
       // Capture the start time
       const startTime = performance.now();
+      
       // Store the roi.
       const roi = framesChunk.getROI();
       const metadata = {
-        'action': 'sendFrames',
         'version': 'vitallens-dev',
         'origin': 'vitallens.js' 
+      };
+
+      let response;
+
+      // Send the payload via the selected client
+      if (this.client instanceof WebSocketClient) {
+        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state);
+      } else if (this.client instanceof RestClient) {
+        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state);
       }
-      // Send the payload via WebSocket.
-      console.log(`Sending a request for ${framesChunk.getShape()[0]} frames`);
-      const response = await this.webSocketClient.sendFrames(metadata, framesChunk.getUint8Array(), state);
+
       // Capture the end time and calculate the duration
       const endTime = performance.now();
       const duration = endTime - startTime;
-      console.log(`WebSocket response received in ${duration.toFixed(2)} ms`);
-      // Parse the WebSocket response.
+      console.log(`API response received in ${duration.toFixed(2)} ms`);
+
+      // Parse the response
       if (!response || typeof response.statusCode !== 'number') {
         throw new VitalLensAPIError('Invalid response format');
       }
+
       // Handle errors based on status code
       if (response.statusCode !== 200) {
-        const message = response.body ? JSON.parse(response.body).message : 'Unknown error';
+        const message = response.body ? response.body.message : 'Unknown error';
         if (response.statusCode === 403) {
           throw new VitalLensAPIKeyError();
         } else if (response.statusCode === 429) {
@@ -97,7 +115,7 @@ export class VitalLensAPIHandler extends MethodHandler {
       }
 
       // Parse the successful response
-      const parsedResponse = JSON.parse(response.body);
+      const parsedResponse = response.body;
       const vitalSigns = parsedResponse.vital_signs || {};
       const face = parsedResponse.face || {};
       const newState = parsedResponse.state || [];

@@ -6,10 +6,11 @@ import { WebSocketClient } from '../utils/WebSocketClient';
 import { VitalLensOptions, VitalLensResult, VideoInput } from '../types/core';
 import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { IVitalLensController } from '../types/IVitalLensController';
-import { API_ENDPOINT } from '../config/constants';
+import { REST_ENDPOINT, WEBSOCKET_ENDPOINT } from '../config/constants';
 import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
 import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
 import { IFaceDetector } from '../types/IFaceDetector';
+import { RestClient } from '../utils/RestClient';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -28,9 +29,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
 
   constructor(protected options: VitalLensOptions) {
     this.methodConfig = METHODS_CONFIG[this.options.method]
-    
     this.bufferManager = new BufferManager();
-    
     this.methodHandler = this.createMethodHandler(this.options);
     this.frameIteratorFactory = this.createFrameIteratorFactory(this.options);
     this.vitalsEstimateManager = new VitalsEstimateManager(this.methodConfig, this.options);
@@ -59,10 +58,14 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
         'Get one for free at https://www.rouast.com/api.'
       );
     }
+    const requestMode = options.requestMode || 'rest'; // Default to REST
     const dependencies = {
-      webSocketClient: options.method === 'vitallens'
-        ? new WebSocketClient(API_ENDPOINT, this.options.apiKey!)
+      webSocketClient: options.method === 'vitallens' && requestMode === 'websocket'
+        ? new WebSocketClient(WEBSOCKET_ENDPOINT, this.options.apiKey!)
         : undefined,
+      restClient: options.method === 'vitallens' && requestMode === 'rest'
+        ? new RestClient(REST_ENDPOINT, this.options.apiKey!)
+        : undefined
     };
     return MethodHandlerFactory.createHandler(options, dependencies);
   }

@@ -1,4 +1,5 @@
-export const API_ENDPOINT = 'wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/';
+export const WEBSOCKET_ENDPOINT = 'wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/';
+export const REST_ENDPOINT = "https://api.rouast.com/vitallens-dev";
 
 // Vitals estimation constraints [1/min]
 export const CALC_HR_MIN = 40;
