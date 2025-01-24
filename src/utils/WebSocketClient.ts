@@ -1,3 +1,4 @@
+import { WEBSOCKET_ENDPOINT } from "../config/constants";
 import { uint8ArrayToBase64 } from "./frameOps";
 
 const MESSAGE_SIZE = 32 * 1024; // Max. 128 KB per message
@@ -11,8 +12,8 @@ export class WebSocketClient {
   private url: string;
   private isConnected: boolean = false;
 
-  constructor(url: string, apiKey: string) {
-    this.url = `${url}?x-api-key=${encodeURIComponent(apiKey)}`;
+  constructor(apiKey: string) {
+    this.url = `${WEBSOCKET_ENDPOINT}?x-api-key=${encodeURIComponent(apiKey)}`;
   }
 
   /**

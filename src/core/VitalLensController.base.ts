@@ -6,7 +6,6 @@ import { WebSocketClient } from '../utils/WebSocketClient';
 import { VitalLensOptions, VitalLensResult, VideoInput } from '../types/core';
 import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { IVitalLensController } from '../types/IVitalLensController';
-import { REST_ENDPOINT, WEBSOCKET_ENDPOINT } from '../config/constants';
 import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
 import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
 import { IFaceDetector } from '../types/IFaceDetector';
@@ -61,10 +60,10 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     const requestMode = options.requestMode || 'rest'; // Default to REST
     const dependencies = {
       webSocketClient: options.method === 'vitallens' && requestMode === 'websocket'
-        ? new WebSocketClient(WEBSOCKET_ENDPOINT, this.options.apiKey!)
+        ? new WebSocketClient(this.options.apiKey!)
         : undefined,
       restClient: options.method === 'vitallens' && requestMode === 'rest'
-        ? new RestClient(REST_ENDPOINT, this.options.apiKey!)
+        ? new RestClient(this.options.apiKey!)
         : undefined
     };
     return MethodHandlerFactory.createHandler(options, dependencies);

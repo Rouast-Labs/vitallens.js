@@ -1,3 +1,4 @@
+import { REST_ENDPOINT } from "../config/constants";
 import { VitalLensResult } from "../types";
 import { uint8ArrayToBase64 } from "./frameOps";
 
@@ -5,12 +6,11 @@ import { uint8ArrayToBase64 } from "./frameOps";
  * Utility class for managing REST communication.
  */
 export class RestClient {
-  private url: string;
+  private url: string = REST_ENDPOINT;
   private apiKey: string;
   private headers: Record<string, string>;
 
-  constructor(url: string, apiKey: string) {
-    this.url = url;
+  constructor(apiKey: string) {
     this.apiKey = apiKey;
     this.headers = {
       'Content-Type': 'application/json',
