@@ -100,12 +100,11 @@ export class StreamProcessor {
   
           if (this.bufferManager.isReady() && this.methodHandler.getReady() && !this.isPredicting) {
             this.isPredicting = true;
-            // Consume frames and prepare for prediction
             const frames = this.bufferManager.consume();       
-            const framesChunk = mergeFrames(frames);
-            // Run the prediction in the background 
-            this.methodHandler
-              .process(framesChunk, this.bufferManager.getState())
+            mergeFrames(frames)
+              .then((framesChunk) => {
+                return this.methodHandler.process(framesChunk, this.bufferManager.getState());
+              })
               .then((incrementalResult) => {
                 if (incrementalResult) {
                   this.bufferManager.setState(incrementalResult.state);

@@ -83,11 +83,6 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       currentTimestamps.length,
       newTimestamps.findIndex(ts => !currentTimestamps.includes(ts))
     );
-    console.log("detected overlap:", overlap);
-    // Limit overlap to methodConfig.windowOverlap
-    if (overlap > this.methodConfig.windowOverlap) {
-      console.warn("Detected overlap exceeds methodConfig.windowOverlap. Frames may have been dropped.");
-    }
 
     // Update timestamps
     this.updateTimestamps(sourceId, incrementalResult.time, waveformDataMode, overlap);
