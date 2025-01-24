@@ -50,7 +50,6 @@ export class WebSocketClient {
    * @returns The server's response as a JSON-parsed object.
    */
   async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<any> {
-    // TODO: Also make sure less than 900 frames
     if (!this.isConnected || !this.socket) {
       throw new Error('WebSocket is not connected');
     }

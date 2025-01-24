@@ -4,7 +4,7 @@ import { VitalLens } from '../dist/vitallens.browser.js';
 const options = {
   method: 'vitallens',
   // fDetFs: 0.1,
-  apiKey: "YOUR_AP_KEY",
+  apiKey: "YOUR_API_KEY",
   globalRoi: { x: 200, y: 70, width: 250, height: 300 },
 };
 
@@ -18,7 +18,7 @@ function log(...txt) {
 }
 
 // Helper to draw ROIs and vital stats
-function drawVitals(canvas, video, result, fps) {
+function drawVitals(canvas, video, result) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
@@ -28,36 +28,36 @@ function drawVitals(canvas, video, result, fps) {
   // Draw FPS
   ctx.font = 'small-caps 20px "Segoe UI"';
   ctx.fillStyle = 'white';
-  ctx.fillText(`FPS: ${fps}`, 10, 25);
+  if (result.fps) ctx.fillText(`FPS (Webcam): ${result.fps.toFixed(1)}`, 10, 25);
+  if (result.estFps) ctx.fillText(`FPS (Estimation): ${result.estFps.toFixed(1)}`, 10, 50);
 
   // Draw ROIs
   if (result.face && result.face.coordinates.length > 0) {
-    for (const roi of result.face.coordinates) {
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'red';
-      ctx.globalAlpha = 0.6;
-      ctx.beginPath();
-      ctx.rect(
-        roi.x * canvas.width / video.videoWidth,
-        roi.y * canvas.height / video.videoHeight,
-        roi.width * canvas.width / video.videoWidth,
-        roi.height * canvas.height / video.videoHeight
-      );
-      ctx.stroke();
-    }
+    const roi = result.face.coordinates[0];
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'red';
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.rect(
+      roi.x * canvas.width / video.videoWidth,
+      roi.y * canvas.height / video.videoHeight,
+      roi.width * canvas.width / video.videoWidth,
+      roi.height * canvas.height / video.videoHeight
+    );
+    ctx.stroke();
   }
 
   // Draw Heart Rate
   ctx.fillStyle = 'red';
   ctx.globalAlpha = 1;
-  ctx.fillText(`Heart Rate: ${result.vital_signs.heart_rate.value || 'N/A'} bpm`, 10, 50);
+  if (result.vital_signs.heart_rate?.value) {
+    ctx.fillText(`Heart Rate: ${result.vital_signs.heart_rate.value.toFixed(0) || 'N/A'} bpm`, 10, 75);
+  } 
 }
 
 async function detectVitals(video, canvas) {
-  const t0 = performance.now();
   vitallens.addEventListener('vitals', (result) => {
-    const fps = 1000 / (performance.now() - t0);
-    drawVitals(canvas, video, result, fps.toFixed(1));
+    drawVitals(canvas, video, result);
   });
   vitallens.start();
 }

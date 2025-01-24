@@ -70,8 +70,6 @@ export class RestClient {
    * @returns The server's response as a JSON-parsed object.
    */
   async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<VitalLensResult> {
-    // TODO: Make sure less than 900 frames
-    
     const base64Frames = uint8ArrayToBase64(frames);
     const base64State = state ? btoa(String.fromCharCode(...new Uint8Array(state.buffer))) : null;
 

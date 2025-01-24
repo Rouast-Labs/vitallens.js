@@ -1,5 +1,5 @@
 import { MethodConfig } from "../config/methodsConfig";
-import { ROI, VitalLensOptions, VitalLensResult } from "../types/core";
+import { VitalLensOptions, VitalLensResult } from "../types/core";
 import { IVitalsEstimateManager } from '../types/IVitalsEstimateManager';
 import { 
   AGG_WINDOW_SIZE, CALC_HR_MAX, CALC_HR_MIN, CALC_HR_MIN_WINDOW_SIZE, CALC_HR_WINDOW_SIZE, 
@@ -19,6 +19,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   private faces: Map<string, { coordinates: [number, number, number, number][], confidence: number[] }> = new Map();
   private faceNote: Map<string, string> = new Map();
   private message: Map<string, string> = new Map();
+  private lastEstimateTimestamps: Map<string, number> = new Map();
   private fpsTarget: number;
   private bufferSizeAgg: number;
   private bufferSizePpg: number;
@@ -51,6 +52,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     sourceId: string,
     defaultWaveformDataMode: string
   ): Promise<VitalLensResult> {
+    const currentTime = performance.now();
     const ppgWaveformData = incrementalResult.vital_signs?.ppg_waveform?.data;
     const ppgWaveformConf = incrementalResult.vital_signs?.ppg_waveform?.confidence;
     const respiratoryWaveformData = incrementalResult.vital_signs?.respiratory_waveform?.data;
@@ -73,7 +75,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (!this.waveformNotes.has(sourceId)) this.waveformNotes.set(sourceId, { ppg: "", resp: "" });
     if (!this.faceNote.has(sourceId)) this.faceNote.set(sourceId, "");
     if (!this.message.has(sourceId)) this.message.set(sourceId, "");
-  
+
     // Update timestamps
     this.updateTimestamps(sourceId, incrementalResult.time, waveformDataMode);
 
@@ -83,9 +85,15 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     // Update waveforms
     this.updateWaveforms(sourceId, incrementalResult.vital_signs, waveformDataMode);
 
+    // Update message
     if (incrementalResult.message) this.message.set(sourceId, incrementalResult.message);
 
-    return await this.computeAggregatedResult(sourceId, waveformDataMode, incrementalResult);
+    // Compute estimation fps
+    const lastEstimateTimestamp = this.lastEstimateTimestamps.get(sourceId);
+    const estFps = lastEstimateTimestamp ? 1000 / (currentTime - lastEstimateTimestamp) : undefined;
+    this.lastEstimateTimestamps.set(sourceId, currentTime);
+
+    return await this.computeAggregatedResult(sourceId, waveformDataMode, incrementalResult, estFps);
   }
 
   /**
@@ -263,17 +271,20 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param sourceId - The source identifier.
    * @param waveformDataMode - Sets how much of waveforms is returned to user.
    * @param incrementalResult - The latest incremental result - pass if returning incrementally
+   * @param estFps - The rate at which estimates are being computed.
    * @returns The aggregated VitalLensResult.
    */
   private async computeAggregatedResult(
     sourceId: string,
     waveformDataMode: string,
-    incrementalResult?: any
+    incrementalResult?: any,
+    estFps?: number
   ): Promise<VitalLensResult> {
     const waveforms = this.waveforms.get(sourceId)!;
     const waveformNotes = this.waveformNotes.get(sourceId)!;
     const timestamps = this.timestamps.get(sourceId);
     const faces = this.faces.get(sourceId);
+    const message = this.message.get(sourceId);
     const result: VitalLensResult = { face: {}, vital_signs: {}, time: [], message: "" };
 
     if (timestamps) {
@@ -406,6 +417,19 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           };
         }
       }
+    }
+
+    const fps = this.getCurrentFps(sourceId, this.bufferSizeAgg);
+    if (fps) {
+      result.fps = fps;
+    }
+
+    if (estFps) {
+      result.estFps = estFps;  
+    }
+
+    if (message) {
+      result.message = message;
     }
 
     return result;
