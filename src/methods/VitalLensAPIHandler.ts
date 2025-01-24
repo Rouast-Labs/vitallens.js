@@ -89,7 +89,7 @@ export class VitalLensAPIHandler extends MethodHandler {
       // Capture the end time and calculate the duration
       const endTime = performance.now();
       const duration = endTime - startTime;
-      console.log(`API response received in ${duration.toFixed(2)} ms`);
+      console.log(`API response received in ${duration.toFixed(0)} ms`);
 
       // Parse the response
       if (!response || typeof response.statusCode !== 'number') {
