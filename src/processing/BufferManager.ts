@@ -97,8 +97,9 @@ export class BufferManager {
    * @returns The consumed frames or an empty array if no buffer is ready.
    */
   consume(): Frame[] {
+    const hasState = this.state !== null;
     const readyBuffer = this.getReadyBuffer();
-    return readyBuffer ? readyBuffer.consume() : [];
+    return readyBuffer ? readyBuffer.consume(hasState) : [];
   }
 
   /**

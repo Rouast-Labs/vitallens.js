@@ -76,14 +76,27 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (!this.faceNote.has(sourceId)) this.faceNote.set(sourceId, "");
     if (!this.message.has(sourceId)) this.message.set(sourceId, "");
 
+    // Determine overlap
+    const currentTimestamps: number[] = this.timestamps.get(sourceId)!;
+    const newTimestamps: number[] = incrementalResult.time;
+    const overlap = Math.min(
+      currentTimestamps.length,
+      newTimestamps.findIndex(ts => !currentTimestamps.includes(ts))
+    );
+    console.log("detected overlap:", overlap);
+    // Limit overlap to methodConfig.windowOverlap
+    if (overlap > this.methodConfig.windowOverlap) {
+      console.warn("Detected overlap exceeds methodConfig.windowOverlap. Frames may have been dropped.");
+    }
+
     // Update timestamps
-    this.updateTimestamps(sourceId, incrementalResult.time, waveformDataMode);
+    this.updateTimestamps(sourceId, incrementalResult.time, waveformDataMode, overlap);
 
     // Update faces
-    if (incrementalResult.face) this.updateFaces(sourceId, incrementalResult.face, waveformDataMode);
+    if (incrementalResult.face) this.updateFaces(sourceId, incrementalResult.face, waveformDataMode, overlap);
     
     // Update waveforms
-    this.updateWaveforms(sourceId, incrementalResult.vital_signs, waveformDataMode);
+    this.updateWaveforms(sourceId, incrementalResult.vital_signs, waveformDataMode, overlap);
 
     // Update message
     if (incrementalResult.message) this.message.set(sourceId, incrementalResult.message);
@@ -102,14 +115,15 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param currentValues - The existing array of values to update.
    * @param addValues - The new values to add to the existing array.
    * @param waveformDataMode - The mode that determines how the array is updated:
+   * @param overlap - The overlap.
    * @returns A new array containing the updated values, with overlap handled and trimmed to the buffer size if required.
    */
   private getUpdatedValues<T>(
     currentValues: T[],
     addValues: T[],
-    waveformDataMode: string
+    waveformDataMode: string,
+    overlap: number
   ): T[] {
-    const overlap = Math.min(this.methodConfig.windowOverlap, currentValues.length);
     const maxBufferSize = Math.max(this.bufferSizePpg, this.bufferSizeResp);
     const nonOverlappingValues = addValues.slice(overlap);
     const updatedValues = [...currentValues, ...nonOverlappingValues];
@@ -128,6 +142,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param incremental - The new incremental values to add to the buffer.
    * @param waveformDataMode - Determines if trimming to max buffer size is needed.
    * @param maxBufferSize - The maximum buffer size for the updated arrays.
+   * @param overlap - The overlap.
    * @returns An object containing the updated sum and count arrays.
    */
   private getUpdatedSumCount(
@@ -135,6 +150,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     incremental: number[],
     waveformDataMode: string,
     maxBufferSize: number,
+    overlap: number
   ): { sum: number[]; count: number[] } {
     // Destructure sum and count from current buffer
     let { sum: currentSum, count: currentCount } = currentBuffer;
@@ -147,29 +163,26 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       };
     }
 
-    const overlap = this.methodConfig.windowOverlap;
-    const overlapSize = Math.min(overlap, currentSum.length);
-
     // Handle the overlapping region
-    const existingTailSum = currentSum.slice(-overlapSize);
-    const incrementalHead = incremental.slice(0, overlapSize);
+    const existingTailSum = currentSum.slice(-overlap);
+    const incrementalHead = incremental.slice(0, overlap);
 
     const updatedTailSum = existingTailSum.map((val, idx) => val + incrementalHead[idx]);
-    const updatedTailCount = currentCount.slice(-overlapSize).map((val) => val + 1);
+    const updatedTailCount = currentCount.slice(-overlap).map((val) => val + 1);
 
     // Handle the non-overlapping region
-    const nonOverlappingSum = incremental.slice(overlapSize);
+    const nonOverlappingSum = incremental.slice(overlap);
     const nonOverlappingCount = Array(nonOverlappingSum.length).fill(1);
 
     // Concatenate updated and non-overlapping regions
     let updatedSum = [
-      ...currentSum.slice(0, -overlapSize), // Keep the initial part
+      ...currentSum.slice(0, -overlap), // Keep the initial part
       ...updatedTailSum, // Update the overlapping part
       ...nonOverlappingSum, // Append the new non-overlapping region
     ];
 
     let updatedCount = [
-      ...currentCount.slice(0, -overlapSize), // Keep the initial part
+      ...currentCount.slice(0, -overlap), // Keep the initial part
       ...updatedTailCount, // Update the overlapping part
       ...nonOverlappingCount, // Append the new non-overlapping region
     ];
@@ -188,15 +201,17 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * Updates the stored timestamps for a given source ID
    * @param sourceId - The unique identifier for the data source (e.g., streamId or videoId).
    * @param newTimestamps - An array of new timestamps to be appended.
-   * @param waveformDataMode - Defines the mode for waveform data management:
+   * @param waveformDataMode - Defines the mode for waveform data management
+   * @param overlap - The overlap.
    */
   private updateTimestamps(
     sourceId: string,
     newTimestamps: VitalLensResult["time"],
-    waveformDataMode: string
+    waveformDataMode: string,
+    overlap: number
   ): void {
     const currentTimestamps = this.timestamps.get(sourceId)!;
-    const updatedTimestamps = this.getUpdatedValues(currentTimestamps, newTimestamps, waveformDataMode);
+    const updatedTimestamps = this.getUpdatedValues(currentTimestamps, newTimestamps, waveformDataMode, overlap);
     this.timestamps.set(sourceId, updatedTimestamps);
   }
 
@@ -204,17 +219,19 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * Updates the stored faces for a given source ID
    * @param sourceId - The unique identifier for the data source (e.g., streamId or videoId).
    * @param newFaces - An array of new faces to be appended.
-   * @param waveformDataMode - Defines the mode for waveform data management:
+   * @param waveformDataMode - Defines the mode for waveform data management
+   * @param overlap - The overlap.
    */
   private updateFaces(
     sourceId: string,
     newFaces: VitalLensResult["face"],
-    waveformDataMode: string
+    waveformDataMode: string,
+    overlap: number
   ): void {
     const currentFaces = this.faces.get(sourceId)!;
     if (newFaces.confidence && newFaces.coordinates) {
-      const updatedFaceCoordinates = this.getUpdatedValues(currentFaces.coordinates, newFaces.coordinates, waveformDataMode);
-      const updatedFaceConfidences = this.getUpdatedValues(currentFaces.confidence, newFaces.confidence, waveformDataMode);
+      const updatedFaceCoordinates = this.getUpdatedValues(currentFaces.coordinates, newFaces.coordinates, waveformDataMode, overlap);
+      const updatedFaceConfidences = this.getUpdatedValues(currentFaces.confidence, newFaces.confidence, waveformDataMode, overlap);
       this.faces.set(sourceId, { coordinates: updatedFaceCoordinates, confidence: updatedFaceConfidences }); 
     }
     if (newFaces.note) this.faceNote.set(sourceId, newFaces.note);
@@ -225,11 +242,13 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param sourceId - The identifier for the data source (e.g., device or session ID).
    * @param newVitals - New waveform data and confidence values from `VitalLensResult.vital_signs`.
    * @param waveformDataMode - Specifies whether to trim buffers ("incremental") or keep all data ("complete").
+   * @param overlap - The overlap.
    */
   private updateWaveforms(
     sourceId: string,
     newVitals: VitalLensResult["vital_signs"],
-    waveformDataMode: string
+    waveformDataMode: string,
+    overlap: number
   ): void {
     const currentWaveforms = this.waveforms.get(sourceId) || {
       ppgData: { sum: [], count: [] }, ppgConf: { sum: [], count: [] },
@@ -245,15 +264,15 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     let respNote = currentWaveformNotes.resp;
 
     if (newVitals.ppg_waveform?.data && newVitals.ppg_waveform?.confidence){
-      updatedPpgData = this.getUpdatedSumCount(currentWaveforms.ppgData, newVitals.ppg_waveform.data, waveformDataMode, this.bufferSizePpg);
-      updatedPpgConf = this.getUpdatedSumCount(currentWaveforms.ppgConf, newVitals.ppg_waveform.confidence, waveformDataMode, this.bufferSizePpg);
+      updatedPpgData = this.getUpdatedSumCount(currentWaveforms.ppgData, newVitals.ppg_waveform.data, waveformDataMode, this.bufferSizePpg, overlap);
+      updatedPpgConf = this.getUpdatedSumCount(currentWaveforms.ppgConf, newVitals.ppg_waveform.confidence, waveformDataMode, this.bufferSizePpg, overlap);
     }
 
     if (newVitals.ppg_waveform?.note) ppgNote = newVitals.ppg_waveform.note;
 
     if (newVitals.respiratory_waveform?.data && newVitals.respiratory_waveform?.confidence){
-      updatedRespData = this.getUpdatedSumCount(currentWaveforms.respData, newVitals.respiratory_waveform.data, waveformDataMode, this.bufferSizeResp);
-      updatedRespConf = this.getUpdatedSumCount(currentWaveforms.respConf, newVitals.respiratory_waveform.confidence, waveformDataMode, this.bufferSizeResp);
+      updatedRespData = this.getUpdatedSumCount(currentWaveforms.respData, newVitals.respiratory_waveform.data, waveformDataMode, this.bufferSizeResp, overlap);
+      updatedRespConf = this.getUpdatedSumCount(currentWaveforms.respConf, newVitals.respiratory_waveform.confidence, waveformDataMode, this.bufferSizeResp, overlap);
     }
     
     if (newVitals.respiratory_waveform?.note) respNote = newVitals.respiratory_waveform.note;

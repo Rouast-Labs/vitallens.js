@@ -52,11 +52,15 @@ export abstract class Buffer {
   
   /**
    * Consumes frames from the buffer but retains the last `minFrames`.
+   * @param hasState - Whether state is available
    * @returns An array of consumed frames.
    */
-  consume(): Frame[] {
+  consume(hasState: boolean): Frame[] {
     const keys = Array.from(this.buffer.keys()).sort((a, b) => a - b);
-    const retainCount = Math.min(this.methodConfig.minWindowLength, this.buffer.size);
+    const minWindowLength = (this.methodConfig.minWindowLengthState && hasState)
+      ? Math.min(this.methodConfig.minWindowLengthState, this.methodConfig.minWindowLength)
+      : this.methodConfig.minWindowLength; 
+    const retainCount = Math.min(minWindowLength-1, this.buffer.size);
     const retainKeys = keys.slice(-retainCount);
 
     const consumedFrames = keys.map((key) => {

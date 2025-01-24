@@ -46,7 +46,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     fpsTarget: 30,
     minWindowLength: 64,
     maxWindowLength: 64,
-    windowOverlap: 0,
+    windowOverlap: 63,
     requiresState: false
   },
 };
