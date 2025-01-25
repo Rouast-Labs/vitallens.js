@@ -82,7 +82,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     const newTimestamps: number[] = incrementalResult.time;
     const overlap = Math.min(
       currentTimestamps.length,
-      newTimestamps.findIndex(ts => !currentTimestamps.includes(ts))
+      Math.max(0, newTimestamps.findIndex(ts => !currentTimestamps.includes(ts)))
     );
 
     // Update timestamps
@@ -159,29 +159,44 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       };
     }
 
-    // Handle the overlapping region
-    const existingTailSum = currentSum.slice(-overlap);
-    const incrementalHead = incremental.slice(0, overlap);
+    let updatedSum;
+    let updatedCount;
+    if (overlap === 0) {
+      updatedSum = [...currentSum, ...incremental];
+      updatedCount = [...currentCount, ...Array(incremental.length).fill(1)];
+    } else {
+      // Handle the overlapping region
+      const existingTailSum = currentSum.slice(-overlap);
+      const incrementalHead = incremental.slice(0, overlap);
 
-    const updatedTailSum = existingTailSum.map((val, idx) => val + incrementalHead[idx]);
-    const updatedTailCount = currentCount.slice(-overlap).map((val) => val + 1);
+      const updatedTailSum = existingTailSum.map((val, idx) => val + incrementalHead[idx]);
+      const updatedTailCount = currentCount.slice(-overlap).map((val) => val + 1);
 
-    // Handle the non-overlapping region
-    const nonOverlappingSum = incremental.slice(overlap);
-    const nonOverlappingCount = Array(nonOverlappingSum.length).fill(1);
+      if (currentSum.length !== currentCount.length) {
+        console.error("Sum/Count length mismatch!", currentSum, currentCount);
+      }
 
-    // Concatenate updated and non-overlapping regions
-    let updatedSum = [
-      ...currentSum.slice(0, -overlap), // Keep the initial part
-      ...updatedTailSum, // Update the overlapping part
-      ...nonOverlappingSum, // Append the new non-overlapping region
-    ];
+      if (existingTailSum.length !== incrementalHead.length) {
+        console.error("Overlap length mismatch!", existingTailSum, incrementalHead);
+      }
 
-    let updatedCount = [
-      ...currentCount.slice(0, -overlap), // Keep the initial part
-      ...updatedTailCount, // Update the overlapping part
-      ...nonOverlappingCount, // Append the new non-overlapping region
-    ];
+      // Handle the non-overlapping region
+      const nonOverlappingSum = incremental.slice(overlap);
+      const nonOverlappingCount = Array(nonOverlappingSum.length).fill(1);
+
+      // Concatenate updated and non-overlapping regions
+      updatedSum = [
+        ...currentSum.slice(0, -overlap), // Keep the initial part
+        ...updatedTailSum, // Update the overlapping part
+        ...nonOverlappingSum, // Append the new non-overlapping region
+      ];
+
+      updatedCount = [
+        ...currentCount.slice(0, -overlap), // Keep the initial part
+        ...updatedTailCount, // Update the overlapping part
+        ...nonOverlappingCount, // Append the new non-overlapping region
+      ];
+    }
 
     // Trim buffers to maximum size if necessary
     if (waveformDataMode !== "complete" && updatedSum.length > maxBufferSize) {

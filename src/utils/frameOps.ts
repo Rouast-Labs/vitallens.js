@@ -43,6 +43,18 @@ export function uint8ArrayToBase64(uint8Array: Uint8Array): string {
 }
 
 /**
+ * Converts a Float32Array into a base64 string
+ */
+export function float32ArrayToBase64Browser(arr: Float32Array): string {   
+  const uint8 = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+  let binaryString = "";
+  for (let i = 0; i < uint8.length; i++) {
+    binaryString += String.fromCharCode(uint8[i]);
+  }
+  return btoa(binaryString);
+}
+
+/**
  * Estimates the required moving average size to achieve a given response.
  * @param samplingFreq - The sampling frequency [Hz].
  * @param cutoffFreq - The desired cutoff frequency [Hz].

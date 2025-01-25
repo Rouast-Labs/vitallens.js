@@ -16,12 +16,11 @@ export abstract class Buffer {
   /**
    * Adds a frame to the buffer.
    * @param frame - The frame to add.
-   * @param timestamp - The timestamp of the frame.
    */
-  async add(frame: Frame, timestamp: number): Promise<void> {
+  async add(frame: Frame): Promise<void> {
     const processedFrame = await this.preprocess(frame, this.roi, this.methodConfig);
-    
-    this.buffer.set(timestamp, processedFrame);
+    const frameTime = frame.getTimestamp()[0];
+    this.buffer.set(frameTime, processedFrame);
 
     // Maintain the maximum buffer size
     while (this.buffer.size > this.methodConfig.maxWindowLength) {
@@ -52,12 +51,11 @@ export abstract class Buffer {
   
   /**
    * Consumes frames from the buffer but retains the last `minFrames`.
-   * @param hasState - Whether state is available
    * @returns An array of consumed frames.
    */
-  consume(hasState: boolean): Frame[] {
+  consume(): Frame[] {
     const keys = Array.from(this.buffer.keys()).sort((a, b) => a - b);
-    const minWindowLength = (this.methodConfig.minWindowLengthState && hasState)
+    const minWindowLength = (this.methodConfig.minWindowLengthState)
       ? Math.min(this.methodConfig.minWindowLengthState, this.methodConfig.minWindowLength)
       : this.methodConfig.minWindowLength; 
     const retainCount = Math.min(minWindowLength-1, this.buffer.size);

@@ -10,7 +10,7 @@ import { RGBBuffer } from './RGBBuffer';
  */
 export class BufferManager {
   private buffers: Map<string, { buffer: Buffer; createdAt: number }>; // Map of buffer ID to buffer and creation timestamp
-  private state: any = null; // Optional recurrent state
+  private state: Float32Array | null = null;
   
   constructor() {
     this.buffers = new Map();
@@ -84,11 +84,10 @@ export class BufferManager {
   /**
    * Adds a frame to the active buffers.
    * @param frame - The frame to add.
-   * @param timestamp - The timestamp of the frame.
    */
-  async add(frame: Frame, timestamp: number): Promise<void> {
+  async add(frame: Frame): Promise<void> {
     for (const { buffer, createdAt } of this.buffers.values()) {
-      buffer.add(frame, timestamp);
+      buffer.add(frame);
     }
   }
 
@@ -97,9 +96,8 @@ export class BufferManager {
    * @returns The consumed frames or an empty array if no buffer is ready.
    */
   consume(): Frame[] {
-    const hasState = this.state !== null;
     const readyBuffer = this.getReadyBuffer();
-    return readyBuffer ? readyBuffer.consume(hasState) : [];
+    return readyBuffer ? readyBuffer.consume() : [];
   }
 
   /**
@@ -107,12 +105,12 @@ export class BufferManager {
    * @param timestamp - The current timestamp.
    */
   private cleanupBuffers(timestamp: number): void {
-    for (const [id, { buffer, createdAt }] of this.buffers.entries()) {
+    this.buffers.forEach(({ createdAt, buffer }, id) => {
       if (createdAt < timestamp) {
         buffer.clear();
         this.buffers.delete(id);
       }
-    }
+    });
   }
 
   /**
@@ -130,19 +128,22 @@ export class BufferManager {
    * Sets the recurrent state.
    * @param state - The new state to set.
    */
-  setState(state: any): void {
+  setState(state: Float32Array): void {
     this.state = state;
+  }
+
+  /**
+   * Reset the recurrent state to null.
+   */
+  resetState(): void {
+    this.state = null;
   }
 
   /**
    * Gets the current recurrent state.
    * @returns The current state.
    */
-  getState(): any {
+  getState(): Float32Array | null {
     return this.state;
-  }
-
-  getNBuffers(): number {
-    return this.buffers.size;
   }
 }

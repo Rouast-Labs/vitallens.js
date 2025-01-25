@@ -1,6 +1,6 @@
 import { REST_ENDPOINT } from "../config/constants";
 import { VitalLensResult } from "../types";
-import { uint8ArrayToBase64 } from "./frameOps";
+import { float32ArrayToBase64Browser, uint8ArrayToBase64 } from "./frameOps";
 
 /**
  * Utility class for managing REST communication.
@@ -71,14 +71,14 @@ export class RestClient {
    */
   async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<VitalLensResult> {
     const base64Frames = uint8ArrayToBase64(frames);
-    const base64State = state ? btoa(String.fromCharCode(...new Uint8Array(state.buffer))) : null;
-
+    
     const payload: Record<string, any> = {
       video: base64Frames,
       ...metadata
     }
 
-    if (base64State) {
+    if (state) {
+      const base64State = float32ArrayToBase64Browser(state);
       payload.state = base64State;
     }
 

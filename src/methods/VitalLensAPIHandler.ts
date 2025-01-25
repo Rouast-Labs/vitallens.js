@@ -115,22 +115,23 @@ export class VitalLensAPIHandler extends MethodHandler {
       }
 
       // Parse the successful response
-      const parsedResponse = response.body;
-      const vitalSigns = parsedResponse.vital_signs || {};
-      const face = parsedResponse.face || {};
-      const newState = parsedResponse.state || [];
-
-      return {
-        face: {
-          coordinates: roi.map(roi => [roi.x, roi.y, roi.width, roi.height]),
-          confidence: face.confidence,
-          note: "Face detection coordinates for this face, along with live confidence levels."
-        },
-        vital_signs: vitalSigns,
-        state: newState,
-        time: framesChunk.getTimestamp(),
-        message: "The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes."
-      };
+      const parsedResponse = response.body as VitalLensResult;
+      if (parsedResponse.vital_signs.ppg_waveform && parsedResponse.vital_signs.respiratory_waveform && parsedResponse.state) {
+        const n = parsedResponse.vital_signs.ppg_waveform.data.length;
+        return {
+          face: {
+            coordinates: (roi.map(roi => [roi.x, roi.y, roi.width, roi.height]) as [number, number, number, number][]).slice(-n),
+            confidence: parsedResponse.face.confidence?.slice(-n),
+            note: "Face detection coordinates for this face, along with live confidence levels."
+          },
+          vital_signs: parsedResponse.vital_signs,
+          state: parsedResponse.state,
+          time: framesChunk.getTimestamp().slice(-n),
+          message: "The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes."
+        };
+      } else {
+        return undefined;
+      }
     } catch (error) {
       throw new Error(`VitalLens API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

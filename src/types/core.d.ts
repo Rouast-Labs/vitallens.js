@@ -52,7 +52,10 @@ export interface VitalLensResult {
     };
   };
   time: number[];
-  state?: any[];
+  state?: {
+    data: Float32Array,
+    note: string
+  }
   fps?: number;
   estFps?: number;
   message: string;
