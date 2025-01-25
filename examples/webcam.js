@@ -66,8 +66,50 @@ function updateChart(chart, data) {
   chart.update();
 }
 
+function drawFaceBox(canvas, video, coordinates) {
+  const context = canvas.getContext('2d');
+
+  // Clear the canvas
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Ensure the canvas matches the video dimensions
+  canvas.width = video.offsetWidth;
+  canvas.height = video.offsetHeight;
+
+  // Check if coordinates are valid
+  if (!coordinates || coordinates.length === 0) {
+    console.warn('No coordinates provided to drawFaceBox.');
+    return;
+  }
+
+  // Get the most recent face box coordinates
+  const [x, y, width, height] = coordinates[coordinates.length - 1];
+
+  // Scale the coordinates to the current video size
+  const scaleX = canvas.width / video.videoWidth;
+  const scaleY = canvas.height / video.videoHeight;
+
+  const adjustedX = x * scaleX;
+  const adjustedY = y * scaleY;
+  const adjustedWidth = width * scaleX;
+  const adjustedHeight = height * scaleY;
+
+  // Draw the face box
+  context.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+  context.lineWidth = 2;
+  context.strokeRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+}
+
 // VitalLens Event Handlers
 function handleVitalLensResults(result) {
+  const { face, vital_signs } = result;
+  const canvas = document.getElementById('canvas');
+  const video = document.getElementById('video');
+
+  if (face?.coordinates?.length) {
+    drawFaceBox(canvas, video, face.coordinates);
+  }
+
   const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } = result.vital_signs;
 
   if (ppg_waveform?.data) updateChart(charts.ppgChart, ppg_waveform.data);
@@ -89,6 +131,7 @@ function updateStats(elementId, label, value) {
 
 // Layout Adjustment
 function adjustVideoLayout(video) {
+  const canvas = document.getElementById('canvas');
   const chartsContainer = document.querySelector('.charts-container');
   const availableHeight = window.innerHeight - chartsContainer.offsetHeight;
   const availableWidth = window.innerWidth;
@@ -104,6 +147,12 @@ function adjustVideoLayout(video) {
     video.style.position = 'absolute';
     video.style.top = `${(availableHeight - video.offsetHeight) / 2}px`;
     video.style.left = '0';
+
+    // Sync canvas dimensions and position
+    canvas.style.width = video.style.width;
+    canvas.style.height = video.offsetHeight + 'px';
+    canvas.style.top = video.style.top;
+    canvas.style.left = video.style.left;
   } else {
     // Fit by height, add black bars on left and right
     video.style.width = 'auto';
@@ -112,6 +161,12 @@ function adjustVideoLayout(video) {
     video.style.position = 'absolute';
     video.style.top = '0';
     video.style.left = `${(availableWidth - video.offsetWidth) / 2}px`;
+
+    // Sync canvas dimensions and position
+    canvas.style.width = video.offsetWidth + 'px';
+    canvas.style.height = video.style.height;
+    canvas.style.top = video.style.top;
+    canvas.style.left = video.style.left;
   }
 }
 
