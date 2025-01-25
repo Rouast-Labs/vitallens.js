@@ -1,100 +1,196 @@
-import { VitalLens } from '../dist/vitallens.browser.js';
+// Import VitalLens
+import { VitalLens } from './dist/vitallens.browser.js';
 
-// Configuration
 const options = {
   method: 'vitallens',
-  // fDetFs: 0.1,
+  waveformDataMode: 'aggregated',
   apiKey: "YOUR_API_KEY",
   globalRoi: { x: 200, y: 70, width: 250, height: 300 },
 };
 
 const vitallens = new VitalLens(options);
+let isProcessing = false;
+let stopTimeout = null;
 
-// Helper to log messages
-function log(...txt) {
-  console.log(...txt); // eslint-disable-line no-console
-  const div = document.getElementById('log');
-  if (div) div.innerHTML += `<br>${txt}`;
+const MAX_DATA_POINTS = 300;
+
+// Initialize charts
+const charts = {
+  ppgChart: createChart('ppgChart', 'Pulse', 'red'),
+  respChart: createChart('respChart', 'Respiration', 'blue'),
+};
+
+function createChart(elementId, label, color) {
+  return new Chart(document.getElementById(elementId).getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label,
+        data: [],
+        borderColor: color,
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 0,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'start',
+          labels: {
+            boxWidth: 0,
+            color,
+            font: { size: 16, weight: 'bold' },
+          },
+        },
+      },
+      scales: { x: { display: false }, y: { display: false } },
+    },
+  });
 }
 
-// Helper to draw ROIs and vital stats
-function drawVitals(canvas, video, result) {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+function updateChart(chart, data) {
+  chart.data.datasets[0].data.push(...data);
+  chart.data.labels.push(...data.map((_, i) => i));
 
-  // Clear the canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Draw FPS
-  ctx.font = 'small-caps 20px "Segoe UI"';
-  ctx.fillStyle = 'white';
-  if (result.fps) ctx.fillText(`FPS (Webcam): ${result.fps.toFixed(1)}`, 10, 25);
-  if (result.estFps) ctx.fillText(`FPS (Estimation): ${result.estFps.toFixed(1)}`, 10, 50);
-
-  // Draw ROIs
-  if (result.face && result.face.coordinates.length > 0) {
-    const roi = result.face.coordinates[0];
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'red';
-    ctx.globalAlpha = 0.6;
-    ctx.beginPath();
-    ctx.rect(
-      roi.x * canvas.width / video.videoWidth,
-      roi.y * canvas.height / video.videoHeight,
-      roi.width * canvas.width / video.videoWidth,
-      roi.height * canvas.height / video.videoHeight
-    );
-    ctx.stroke();
+  if (chart.data.datasets[0].data.length > MAX_DATA_POINTS) {
+    chart.data.datasets[0].data = chart.data.datasets[0].data.slice(-MAX_DATA_POINTS);
+    chart.data.labels = chart.data.labels.slice(-MAX_DATA_POINTS);
   }
 
-  // Draw Heart Rate
-  ctx.fillStyle = 'red';
-  ctx.globalAlpha = 1;
-  if (result.vital_signs.heart_rate?.value) {
-    ctx.fillText(`Heart Rate: ${result.vital_signs.heart_rate.value.toFixed(0) || 'N/A'} bpm`, 10, 75);
-  } 
+  chart.update();
 }
 
-async function detectVitals(video, canvas) {
-  vitallens.addEventListener('vitals', (result) => {
-    drawVitals(canvas, video, result);
+// VitalLens Event Handlers
+function handleVitalLensResults(result) {
+  const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } = result.vital_signs;
+
+  if (ppg_waveform?.data) updateChart(charts.ppgChart, ppg_waveform.data);
+  if (respiratory_waveform?.data) updateChart(charts.respChart, respiratory_waveform.data);
+
+  updateStats('ppgStats', 'HR   bpm', heart_rate?.value);
+  updateStats('respStats', 'RR   bpm', respiratory_rate?.value);
+}
+
+function updateStats(elementId, label, value) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  const color = elementId === 'ppgStats' ? 'red' : 'blue';
+  element.innerHTML = `
+    <p style="font-size: 12px; margin: 0; color: ${color};">${label}</p>
+    <p style="font-size: 48px; margin: 16px 0 0; font-weight: bold; color: ${color};">${value?.toFixed(0) || 'N/A'}</p>
+  `;
+}
+
+// Layout Adjustment
+function adjustVideoLayout(video) {
+  const chartsContainer = document.querySelector('.charts-container');
+  const availableHeight = window.innerHeight - chartsContainer.offsetHeight;
+  const availableWidth = window.innerWidth;
+
+  const videoAspectRatio = video.videoWidth / video.videoHeight;
+  const availableAspectRatio = availableWidth / availableHeight;
+
+  if (videoAspectRatio > availableAspectRatio) {
+    // Fit by width, add black bars on top and bottom
+    video.style.width = '100%';
+    video.style.height = 'auto';
+    video.style.objectFit = 'contain';
+    video.style.position = 'absolute';
+    video.style.top = `${(availableHeight - video.offsetHeight) / 2}px`;
+    video.style.left = '0';
+  } else {
+    // Fit by height, add black bars on left and right
+    video.style.width = 'auto';
+    video.style.height = `${availableHeight}px`;
+    video.style.objectFit = 'contain';
+    video.style.position = 'absolute';
+    video.style.top = '0';
+    video.style.left = `${(availableWidth - video.offsetWidth) / 2}px`;
+  }
+}
+
+function adjustChartsAndStatsLayout() {
+  const chartsContainer = document.querySelector('.charts-container');
+  const statsElements = document.querySelectorAll('.stats-container');
+
+  if (chartsContainer) {
+    chartsContainer.style.height = `${window.innerHeight * 0.4}px`;
+    chartsContainer.style.width = '100%';
+  }
+
+  statsElements.forEach((stats) => {
+    stats.style.height = `${window.innerHeight * 0.2}px`;
+    stats.style.width = '100%';
   });
-  vitallens.start();
 }
 
-// Initialize webcam and start detection
+// Start/Stop VitalLens
+function toggleVitalLens() {
+  if (isProcessing) {
+    clearTimeout(stopTimeout);
+    vitallens.pause();
+    console.log('VitalLens paused.');
+  } else {
+    vitallens.start();
+    console.log('VitalLens started.');
+    stopTimeout = setTimeout(toggleVitalLens, 30000);
+  }
+  isProcessing = !isProcessing;
+}
+
+async function startVitalLens() {
+  if (!isProcessing) {
+    vitallens.addEventListener('vitals', handleVitalLensResults);
+    vitallens.start();
+    console.log('VitalLens started.');
+    isProcessing = true;
+    stopTimeout = setTimeout(toggleVitalLens, 30000);
+  }
+}
+
+// Webcam Setup
 async function setupCamera() {
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
-  if (!video || !canvas) return;
 
-  log('Setting up camera...');
-  if (!navigator.mediaDevices) {
-    log('Camera Error: access not supported');
+  if (!video || !canvas) {
+    console.error('Video or canvas element not found.');
     return;
   }
 
-  const constraints = { audio: false, video: { facingMode: 'user' } };
-  const stream = await navigator.mediaDevices.getUserMedia(constraints).catch((err) => {
-    log('Camera Error:', err.message);
-    return null;
-  });
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user' } });
+    video.srcObject = stream;
+    await vitallens.addStream(stream, video);
 
-  if (!stream) return;
+    video.onloadeddata = () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      adjustVideoLayout(video);
+      adjustChartsAndStatsLayout();
+      video.play();
 
-  video.srcObject = stream;
-  await vitallens.addStream(stream, video);
+      startVitalLens();
 
-  video.onloadeddata = () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    video.play();
-    detectVitals(video, canvas);
-  };
+      video.addEventListener('click', toggleVitalLens);
+      window.addEventListener('resize', () => {
+        adjustVideoLayout(video);
+        adjustChartsAndStatsLayout();
+      });
+    };
+  } catch (err) {
+    console.error('Camera Error:', err);
+  }
 }
 
-// Start the application
+// App Initialization
 window.onload = async () => {
-  log('Initializing VitalLens...');
+  console.log('Initializing VitalLens...');
   await setupCamera();
 };

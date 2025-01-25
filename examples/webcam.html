@@ -6,11 +6,92 @@
     <meta name="viewport" content="width=device-width, shrink-to-fit=yes">
     <meta name="application-name" content="VitalLens">
     <meta name="description" content="VitalLens Webcam Demo for live vital sign estimation">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="./webcam.js" type="module"></script>
+    <style>
+      body {
+        font-family: monospace;
+        background: black;
+        color: white;
+        font-size: 16px;
+        line-height: 22px;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      .video {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 0;
+        width: 100%;
+        height: auto;
+      }
+
+      .canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 10;
+      }
+
+      #log {
+        overflow-y: scroll;
+        height: 16.5rem;
+      }
+
+      .charts-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: black;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .chart-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .chart-container {
+        flex-grow: 1;
+      }
+
+      .vital-stats {
+        min-width: 150px;
+        text-align: left;
+        color: white;
+      }
+    </style>
   </head>
-  <body style="font-family: monospace; background: black; color: white; font-size: 16px; line-height: 22px; margin: 0; overflow: hidden">
+  <body>
     <video id="video" autoplay muted playsinline class="video"></video>
-    <canvas id="canvas" class="canvas" style="position: fixed; top: 0; left: 0; z-index: 10"></canvas>
-    <div id="log" style="overflow-y: scroll; height: 16.5rem"></div>
+    <canvas id="canvas" class="canvas"></canvas>
+    <div id="log"></div>
+
+    <div class="charts-container">
+      <!-- PPG Chart -->
+      <div class="chart-wrapper">
+        <div class="chart-container">
+          <canvas id="ppgChart"></canvas>
+        </div>
+        <div class="vital-stats" id="ppgStats">
+        </div>
+      </div>
+
+      <!-- Respiratory Chart -->
+      <div class="chart-wrapper">
+        <div class="chart-container">
+          <canvas id="respChart"></canvas>
+        </div>
+        <div class="vital-stats" id="respStats">
+        </div>
+      </div>
+    </div>
   </body>
 </html>
