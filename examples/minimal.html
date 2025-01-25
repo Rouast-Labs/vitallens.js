@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VitalLens Example</title>
+</head>
+<body>
+  <h1>VitalLens.js Example</h1>
+  <video id="video" autoplay muted playsinline class="video"></video>
+  <p>Check the console for real-time vital estimates.</p>
+
+  <script type="module">
+    import { VitalLens } from './vitallens.browser.js';
+
+    const options = {
+      method: 'vitallens',
+      apiKey: 'YOUR_API_KEY',
+      globalRoi: { x: 200, y: 70, width: 250, height: 300 }
+    };
+
+    const vitallens = new VitalLens(options);
+
+    async function detectVitals() {
+      // Set up webcam
+      const video = document.getElementById('video');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user' } });
+      video.srcObject = stream;
+      await vitallens.addStream(stream, video);
+
+      // Listen for vitals events
+      vitallens.addEventListener('vitals', (result) => {
+        console.log(result); // Log detected vitals
+      });
+
+      // Start VitalLens
+      vitallens.start();
+
+      // Stop detection after 30 seconds
+      setTimeout(() => vitallens.stop(), 30000);
+    }
+
+    // Initialize and start VitalLens
+    window.onload = async () => {
+      console.log('Initializing VitalLens...');
+      await detectVitals();
+    };
+  </script>
+</body>
+</html>

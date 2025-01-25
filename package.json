@@ -18,7 +18,8 @@
     "build": "tsc && rollup -c",
     "test": "jest --coverage",
     "lint": "eslint src/**/*.ts",
-    "start:webcam": "EXAMPLE_TO_OPEN=webcam nodemon scripts/server.cjs"
+    "start:webcam": "EXAMPLE_TO_OPEN=webcam nodemon scripts/server.cjs",
+    "start:minimal": "EXAMPLE_TO_OPEN=minimal nodemon scripts/server.cjs"
   },
   "keywords": [
     "vital signs",
