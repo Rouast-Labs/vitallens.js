@@ -35,7 +35,7 @@ export class StreamFrameIterator extends FrameIteratorBase {
   /**
    * Starts the iterator by initializing the video element and playing the stream.
    */
-  async start(): Promise<void> {   
+  async start(): Promise<void> { 
     if (!this.videoElement) {
       this.videoElement = document.createElement('video');
       this.videoElement.srcObject = this.stream;
@@ -52,6 +52,8 @@ export class StreamFrameIterator extends FrameIteratorBase {
     } catch (error) {
       console.error('Failed to start video playback:', error);
     }
+
+    this.isClosed = false;
   }
 
   /**
@@ -87,10 +89,7 @@ export class StreamFrameIterator extends FrameIteratorBase {
     super.stop();
     if (this.videoElement) {
       this.videoElement.pause();
-      this.videoElement.srcObject = null;
     }
-    if (this.stream) {
-      this.stream.getTracks().forEach((track) => track.stop());
-    }
+    this.isClosed = true;
   }
 }

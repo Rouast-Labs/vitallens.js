@@ -20,15 +20,15 @@ export class StreamProcessor {
   private fDetFs: number = 1.0;
   private lastProcessedTime: number = 0; // In seconds
   private lastFaceDetectionTime: number = 0; // In seconds
-  private faceDetector: IFaceDetector | null = null;
   private methodHandler: MethodHandler;
+  private useFaceDetector: boolean;
 
   constructor(
     private options: VitalLensOptions,
     private methodConfig: MethodConfig,
     private frameIterator: IFrameIterator,
     private bufferManager: BufferManager,
-    faceDetector: IFaceDetector,
+    private faceDetector: IFaceDetector,
     methodHandler: MethodHandler,
     private onPredict: (result: VitalLensResult) => Promise<void>
   ) {
@@ -36,11 +36,13 @@ export class StreamProcessor {
     // Derive target fps
     this.targetFps = this.options.overrideFpsTarget ? this.options.overrideFpsTarget : this.methodConfig.fpsTarget;
     this.fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0;
-    if (options.globalRoi) {
-      this.roi = options.globalRoi;
-      this.bufferManager.addBuffer(options.globalRoi, this.methodConfig, 1);
-    } else {
-      this.faceDetector = faceDetector;
+    this.useFaceDetector = this.options.globalRoi === undefined;
+  }
+
+  init() {
+    if (!this.useFaceDetector && this.options.globalRoi) {
+      this.roi = this.options.globalRoi;
+      this.bufferManager.addBuffer(this.options.globalRoi, this.methodConfig, 1);
     }
   }
 
@@ -48,9 +50,9 @@ export class StreamProcessor {
    * Starts the stream processing loop.
    */
   async start(): Promise<void> {
+    this.init();
     this.isPaused = false;
     const iterator = this.frameIterator[Symbol.asyncIterator]();
-
     const processFrames = async () => {
       while (!this.isPaused) {
         const currentTime = performance.now()/1000; // In seconds
@@ -68,7 +70,7 @@ export class StreamProcessor {
         if (frame) {
           this.lastProcessedTime = currentTime;
 
-          if (this.faceDetector && currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs) {
+          if (this.useFaceDetector && this.faceDetector && currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs) {
             await this.handleFaceDetection(frame, currentTime);
           }
 
