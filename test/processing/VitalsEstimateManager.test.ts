@@ -1,6 +1,5 @@
 import { VitalsEstimateManager } from '../../src/processing/VitalsEstimateManager';
-import { MethodConfig } from '../../src/config/methodsConfig';
-import { VitalLensOptions } from '../../src/types/core';
+import { MethodConfig, VitalLensOptions } from '../../src/types/core';
 import { jest } from '@jest/globals';
 
 describe('VitalsEstimateManager', () => {

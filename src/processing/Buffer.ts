@@ -1,5 +1,4 @@
-import { MethodConfig } from '../config/methodsConfig';
-import { ROI } from '../types/core';
+import { MethodConfig, ROI } from '../types/core';
 import { Frame } from './Frame';
 
 /**

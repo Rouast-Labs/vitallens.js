@@ -1,8 +1,7 @@
 import { RGBBuffer } from '../../src/processing/RGBBuffer';
 import { Frame } from '../../src/processing/Frame';
-import { ROI } from '../../src/types/core';
+import { MethodConfig, ROI } from '../../src/types/core';
 import * as tf from '@tensorflow/tfjs';
-import { MethodConfig } from '../../src/config/methodsConfig';
 
 const mockROI: ROI = { x: 10, y: 10, width: 20, height: 20 };
 const mockMethodConfig: MethodConfig = { method: 'pos', inputSize: 40, fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, windowOverlap: 2, requiresState: false };

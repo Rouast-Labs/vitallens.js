@@ -1,14 +1,4 @@
-export interface MethodConfig {
-  method: 'vitallens' | 'pos' | 'chrom' | 'g';
-  fpsTarget: number;
-  roiMethod: 'face' | 'upper_body';
-  inputSize?: number;
-  minWindowLength: number;
-  minWindowLengthState?: number;
-  maxWindowLength: number;
-  windowOverlap: number;
-  requiresState: boolean;
-}
+import { MethodConfig } from "../types";
 
 export const METHODS_CONFIG: Record<string, MethodConfig> = {
   vitallens: {

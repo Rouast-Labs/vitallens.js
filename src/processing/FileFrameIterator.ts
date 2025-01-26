@@ -1,8 +1,7 @@
-import { VideoInput, VitalLensOptions, VideoProbeResult, ROI } from '../types/core';
+import { MethodConfig, VideoInput, VitalLensOptions, VideoProbeResult, ROI } from '../types/core';
 import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
-import { MethodConfig } from '../config/methodsConfig';
 import { getRepresentativeROI, getROIForMethod } from '../utils/faceOps';
 import { IFaceDetector } from '../types/IFaceDetector';
 

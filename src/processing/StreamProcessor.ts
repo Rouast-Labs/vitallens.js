@@ -1,5 +1,4 @@
-import { MethodConfig } from '../config/methodsConfig';
-import { ROI, VitalLensOptions, VitalLensResult } from '../types';
+import { MethodConfig, ROI, VitalLensOptions, VitalLensResult } from '../types';
 import { BufferManager } from './BufferManager';
 import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
 import { IFrameIterator } from './FrameIterator.base';

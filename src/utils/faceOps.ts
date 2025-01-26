@@ -1,5 +1,4 @@
-import { MethodConfig } from "../config/methodsConfig";
-import { ROI } from "../types/core";
+import { MethodConfig, ROI } from "../types/core";
 
 /**
  * Utility function to clip a value to specified dimensions.

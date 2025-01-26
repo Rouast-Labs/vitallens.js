@@ -1,9 +1,8 @@
 import { BufferManager } from '../../src/processing/BufferManager';
-import { ROI } from '../../src/types/core';
+import { MethodConfig, ROI } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
 import { FrameBuffer } from '../../src/processing/FrameBuffer';
 import { RGBBuffer } from '../../src/processing/RGBBuffer';
-import { MethodConfig } from '../../src/config/methodsConfig';
 
 jest.mock('../../src/processing/FrameBuffer');
 jest.mock('../../src/processing/RGBBuffer');

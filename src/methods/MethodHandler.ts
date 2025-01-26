@@ -1,6 +1,6 @@
-import { MethodConfig, METHODS_CONFIG } from '../config/methodsConfig';
+import { METHODS_CONFIG } from '../config/methodsConfig';
 import { Frame } from '../processing/Frame';
-import { VitalLensOptions, VitalLensResult } from '../types/core';
+import { MethodConfig, VitalLensOptions, VitalLensResult } from '../types/core';
 
 /**
  * Abstract base class for all method-specific handlers.

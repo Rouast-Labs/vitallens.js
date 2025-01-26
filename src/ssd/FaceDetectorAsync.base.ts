@@ -153,7 +153,6 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
    */
   async run(frame: Frame, onFinish: (detectionResults: ROI[]) => Promise<void>): Promise<void> {
     const detections: ROI[] = await this.detect(frame);
-    console.log(detections);
     await onFinish(detections);
   }
 }

@@ -1,5 +1,4 @@
-import { MethodConfig } from '../config/methodsConfig';
-import { VitalLensOptions, VideoInput } from '../types/core';
+import { MethodConfig, VitalLensOptions, VideoInput } from '../types/core';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { FileFrameIterator } from './FileFrameIterator';

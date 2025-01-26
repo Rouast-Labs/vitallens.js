@@ -1,5 +1,4 @@
-import { MethodConfig } from "../config/methodsConfig";
-import { VitalLensOptions, VitalLensResult } from "../types/core";
+import { MethodConfig, VitalLensOptions, VitalLensResult } from "../types/core";
 import { IVitalsEstimateManager } from '../types/IVitalsEstimateManager';
 import { 
   AGG_WINDOW_SIZE, CALC_HR_MAX, CALC_HR_MIN, CALC_HR_MIN_WINDOW_SIZE, CALC_HR_WINDOW_SIZE, 

@@ -17,6 +17,21 @@ export interface VitalLensOptions {
 }
 
 /**
+ * Options for configuring a method.
+ */
+export interface MethodConfig {
+  method: 'vitallens' | 'pos' | 'chrom' | 'g';
+  fpsTarget: number;
+  roiMethod: 'face' | 'upper_body';
+  inputSize?: number;
+  minWindowLength: number;
+  minWindowLengthState?: number;
+  maxWindowLength: number;
+  windowOverlap: number;
+  requiresState: boolean;
+}
+
+/**
  * Represents the result of a prediction or processing.
  */
 export interface VitalLensResult {

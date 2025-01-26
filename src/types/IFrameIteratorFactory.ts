@@ -1,5 +1,4 @@
-import { MethodConfig } from '../config/methodsConfig';
-import { VideoInput } from './core';
+import { MethodConfig, VideoInput } from './core';
 import { IFrameIterator } from '../processing/FrameIterator.base';
 import { IFaceDetector } from './IFaceDetector';
 

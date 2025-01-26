@@ -1,7 +1,6 @@
 import { Buffer } from '../../src/processing/Buffer';
 import { Frame } from '../../src/processing/Frame';
-import { ROI } from '../../src/types/core';
-import { MethodConfig } from '../../src/config/methodsConfig';
+import { MethodConfig, ROI } from '../../src/types/core';
 import * as tf from '@tensorflow/tfjs';
 
 // Mock Buffer class since it's abstract

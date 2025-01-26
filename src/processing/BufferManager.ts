@@ -1,7 +1,6 @@
-import { ROI } from '../types/core';
+import { MethodConfig, ROI } from '../types/core';
 import { Frame } from './Frame';
 import { Buffer } from './Buffer';
-import { MethodConfig } from '../config/methodsConfig';
 import { FrameBuffer } from './FrameBuffer';
 import { RGBBuffer } from './RGBBuffer';
 
