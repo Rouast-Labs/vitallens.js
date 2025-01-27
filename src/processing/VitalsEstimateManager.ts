@@ -109,7 +109,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @template T - The type of the elements in the array (e.g., number, ROI, etc.).
    * @param currentValues - The existing array of values to update.
    * @param addValues - The new values to add to the existing array.
-   * @param waveformDataMode - The mode that determines how the array is updated:
+   * @param waveformDataMode - The mode that determines how the array is updated
    * @param overlap - The overlap.
    * @returns A new array containing the updated values, with overlap handled and trimmed to the buffer size if required.
    */
@@ -171,14 +171,6 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       const updatedTailSum = existingTailSum.map((val, idx) => val + incrementalHead[idx]);
       const updatedTailCount = currentCount.slice(-overlap).map((val) => val + 1);
 
-      if (currentSum.length !== currentCount.length) {
-        console.error("Sum/Count length mismatch!", currentSum, currentCount);
-      }
-
-      if (existingTailSum.length !== incrementalHead.length) {
-        console.error("Overlap length mismatch!", existingTailSum, incrementalHead);
-      }
-
       // Handle the non-overlapping region
       const nonOverlappingSum = incremental.slice(overlap);
       const nonOverlappingCount = Array(nonOverlappingSum.length).fill(1);
@@ -205,7 +197,6 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
     return { sum: updatedSum, count: updatedCount };
   }
-
 
   /**
    * Updates the stored timestamps for a given source ID
@@ -322,7 +313,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (timestamps) {
       switch (waveformDataMode) {
         case 'incremental':
-          result.time = incrementalResult.time ? incrementalResult.time.slice(incrementSize) : [];
+          result.time = incrementalResult.time ? incrementalResult.time.slice(-incrementSize) : [];
           break;
         case 'aggregated':
           result.time = timestamps.slice(-this.bufferSizeAgg);
@@ -336,8 +327,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (faces) {
       switch (waveformDataMode) {
         case 'incremental':
-          result.face.coordinates = incrementalResult.face.coordinates ? incrementalResult.face.coordinates.slice(incrementSize) : [];
-          result.face.confidence = incrementalResult.face.confidence ? incrementalResult.face.confidence.slice(incrementSize) : [];
+          result.face.coordinates = incrementalResult.face.coordinates ? incrementalResult.face.coordinates.slice(-incrementSize) : [];
+          result.face.confidence = incrementalResult.face.confidence ? incrementalResult.face.confidence.slice(-incrementSize) : [];
           break;
         case 'aggregated':
           result.face.coordinates = faces.coordinates.slice(-this.bufferSizeAgg);
@@ -358,38 +349,38 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       let resultPpgData: number[] = [];
       let resultPpgConf: number[] = [];
       let resultPpgSize = 0;
+      let hrPpgSize = 0;
       switch (waveformDataMode) {
         case 'incremental':
         resultPpgSize = incrementSize;
+        hrPpgSize = Math.min(averagedPpgData.length, this.bufferSizePpg);
         resultPpgData = incrementalResult.vital_signs.ppg_waveform.data
-            ? incrementalResult.vital_signs.ppg_waveform.data.slice(incrementSize)
+            ? incrementalResult.vital_signs.ppg_waveform.data.slice(-incrementSize)
             : [];
           resultPpgConf = incrementalResult.vital_signs.ppg_waveform.confidence
-            ? incrementalResult.vital_signs.ppg_waveform.confidence.slice(incrementSize)
+            ? incrementalResult.vital_signs.ppg_waveform.confidence.slice(-incrementSize)
             : [];
           break;
         case 'aggregated':
           resultPpgSize = this.bufferSizeAgg;
+          hrPpgSize = Math.min(averagedPpgData.length, this.bufferSizePpg);
           resultPpgData = averagedPpgData.slice(-this.bufferSizeAgg);
           resultPpgConf = averagedPpgConf.slice(-this.bufferSizeAgg);
           break;
         case 'complete':
           resultPpgSize = averagedPpgData.length;
+          hrPpgSize = averagedPpgData.length;
           resultPpgData = averagedPpgData;
           resultPpgConf = averagedPpgConf;
           break;
       }
+      // Prepare ppg data for result
       if (resultPpgData.length >= this.minBufferSizePpg) {
+        // Result ppg data long enough to apply moving average
         const fpsPpg = this.getCurrentFps(sourceId, resultPpgSize);
         if (fpsPpg) {
           const windowSize = movingAverageSizeForResponse(fpsPpg, CALC_HR_MAX / 60);
           resultPpgData = applyMovingAverage(resultPpgData, windowSize);
-          result.vital_signs.heart_rate = {
-            value: this.estimateHeartRate(resultPpgData, fpsPpg),
-            confidence: resultPpgConf.reduce((a, b) => a + b, 0) / resultPpgData.length,
-            unit: "bpm",
-            note: "Estimate of the heart rate, derived from ppg_waveform.",
-          };
         }
       }
       if (resultPpgData.length > 0) {
@@ -400,6 +391,22 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           note: waveformNotes.ppg,
         }
       }
+      // Prepare hr for result
+      if (hrPpgSize >= this.minBufferSizePpg) {
+        // Ppg data long enough for hr estimation
+        const fpsHr = this.getCurrentFps(sourceId, hrPpgSize);
+        if (fpsHr) {
+          const windowSize = movingAverageSizeForResponse(fpsHr, CALC_HR_MAX / 60);
+          const hrPpgData = applyMovingAverage(averagedPpgData.slice(-hrPpgSize), windowSize);
+          const hrPpgConf = averagedPpgConf.slice(-hrPpgSize);
+          result.vital_signs.heart_rate = {
+            value: this.estimateHeartRate(hrPpgData, fpsHr),
+            confidence: hrPpgConf.reduce((a, b) => a + b, 0) / hrPpgConf.length,
+            unit: "bpm",
+            note: "Estimate of the heart rate.",
+          };
+        }
+      }
 
       // RESP
       const averagedRespData = waveforms.respData.sum.map((val, i) => val / waveforms.respData.count[i]);
@@ -407,38 +414,38 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       let resultRespData: number[] = [];
       let resultRespConf: number[] = [];
       let resultRespSize = 0;
+      let rrRespSize = 0;
       switch (waveformDataMode) {
         case 'incremental':
-        resultRespSize = incrementSize;  
+        resultRespSize = incrementSize;
+        rrRespSize = Math.min(averagedRespData.length, this.bufferSizeResp);
         resultRespData = incrementalResult.vital_signs.respiratory_waveform.data
-            ? incrementalResult.vital_signs.respiratory_waveform.data.slice(incrementSize)
+            ? incrementalResult.vital_signs.respiratory_waveform.data.slice(-incrementSize)
             : [];
           resultRespConf = incrementalResult.vital_signs.respiratory_waveform.confidence
-            ? incrementalResult.vital_signs.respiratory_waveform.confidence.slice(incrementSize)
+            ? incrementalResult.vital_signs.respiratory_waveform.confidence.slice(-incrementSize)
             : [];
           break;
         case 'aggregated':
           resultRespSize = this.bufferSizeAgg;
+          rrRespSize = Math.min(averagedRespData.length, this.bufferSizeResp);
           resultRespData = averagedRespData.slice(-this.bufferSizeAgg);
           resultRespConf = averagedRespConf.slice(-this.bufferSizeAgg);
           break;
         case 'complete':
           resultRespSize = averagedRespData.length;
+          rrRespSize = averagedRespData.length;
           resultRespData = averagedRespData;
           resultRespConf = averagedRespConf;
           break;
       }
+      // Prepare resp data for result
       if (resultRespData.length >= this.minBufferSizeResp) {
+        // Result resp data long enough to apply moving average
         const fpsResp = this.getCurrentFps(sourceId, resultRespSize);
         if (fpsResp) {
           const windowSize = movingAverageSizeForResponse(fpsResp, CALC_RR_MAX / 60);
           resultRespData = applyMovingAverage(resultRespData, windowSize);
-          result.vital_signs.respiratory_rate = {
-            value: this.estimateRespiratoryRate(resultRespData, fpsResp),
-            confidence: resultRespConf.reduce((a, b) => a + b, 0) / resultRespData.length,
-            unit: "bpm",
-            note: "Estimate of the respiratory rate, derived from respiratory_waveform.",
-          };
         }
       }
       if (resultRespData.length > 0) {
@@ -447,6 +454,22 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           confidence: resultRespConf,
           unit: 'unitless',
           note: waveformNotes.resp,
+        }
+      }
+      // Prepare rr for result
+      if (rrRespSize >= this.minBufferSizeResp) {
+        // Resp data long enough for rr estimation
+        const fpsRr = this.getCurrentFps(sourceId, rrRespSize);
+        if (fpsRr) {
+          const windowSize = movingAverageSizeForResponse(fpsRr, CALC_RR_MAX / 60);
+          const rrRespData = applyMovingAverage(averagedRespData.slice(-rrRespSize), windowSize);
+          const rrRespConf = averagedRespConf.slice(-rrRespSize);
+          result.vital_signs.respiratory_rate = {
+            value: this.estimateRespiratoryRate(rrRespData, fpsRr),
+            confidence: rrRespConf.reduce((a, b) => a + b, 0) / rrRespConf.length,
+            unit: "bpm",
+            note: "Estimate of the respiratory rate.",
+          };
         }
       }
     }
