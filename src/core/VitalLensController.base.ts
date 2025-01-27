@@ -10,6 +10,7 @@ import { METHODS_CONFIG } from '../config/methodsConfig';
 import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
 import { IFaceDetector } from '../types/IFaceDetector';
 import { RestClient } from '../utils/RestClient';
+import { isBrowser } from '../utils/env';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -75,6 +76,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @param videoElement - HTMLVideoElement to use for processing (optional).
    */
   async addStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
+    if (!isBrowser) throw new Error('addStream is not supported yet in the Node environment.');
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
 
     // TODO: Support multiple streams
@@ -98,6 +100,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
 
   /**
    * TODO: Implementation incomplete
+   * TODO: Write test
    * Processes a video file or input.
    * @param videoInput - The video input to process (string, File, or Blob).
    * @returns The results after processing the video.

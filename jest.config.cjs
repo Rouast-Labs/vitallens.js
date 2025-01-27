@@ -1,9 +1,26 @@
 module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node', // or 'jsdom' if you test browser behavior
-  transform: {
-    '^.+\\.tsx?$': 'ts-jest',
-  },
+  projects: [
+    {
+      displayName: 'node',
+      testEnvironment: 'node',
+      testMatch: ['**/*.node.test.ts', '**/*.shared.test.ts'],
+      transform: {
+        '^.+\\.tsx?$': 'ts-jest',
+      },
+      setupFilesAfterEnv: ['./jest.setup.ts'],
+    },
+    {
+      displayName: 'browser',
+      testEnvironment: 'jest-environment-jsdom',
+      testMatch: ['**/*.browser.test.ts', '**/*.shared.test.ts'],
+      transform: {
+        '^.+\\.tsx?$': 'ts-jest',
+      },
+      setupFilesAfterEnv: ['./jest.setup.ts'],
+    },
+  ],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  collectCoverage: true,
   moduleNameMapper: {
     '^@ffmpeg/ffmpeg$': '<rootDir>/node_modules/@ffmpeg/ffmpeg/dist/umd/ffmpeg.js',
   },
