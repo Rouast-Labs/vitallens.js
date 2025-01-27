@@ -1,6 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 import { ROI } from '../types';
-import { getActualSizeFromRawData } from '../utils/frameOps';
+import { getActualSizeFromRawData } from '../utils/arrayOps';
 
 /**
  * Represents one or multiple frames in the video processing pipeline.

@@ -2,7 +2,7 @@ import { MethodConfig, ROI, VitalLensOptions, VitalLensResult } from '../types';
 import { BufferManager } from './BufferManager';
 import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
 import { IFaceDetector } from '../types/IFaceDetector';
-import { mergeFrames } from '../utils/frameOps';
+import { mergeFrames } from '../utils/arrayOps';
 import { MethodHandler } from '../methods/MethodHandler';
 import { Frame } from './Frame';
 import { IFrameIterator } from '../types/IFrameIterator';

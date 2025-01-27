@@ -1,5 +1,5 @@
 import { WEBSOCKET_ENDPOINT } from "../config/constants";
-import { uint8ArrayToBase64 } from "./frameOps";
+import { uint8ArrayToBase64 } from "./arrayOps";
 
 const MESSAGE_SIZE = 32 * 1024; // Max. 128 KB per message
 const MAX_OVERHEAD = 256; // Max. overhead per message

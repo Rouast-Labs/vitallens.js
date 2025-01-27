@@ -1,3 +1,5 @@
+import * as tf from '@tensorflow/tfjs';
+
 const originalWarn = console.warn;
 
 console.warn = (message, ...args) => {
@@ -48,4 +50,7 @@ if (isBrowser) {
       this._playsInline = value;
     },
   });
+
+  // Force TensorFlow.js to use the CPU backend for browser tests
+  tf.setBackend('cpu');
 }

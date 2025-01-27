@@ -4,7 +4,6 @@ import { ROI } from '../types/core';
 
 /**
  * Merges an array of Frame objects into a single Frame asynchronously.
- * 
  * @param frames - An array of Frame objects to merge.
  * @returns A Promise resolving to a single Frame with concatenated data and concatenated timestamps.
  */
@@ -32,6 +31,11 @@ export async function mergeFrames(frames: Frame[]): Promise<Frame> {
   return mergedFrame;
 }
 
+/**
+ * Converts a Uint8Array into a base64 string.
+ * @param uint8Array The array to be converted
+ * @returns The resulting base64 string
+ */
 export function uint8ArrayToBase64(uint8Array: Uint8Array): string {
   let binary = "";
   const chunkSize = 65536; // Process in 64 KB chunks
@@ -43,9 +47,11 @@ export function uint8ArrayToBase64(uint8Array: Uint8Array): string {
 }
 
 /**
- * Converts a Float32Array into a base64 string
+ * Converts a Float32Array into a base64 string.
+ * @param arr The array to be converted
+ * @returns The resulting base64 string
  */
-export function float32ArrayToBase64Browser(arr: Float32Array): string {   
+export function float32ArrayToBase64(arr: Float32Array): string {   
   const uint8 = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
   let binaryString = "";
   for (let i = 0; i < uint8.length; i++) {
@@ -78,7 +84,7 @@ export function movingAverageSizeForResponse(samplingFreq: number, cutoffFreq: n
  */
 export function applyMovingAverage(data: number[], windowSize: number): number[] {
   if (windowSize <= 1) {
-    return data; // No smoothing needed for a window size of 1
+    return data;
   }
   
   const result = new Array(data.length).fill(0);

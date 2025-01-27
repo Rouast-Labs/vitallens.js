@@ -1,6 +1,6 @@
 import { REST_ENDPOINT } from "../config/constants";
 import { VitalLensResult } from "../types";
-import { float32ArrayToBase64Browser, uint8ArrayToBase64 } from "./frameOps";
+import { float32ArrayToBase64, uint8ArrayToBase64 } from "./arrayOps";
 
 /**
  * Utility class for managing REST communication.
@@ -78,7 +78,7 @@ export class RestClient {
     }
 
     if (state) {
-      const base64State = float32ArrayToBase64Browser(state);
+      const base64State = float32ArrayToBase64(state);
       payload.state = base64State;
     }
 

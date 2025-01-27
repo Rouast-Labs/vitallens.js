@@ -5,7 +5,7 @@ import {
   CALC_RR_MAX, CALC_RR_MIN, CALC_RR_MIN_WINDOW_SIZE, CALC_RR_WINDOW_SIZE 
 } from '../config/constants';
 import FFT from "fft.js";
-import { applyMovingAverage, movingAverageSizeForResponse } from "../utils/frameOps";
+import { applyMovingAverage, movingAverageSizeForResponse } from "../utils/arrayOps";
 
 export class VitalsEstimateManager implements IVitalsEstimateManager {
   private waveforms: Map<string, { 
