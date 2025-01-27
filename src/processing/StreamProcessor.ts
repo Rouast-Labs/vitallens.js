@@ -1,11 +1,11 @@
 import { MethodConfig, ROI, VitalLensOptions, VitalLensResult } from '../types';
 import { BufferManager } from './BufferManager';
 import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
-import { IFrameIterator } from './FrameIterator.base';
 import { IFaceDetector } from '../types/IFaceDetector';
 import { mergeFrames } from '../utils/frameOps';
 import { MethodHandler } from '../methods/MethodHandler';
 import { Frame } from './Frame';
+import { IFrameIterator } from '../types/IFrameIterator';
 
 /**
  * Manages the processing loop for live streams, including frame capture,

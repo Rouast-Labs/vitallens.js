@@ -1,14 +1,6 @@
+import { IFrameIterator } from "../types/IFrameIterator";
 import { Frame } from "./Frame";
 import { v4 as uuidv4 } from 'uuid';
-
-/**
- * Interface for frame iterators to include ID functionality.
- */
-export interface IFrameIterator extends AsyncIterable<Frame> {
-  getId(): string;
-  start(): Promise<void>;
-  stop(): void;
-}
 
 /**
  * Abstract base class for frame iterators.

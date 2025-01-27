@@ -1,6 +1,6 @@
 import { MethodConfig, VideoInput } from './core';
-import { IFrameIterator } from '../processing/FrameIterator.base';
 import { IFaceDetector } from './IFaceDetector';
+import { IFrameIterator } from './IFrameIterator';
 
 export interface IFrameIteratorFactory {
   createStreamFrameIterator(

@@ -4,8 +4,8 @@ import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { FileFrameIterator } from './FileFrameIterator';
 import { FileRGBIterator } from './FileRGBIterator';
 import { StreamFrameIterator } from './StreamFrameIterator';
-import { IFrameIterator } from './FrameIterator.base';
 import { IFaceDetector } from '../types/IFaceDetector';
+import { IFrameIterator } from '../types/IFrameIterator';
 
 /**
  * Creates iterators for video processing, including frame capture and preprocessing.
