@@ -1,24 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 import { ROI } from '../types';
-
-/**
- * Determines the size (number of elements) from an ArrayBuffer of raw data.
- * @param rawData The raw data
- * @param dtype The data type
- * @returns The number of elements in the raw data
- */
-function getActualSizeFromRawData(rawData: ArrayBuffer, dtype: tf.DataType): number {
-  switch (dtype) {
-    case 'uint8':
-      return new Uint8Array(rawData).length;
-    case 'int32':
-      return new Int32Array(rawData).length;
-    case 'float32':
-      return new Float32Array(rawData).length;
-    default:
-      throw new Error(`Unsupported dtype: ${dtype}`);
-  }
-}
+import { getActualSizeFromRawData } from '../utils/frameOps';
 
 /**
  * Represents one or multiple frames in the video processing pipeline.
