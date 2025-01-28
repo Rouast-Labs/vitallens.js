@@ -48,14 +48,11 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
     const totalChunks = Math.ceil(base64Frames.length / availableSizePerMessage);
     const chunkSize = Math.ceil(base64Frames.length / totalChunks);
 
-    console.log(`Total frame payload size: ${base64Frames.length} bytes, split into ${totalChunks + 1} chunks.`);
-
     return new Promise((resolve, reject) => {
       let receivedResponse = false;
 
       this.socket!.onmessage = (event) => {
         try {
-          console.log("Received response");
           const response = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           receivedResponse = true;
           resolve(response);
@@ -100,7 +97,6 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
       }
 
       this.socket!.send(JSON.stringify(finalChunk));
-      console.log(`Sent final chunk for message ID: ${messageId}`);
 
       // Add a timeout to reject the promise if no response is received
       setTimeout(() => {
