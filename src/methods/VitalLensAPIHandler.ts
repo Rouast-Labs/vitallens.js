@@ -1,18 +1,18 @@
 import { VitalLensOptions, VitalLensResult } from '../types/core';
 import { MethodHandler } from './MethodHandler';
-import { WebSocketClient } from '../utils/WebSocketClient';
 import { Frame } from '../processing/Frame';
 import { VitalLensAPIError, VitalLensAPIKeyError, VitalLensAPIQuotaExceededError } from '../utils/errors';
 import { IRestClient, isRestClient } from '../types/IRestClient';
+import { isWebSocketClient, IWebSocketClient } from '../types/IWebSocketClient';
 
 /**
  * Handler for processing frames using the VitalLens API via WebSocket or REST.
  */
 export class VitalLensAPIHandler extends MethodHandler {
-  private client: WebSocketClient | IRestClient;
+  private client: IWebSocketClient | IRestClient;
   private options: VitalLensOptions;
 
-  constructor(client: WebSocketClient | IRestClient, options: VitalLensOptions) {
+  constructor(client: IWebSocketClient | IRestClient, options: VitalLensOptions) {
     super(options);
     this.client = client;
     this.options = options;
@@ -22,7 +22,7 @@ export class VitalLensAPIHandler extends MethodHandler {
    * Initialise the method.
    */
   async init(): Promise<void> {
-    if (this.client instanceof WebSocketClient) {
+    if (isWebSocketClient(this.client)) {
       await this.client.connect();
     }
   }
@@ -31,7 +31,7 @@ export class VitalLensAPIHandler extends MethodHandler {
    * Cleanup the method.
    */
   async cleanup(): Promise<void> {
-    if (this.client instanceof WebSocketClient) {
+    if (isWebSocketClient(this.client)) {
       this.client.close();
     }
   }
@@ -41,7 +41,7 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @returns Whether the method is ready for prediction.
    */
   getReady(): boolean {
-    if (this.client instanceof WebSocketClient) {
+    if (isWebSocketClient(this.client)) {
       return this.client.getIsConnected();
     }
     return true; // REST client is always ready
@@ -62,7 +62,7 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @returns A promise that resolves to the processed result.
    */
   async process(framesChunk: Frame, state?: Float32Array): Promise<VitalLensResult | undefined> {
-    if (this.client instanceof WebSocketClient && !this.client.getIsConnected()) {
+    if (isWebSocketClient(this.client) && !this.client.getIsConnected()) {
       return undefined;
     }
     
@@ -80,10 +80,10 @@ export class VitalLensAPIHandler extends MethodHandler {
       let response;
 
       // Send the payload via the selected client
-      if (this.client instanceof WebSocketClient) {
-        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state);
+      if (isWebSocketClient(this.client)) {
+        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state) as any;
       } else if (isRestClient(this.client)) {
-        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state);
+        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state) as any;
       }
 
       // Capture the end time and calculate the duration

@@ -4,11 +4,11 @@ import { POSHandler } from './POSHandler';
 import { GHandler } from './GHandler';
 import { CHROMHandler } from './CHROMHandler';
 import { VitalLensOptions } from '../types/core';
-import { WebSocketClient } from '../utils/WebSocketClient';
 import { IRestClient } from '../types/IRestClient';
+import { IWebSocketClient } from '../types/IWebSocketClient';
 
 interface MethodHandlerDependencies {
-  webSocketClient?: WebSocketClient; // Optional dependency for handlers like VitalLensAPIHandler
+  webSocketClient?: IWebSocketClient; // Optional dependency for handlers like VitalLensAPIHandler
   restClient?: IRestClient;
 }
 

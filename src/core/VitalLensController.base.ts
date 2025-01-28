@@ -2,7 +2,6 @@ import { BufferManager } from '../processing/BufferManager';
 import { StreamProcessor } from '../processing/StreamProcessor';
 import { MethodHandler } from '../methods/MethodHandler';
 import { MethodHandlerFactory } from '../methods/MethodHandlerFactory';
-import { WebSocketClient } from '../utils/WebSocketClient';
 import { VitalLensOptions, VitalLensResult, VideoInput, MethodConfig } from '../types/core';
 import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { IVitalLensController } from '../types/IVitalLensController';
@@ -11,6 +10,7 @@ import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
 import { IFaceDetector } from '../types/IFaceDetector';
 import { isBrowser } from '../utils/env';
 import { IRestClient } from '../types/IRestClient';
+import { IWebSocketClient } from '../types/IWebSocketClient';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -52,6 +52,11 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   protected abstract createRestClient(apiKey: string): IRestClient;
 
   /**
+   * Subclasses must return the appropriate WebSocketClient instance.
+   */
+  protected abstract createWebSocketClient(apiKey: string): IWebSocketClient;  
+
+  /**
    * Creates the appropriate method handler based on the options.
    * @param options - Configuration options.
    * @returns The method handler instance.
@@ -66,7 +71,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     const requestMode = options.requestMode || 'rest'; // Default to REST
     const dependencies = {
       webSocketClient: options.method === 'vitallens' && requestMode === 'websocket'
-        ? new WebSocketClient(this.options.apiKey!)
+        ? this.createWebSocketClient(this.options.apiKey!)
         : undefined,
       restClient: options.method === 'vitallens' && requestMode === 'rest'
         ? this.createRestClient(this.options.apiKey!)

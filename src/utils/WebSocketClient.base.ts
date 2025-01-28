@@ -1,16 +1,25 @@
 import { WEBSOCKET_ENDPOINT } from "../config/constants";
+import { IWebSocketClient } from "../types/IWebSocketClient";
 import { uint8ArrayToBase64 } from "./arrayOps";
 
 const MESSAGE_SIZE = 32 * 1024; // Max. 128 KB per message
 const MAX_OVERHEAD = 256; // Max. overhead per message
 
+export interface BaseWebSocket {
+  onmessage: ((event: any) => void) | null;
+  onerror: ((event: any) => void) | null;
+  onclose: ((event: any) => void) | null;
+  send(data: any): void;
+  close(code?: number, reason?: string): void;
+}
+
 /**
  * Utility class for managing WebSocket communication.
  */
-export class WebSocketClient {
-  private socket: WebSocket | null = null;
-  private url: string;
-  private isConnected: boolean = false;
+export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> implements IWebSocketClient {
+  protected socket: TWebSocket | null = null;
+  protected url: string;
+  protected isConnected: boolean = false;
 
   constructor(apiKey: string) {
     this.url = `${WEBSOCKET_ENDPOINT}?x-api-key=${encodeURIComponent(apiKey)}`;
@@ -19,28 +28,7 @@ export class WebSocketClient {
   /**
    * Connects to the WebSocket server.
    */
-  async connect(): Promise<void> {
-    if (this.isConnected) return;
-
-    this.socket = new WebSocket(this.url);
-
-    return new Promise((resolve, reject) => {
-      this.socket!.onopen = () => {
-        this.isConnected = true;
-        console.log("WebSocket connected");
-        resolve();
-      };
-
-      this.socket!.onerror = (error) => {
-        reject(new Error(`WebSocket failed to connect: ${error}`));
-      };
-
-      this.socket!.onclose = (event) => {
-        console.error(`WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`);
-        this.isConnected = false;
-      };
-    });
-  }
+  abstract connect(): Promise<void>;
 
   /**
    * Sends a payload split into chunks and a final chunk of metadata.
@@ -49,7 +37,7 @@ export class WebSocketClient {
    * @param state - The state data as a Float32Array (optional).
    * @returns The server's response as a JSON-parsed object.
    */
-  async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<any> {
+  async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<Response> {
     if (!this.isConnected || !this.socket) {
       throw new Error('WebSocket is not connected');
     }

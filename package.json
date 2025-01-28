@@ -48,7 +48,8 @@
     "fft.js": "^4.0.4",
     "fluent-ffmpeg": "^2.1.3",
     "node-fetch": "^2.7.0",
-    "uuid": "^11.0.5"
+    "uuid": "^11.0.5",
+    "ws": "^8.18.0"
   },
   "peerDependencies": {
     "@tensorflow/tfjs": "^4.20.0",
@@ -67,6 +68,7 @@
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/jest": "^29.5.14",
     "@types/node-fetch": "^2.6.12",
+    "@types/ws": "^8.5.14",
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
     "eslint": "^8.57.0",

@@ -6,6 +6,8 @@ import { IFaceDetector } from '../types/IFaceDetector';
 import { FaceDetectorAsync } from '../ssd/FaceDetectorAsync.node';
 import { IRestClient } from '../types/IRestClient';
 import { RestClient } from '../utils/RestClient.node';
+import { IWebSocketClient } from '../types/IWebSocketClient';
+import { WebSocketClient } from '../utils/WebSocketClient.node';
 
 export class VitalLensController extends VitalLensControllerBase {
   protected createFrameIteratorFactory(options: VitalLensOptions): IFrameIteratorFactory {
@@ -16,5 +18,8 @@ export class VitalLensController extends VitalLensControllerBase {
   }
   protected createRestClient(apiKey: string): IRestClient {
     return new RestClient(apiKey);
+  }
+  protected createWebSocketClient(apiKey: string): IWebSocketClient {
+    return new WebSocketClient(apiKey);
   }
 }

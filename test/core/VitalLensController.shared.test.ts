@@ -5,6 +5,7 @@ import { MethodHandlerFactory } from '../../src/methods/MethodHandlerFactory';
 import { VitalsEstimateManager } from '../../src/processing/VitalsEstimateManager';
 import { VitalLensOptions } from '../../src/types/core';
 import { IRestClient } from '../../src/types/IRestClient';
+import { IWebSocketClient } from '../../src/types/IWebSocketClient';
 
 jest.mock('../../src/processing/BufferManager');
 jest.mock('../../src/processing/StreamProcessor');
@@ -24,6 +25,9 @@ class TestVitalLensController extends VitalLensControllerBase {
   }
   protected createRestClient(apiKey: string): IRestClient {
     return { sendFrames: jest.fn() };
+  }
+  protected createWebSocketClient(apiKey: string): IWebSocketClient {
+    return { connect: jest.fn(), sendFrames: jest.fn(), getIsConnected: jest.fn(), close: jest.fn() }
   }
 }
 
