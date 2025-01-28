@@ -1,4 +1,5 @@
 import { WEBSOCKET_ENDPOINT } from "../config/constants";
+import { VitalLensAPIResponse } from "../types";
 import { IWebSocketClient } from "../types/IWebSocketClient";
 import { uint8ArrayToBase64 } from "./arrayOps";
 
@@ -37,7 +38,7 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
    * @param state - The state data as a Float32Array (optional).
    * @returns The server's response as a JSON-parsed object.
    */
-  async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<Response> {
+  async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<VitalLensAPIResponse> {
     if (!this.isConnected || !this.socket) {
       throw new Error('WebSocket is not connected');
     }

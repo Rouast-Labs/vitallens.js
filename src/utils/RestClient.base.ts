@@ -1,4 +1,5 @@
 import { REST_ENDPOINT } from "../config/constants";
+import { VitalLensAPIResponse } from "../types";
 import { IRestClient } from "../types/IRestClient";
 import { float32ArrayToBase64, uint8ArrayToBase64 } from "./arrayOps";
 
@@ -59,7 +60,7 @@ export abstract class RestClientBase implements IRestClient {
    * @param state - The state data as a Float32Array (optional).
    * @returns The server's response as a JSON-parsed object.
    */
-  async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<Response> {
+  async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<VitalLensAPIResponse> {
     const base64Frames = uint8ArrayToBase64(frames);
     
     const payload: Record<string, any> = {

@@ -1,4 +1,4 @@
-import { VitalLensOptions, VitalLensResult } from '../types/core';
+import { VitalLensAPIResponse, VitalLensOptions, VitalLensResult } from '../types/core';
 import { MethodHandler } from './MethodHandler';
 import { Frame } from '../processing/Frame';
 import { VitalLensAPIError, VitalLensAPIKeyError, VitalLensAPIQuotaExceededError } from '../utils/errors';
@@ -81,9 +81,9 @@ export class VitalLensAPIHandler extends MethodHandler {
 
       // Send the payload via the selected client
       if (isWebSocketClient(this.client)) {
-        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state) as any;
+        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state) as VitalLensAPIResponse;
       } else if (isRestClient(this.client)) {
-        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state) as any;
+        response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state) as VitalLensAPIResponse;
       }
 
       // Capture the end time and calculate the duration
@@ -115,7 +115,7 @@ export class VitalLensAPIHandler extends MethodHandler {
       }
 
       // Parse the successful response
-      const parsedResponse = response.body as VitalLensResult;
+      const parsedResponse = response.body;
       if (parsedResponse.vital_signs.ppg_waveform && parsedResponse.vital_signs.respiratory_waveform && parsedResponse.state) {
         const n = parsedResponse.vital_signs.ppg_waveform.data.length;
         return {
@@ -133,7 +133,14 @@ export class VitalLensAPIHandler extends MethodHandler {
         return undefined;
       }
     } catch (error) {
-      throw new Error(`VitalLens API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (
+        error instanceof VitalLensAPIError ||
+        error instanceof VitalLensAPIKeyError ||
+        error instanceof VitalLensAPIQuotaExceededError
+      ) {
+        throw error;
+      }
+      throw new VitalLensAPIError(error instanceof Error ? error.message : 'Unknown error');
     }
   }
 }

@@ -77,6 +77,14 @@ export interface VitalLensResult {
 }
 
 /**
+ * Represents a response from the API.
+ */
+export interface VitalLensAPIResponse {
+  statusCode: number;
+  body: VitalLensResult;
+}
+
+/**
  * Represents the result of FFmpeg video probe.
  */
 export interface VideoProbeResult {

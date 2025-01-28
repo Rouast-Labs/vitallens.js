@@ -1,6 +1,8 @@
+import { VitalLensAPIResponse } from "./core";
+
 export interface IWebSocketClient {
   connect(): Promise<void>;
-  sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<Response>;
+  sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<VitalLensAPIResponse>;
   getIsConnected(): boolean;
   close(): void;
 }

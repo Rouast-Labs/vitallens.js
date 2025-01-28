@@ -1,5 +1,7 @@
+import { VitalLensAPIResponse } from "./core";
+
 export interface IRestClient {
-  sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<Response>;
+  sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<VitalLensAPIResponse>;
 }
 
 /**
