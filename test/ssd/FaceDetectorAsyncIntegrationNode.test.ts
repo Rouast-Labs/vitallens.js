@@ -37,10 +37,10 @@ describe('FaceDetectorAsync.node Integration Test', () => {
     expect(results).toBeInstanceOf(Array);
     expect(results.length).toBe(1); // Ensure at least one detection
     results.forEach((roi) => {
-      expect(roi).toHaveProperty('x');
-      expect(roi).toHaveProperty('y');
-      expect(roi).toHaveProperty('width');
-      expect(roi).toHaveProperty('height');
+      expect(roi).toHaveProperty('x0');
+      expect(roi).toHaveProperty('y0');
+      expect(roi).toHaveProperty('x1');
+      expect(roi).toHaveProperty('y1');
     });
 
     // Clean up
@@ -71,10 +71,10 @@ describe('FaceDetectorAsync.node Integration Test', () => {
     expect(results).toBeInstanceOf(Array);
     expect(results.length).toBe(2); // Ensure at least one detection
     results.forEach((roi) => {
-      expect(roi).toHaveProperty('x');
-      expect(roi).toHaveProperty('y');
-      expect(roi).toHaveProperty('width');
-      expect(roi).toHaveProperty('height');
+      expect(roi).toHaveProperty('x0');
+      expect(roi).toHaveProperty('y0');
+      expect(roi).toHaveProperty('x1');
+      expect(roi).toHaveProperty('y1');
     });
 
     // Clean up

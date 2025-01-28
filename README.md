@@ -40,7 +40,7 @@ npm install vitallens
 
     const options = {
       method: 'vitallens',
-      globalRoi: { x: 50, y: 50, width: 200, height: 200 },
+      globalRoi: { x0: 50, y0: 50, x1: 250, y1: 250 },
     };
 
     const vitallens = new VitalLens(options);
@@ -76,7 +76,7 @@ import { VitalLens } from 'vitallens';
 
 const options = {
   method: 'pos',
-  globalRoi: { x: 50, y: 50, width: 200, height: 200 },
+  globalRoi: { x0: 50, y0: 50, x1: 250, y1: 250 },
 };
 
 const vitallens = new VitalLens(options);
@@ -107,7 +107,7 @@ import { VitalLens } from 'vitallens';
 
 const options = {
   method: 'vitallens',
-  globalRoi: { x: 50, y: 50, width: 200, height: 200 },
+  globalRoi: { x0: 50, y0: 50, x1: 250, y1: 250 },
 };
 
 const vitallens = new VitalLens(options);
@@ -133,7 +133,7 @@ new VitalLens(options: VitalLensOptions);
 |------------|------------------------------|------------------------------------------------|
 | `method`   | `'vitallens' | 'pos'`         | Estimation method to use.                     |
 | `overrideFpsTarget`      | `number`                     | Frames per second to process.                 |
-| `globalRoi` | `{ x: number; y: number; width: number; height: number }` | Region of interest for processing. |
+| `globalRoi` | `{ x0: number; y0: number; x1: number; y1: number }` | Region of interest for processing. |
 
 ---
 

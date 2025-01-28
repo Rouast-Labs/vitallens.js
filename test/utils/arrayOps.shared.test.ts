@@ -15,13 +15,13 @@ describe("mergeFrames", () => {
   });
 
   it("merges frames correctly", async () => {
-    const frame1 = await Frame.fromTensor(tf.tensor([1, 2]), [1], [{ x: 0, y: 0, width: 2, height: 2 }]);
-    const frame2 = await Frame.fromTensor(tf.tensor([3, 4]), [2], [{ x: 1, y: 1, width: 2, height: 2 }]);
+    const frame1 = await Frame.fromTensor(tf.tensor([1, 2]), [1], [{ x0: 0, y0: 0, x1: 2, y1: 2 }]);
+    const frame2 = await Frame.fromTensor(tf.tensor([3, 4]), [2], [{ x0: 1, y0: 1, x1: 3, y1: 3 }]);
 
     const result = await mergeFrames([frame1, frame2]);
 
     expect(result.getTimestamp()).toEqual([1, 2]);
-    expect(result.getROI()).toEqual([{ x: 0, y: 0, width: 2, height: 2 }, { x: 1, y: 1, width: 2, height: 2 }]);
+    expect(result.getROI()).toEqual([{ x0: 0, y0: 0, x1: 2, y1: 2 }, { x0: 1, y0: 1, x1: 3, y1: 3 }]);
 
     const resultTensor = result.getTensor();
     expect(resultTensor.arraySync()).toEqual([[1, 2], [3, 4]]);

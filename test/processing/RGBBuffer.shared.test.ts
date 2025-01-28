@@ -7,7 +7,7 @@ describe('RGBBuffer', () => {
   let roi: ROI;
 
   beforeEach(() => {
-    roi = { x: 0, y: 0, width: 2, height: 2 };
+    roi = { x0: 0, y0: 0, x1: 2, y1: 2 };
     buffer = new RGBBuffer(roi, {
       method: 'pos',
       inputSize: 40,
@@ -55,7 +55,7 @@ describe('RGBBuffer', () => {
     ]).buffer;
     const frame = new Frame(rawData, [2, 2, 3], 'float32', [1000]);
 
-    const invalidROI: ROI = { x: 1, y: 1, width: 2, height: 2 }; // Exceeds bounds
+    const invalidROI: ROI = { x0: 1, y0: 1, x1: 3, y1: 3 }; // Exceeds bounds
 
     await expect((buffer as any).preprocess(frame, invalidROI)).rejects.toThrow(
       /ROI dimensions are out of bounds/

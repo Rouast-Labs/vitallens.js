@@ -43,7 +43,7 @@ export abstract class SimpleMethodHandler extends MethodHandler {
     const ppg = this.algorithm(rgb);
     return {
       face: {
-        coordinates: rgb.getROI().map(roi => [roi.x, roi.y, roi.width, roi.height]),
+        coordinates: rgb.getROI().map(roi => [roi.x0, roi.y0, roi.x1, roi.y1]),
         confidence: new Array(ppg.length).fill(1.0),
         note: "Face detection coordinates for this face, along with live confidence levels. This method is not capable of providing a confidence estimate, hence returning 1.",
       },

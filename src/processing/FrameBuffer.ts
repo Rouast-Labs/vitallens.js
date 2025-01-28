@@ -22,10 +22,10 @@ export class FrameBuffer extends Buffer {
       
       // Validate ROI dimensions
       if (
-        roi.x < 0 ||
-        roi.y < 0 ||
-        roi.x + roi.width > shape[1] ||
-        roi.y + roi.height > shape[0]
+        roi.x0 < 0 ||
+        roi.y0 < 0 ||
+        roi.x1 > shape[1] ||
+        roi.y1 > shape[0]
       ) {
         throw new Error(
           `ROI dimensions are out of bounds. Frame dimensions: [${shape[0]}, ${shape[1]}], ROI: ${JSON.stringify(roi)}`
@@ -39,8 +39,8 @@ export class FrameBuffer extends Buffer {
 
         // Crop the tensor based on the ROI
         const cropped = tensor.slice(
-          [roi.y, roi.x, 0], // Start point [y, x, channel]
-          [roi.height, roi.width, shape[2] || 1] // Size [height, width, depth]
+          [roi.y0, roi.x0, 0], // Start point [y, x, channel]
+          [roi.y1 - roi.y0, roi.x1 - roi.x0, shape[2] || 1] // Size [height, width, depth]
         );
 
         // Resize the cropped tensor if inputSize is specified

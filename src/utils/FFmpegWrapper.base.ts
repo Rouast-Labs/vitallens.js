@@ -57,8 +57,8 @@ export abstract class FFmpegWrapperBase implements IFFmpegWrapper {
     
     // Parse options
     const dsFactor = (options.fpsTarget && options.fpsTarget < fps) ? Math.round(fps / options.fpsTarget) : 1;
-    var targetW = options.crop ? options.crop.width : probeInfo.width;
-    var targetH = options.crop ? options.crop.height : probeInfo.height;
+    var targetW = options.crop ? (options.crop.x1 - options.crop.x0) : probeInfo.width;
+    var targetH = options.crop ? (options.crop.y1 - options.crop.y0) : probeInfo.height;
     if (options.scale) {
       const preserveAspectRatio = options.preserveAspectRatio || false;
       if (preserveAspectRatio) {
@@ -86,8 +86,8 @@ export abstract class FFmpegWrapperBase implements IFFmpegWrapper {
 
     // Apply cropping
     if (options.crop) {
-      const { x, y, width, height } = options.crop;
-      filters.push(`crop=${width}:${height}:${x}:${y}`);
+      const { x0, y0, x1, y1 } = options.crop;
+      filters.push(`crop=${x1 - x0}:${y1 - y0}:${x0}:${y0}`);
     }
 
     // Apply scaling

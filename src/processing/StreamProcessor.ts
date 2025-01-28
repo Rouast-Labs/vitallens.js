@@ -122,10 +122,10 @@ export class StreamProcessor {
     await this.faceDetector!.run(frame, async (dets) => {
       if (frame.getShape().length === 3) {
         const absoluteDet = {
-          x: Math.round(dets[0].x * frame.getShape()[1]),
-          y: Math.round(dets[0].y * frame.getShape()[0]),
-          width: Math.round(dets[0].width * frame.getShape()[1]),
-          height: Math.round(dets[0].height * frame.getShape()[0]),
+          x0: Math.round(dets[0].x0 * frame.getShape()[1]),
+          y0: Math.round(dets[0].y0 * frame.getShape()[0]),
+          x1: Math.round(dets[0].x1 * frame.getShape()[1]),
+          y1: Math.round(dets[0].y1 * frame.getShape()[0]),
         };
         const shouldUpdateROI = this.options.method === 'vitallens' || (!this.roi || !checkFaceInROI(absoluteDet, this.roi, [0.6, 1.0]));
         if (shouldUpdateROI) {

@@ -2,7 +2,7 @@ import { VitalLens } from 'vitallens.js';
 
 const options = {
   method: 'vitallens',
-  globalRoi: { x: 50, y: 50, width: 200, height: 200 },
+  globalRoi: { x0: 50, y0: 50, y1: 250, y1: 250 },
 };
 
 const vitallens = new VitalLens(options);

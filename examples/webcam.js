@@ -5,7 +5,7 @@ const options = {
   method: 'vitallens',
   waveformDataMode: 'aggregated',
   apiKey: "YOUR_API_KEY",
-  globalRoi: { x: 200, y: 70, width: 250, height: 300 },
+  globalRoi: { x0: 200, y0: 70, x1: 450, y1: 370 }
 };
 
 const vitallens = new VitalLens(options);

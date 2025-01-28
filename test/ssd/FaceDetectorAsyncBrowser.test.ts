@@ -6,10 +6,10 @@ import { ROI } from '../../src/types/core';
 function areROIsClose(received: ROI[], expected: ROI[], tolerance: number = 1e-6): boolean {
   return received.length === expected.length && received.every((r, i) => {
     const e = expected[i];
-    return Math.abs(r.x - e.x) <= tolerance &&
-           Math.abs(r.y - e.y) <= tolerance &&
-           Math.abs(r.width - e.width) <= tolerance &&
-           Math.abs(r.height - e.height) <= tolerance;
+    return Math.abs(r.x0 - e.x0) <= tolerance &&
+           Math.abs(r.y0 - e.y0) <= tolerance &&
+           Math.abs(r.x1 - e.x1) <= tolerance &&
+           Math.abs(r.y1 - e.y1) <= tolerance;
   });
 }
 
@@ -86,7 +86,7 @@ describe('FaceDetectorAsync.browser', () => {
 
     const results: ROI[] = await faceDetector.detect(frame);
 
-    const expectedResults = [{ x: 0.2, y: 0.2, width: 0.4, height: 0.4 }];
+    const expectedResults = [{ x0: 0.2, y0: 0.2, x1: 0.6, y1: 0.6 }];
     console.log("results:", results);
     expect(areROIsClose(results, expectedResults)).toBe(true);
 
@@ -101,17 +101,17 @@ describe('FaceDetectorAsync.browser', () => {
 
     await faceDetector.run(frame, onFinish);
 
-    const expectedRois = [{ x: 0.2, y: 0.2, width: 0.4, height: 0.4 }];
+    const expectedRois = [{ x0: 0.2, y0: 0.2, x1: 0.6, y1: 0.6 }];
     const actualRois = onFinish.mock.calls[0][0]; // Get the first argument passed to onFinish
 
     expect(actualRois).toHaveLength(expectedRois.length);
 
     const tolerance = 1e-6;
     for (let i = 0; i < expectedRois.length; i++) {
-      expect(Math.abs(actualRois[i].x - expectedRois[i].x)).toBeLessThan(tolerance);
-      expect(Math.abs(actualRois[i].y - expectedRois[i].y)).toBeLessThan(tolerance);
-      expect(Math.abs(actualRois[i].width - expectedRois[i].width)).toBeLessThan(tolerance);
-      expect(Math.abs(actualRois[i].height - expectedRois[i].height)).toBeLessThan(tolerance);
+      expect(Math.abs(actualRois[i].x0 - expectedRois[i].x0)).toBeLessThan(tolerance);
+      expect(Math.abs(actualRois[i].y0 - expectedRois[i].y0)).toBeLessThan(tolerance);
+      expect(Math.abs(actualRois[i].x1 - expectedRois[i].x1)).toBeLessThan(tolerance);
+      expect(Math.abs(actualRois[i].y1 - expectedRois[i].y1)).toBeLessThan(tolerance);
     }
 
     mockTensor.dispose();

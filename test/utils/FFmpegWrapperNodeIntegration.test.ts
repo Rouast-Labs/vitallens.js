@@ -19,7 +19,7 @@ describe('FFmpegWrapper (Node)', () => {
     }
 
     const options = {
-      crop: { x: 0, y: 0, width: 100, height: 100 },
+      crop: { x0: 0, y0: 0, x1: 100, y1: 100 },
       scale: { width: 40, height: 40 },
       pixelFormat: 'rgb24',
     };

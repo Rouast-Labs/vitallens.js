@@ -21,7 +21,7 @@ export class BufferManager {
    * @returns A unique buffer ID string.
    */
   private generateBufferId(roi: ROI): string {
-    return `${roi.x},${roi.y},${roi.width},${roi.height}`;
+    return `${roi.x0},${roi.y0},${roi.x1},${roi.y1}`;
   }
 
   /**

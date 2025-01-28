@@ -16,7 +16,7 @@ describe('Buffer', () => {
   let methodConfig: MethodConfig;
 
   beforeEach(() => {
-    roi = { x: 0, y: 0, width: 100, height: 100 };
+    roi = { x0: 0, y0: 0, x1: 100, y1: 100 };
     methodConfig = {
       method: 'pos',
       inputSize: 40,

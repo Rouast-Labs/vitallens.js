@@ -36,7 +36,7 @@ export interface MethodConfig {
  */
 export interface VitalLensResult {
   face: {
-    coordinates?: Array<[number, number, number, number]>; // (x, y, width, height) for each frame TODO - change to x1, y1, x2, y2
+    coordinates?: Array<[number, number, number, number]>; // (x0, y0, x1, y1) for each frame
     confidence?: number[];
     note?: string;
   };
@@ -107,8 +107,8 @@ export interface VideoProcessingOptions {
  * Represents a region of interest (ROI).
  */
 export interface ROI {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
 }

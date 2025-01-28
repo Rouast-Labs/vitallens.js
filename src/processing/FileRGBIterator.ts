@@ -61,11 +61,11 @@ export class FileRGBIterator extends FrameIteratorBase {
       const videoFrames = Frame.fromUint8Array(video, [nDsFrames, 240, 320, 3]);
       const faces = await this.faceDetector.detect(videoFrames) as ROI[];
       // Convert to absolute units
-      const absoluteROIs = faces.map(({ x, y, width: w, height: h }) => ({
-        x: Math.round(x * this.probeInfo!.width),
-        y: Math.round(y * this.probeInfo!.height),
-        width: Math.round(w * this.probeInfo!.width),
-        height: Math.round(h * this.probeInfo!.height),
+      const absoluteROIs = faces.map(({ x0, y0, x1, y1 }) => ({
+        x0: Math.round(x0 * this.probeInfo!.width),
+        y0: Math.round(y0 * this.probeInfo!.height),
+        x1: Math.round(x1 * this.probeInfo!.width),
+        y1: Math.round(y1 * this.probeInfo!.height),
       }));
       // Derive roi from faces (nFrames, 4)
       this.roi = absoluteROIs.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));

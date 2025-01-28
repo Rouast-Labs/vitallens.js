@@ -133,10 +133,10 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       const selectedFrameBoxes = nmsIndices.map((index) => {
         const [xMin, yMin, xMax, yMax] = frameBoxes[index];
         return {
-          x: xMin,
-          y: yMin,
-          width: xMax - xMin,
-          height: yMax - yMin,
+          x0: xMin,
+          y0: yMin,
+          x1: xMax,
+          y1: yMax,
         };
       });
 

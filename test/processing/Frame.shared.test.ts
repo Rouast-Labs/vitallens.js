@@ -4,8 +4,8 @@ import { ROI } from '../../src/types';
 
 describe('Frame Class', () => {
   const mockROI: ROI[] = [
-    { x: 0, y: 0, width: 1, height: 1 },
-    { x: 1, y: 1, width: 2, height: 2 },
+    { x0: 0, y0: 0, x1: 1, y1: 1 },
+    { x0: 1, y0: 1, x1: 3, y1: 3 },
   ];
 
   describe('Constructor and Getters', () => {
