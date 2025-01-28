@@ -21,7 +21,7 @@ class TestVitalLensController extends VitalLensControllerBase {
     };
   }
   protected createFaceDetector() {
-    return { detect: jest.fn(), run: jest.fn() };
+    return { detect: jest.fn(), run: jest.fn(), load: jest.fn() };
   }
   protected createRestClient(apiKey: string): IRestClient {
     return { sendFrames: jest.fn() };

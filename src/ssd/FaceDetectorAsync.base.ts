@@ -61,14 +61,14 @@ export function nms(
  */
 export abstract class FaceDetectorAsyncBase implements IFaceDetector {
   protected model: tf.GraphModel | null = null;
+  private loaded: boolean = false;
+  private loadingPromise: Promise<void> | null = null;
 
   constructor(
     private maxFaces: number = 1,
     private scoreThreshold: number = 0.5,
     private iouThreshold: number = 0.3
-  ) {
-    this.init();
-  }
+  ) {}
 
   /**
    * Subclasses must init the model appropriately.
@@ -76,13 +76,28 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
   protected abstract init(): Promise<void>;
 
   /**
+   * Public method to ensure the model is fully loaded before detection.
+   */
+  public async load(): Promise<void> {
+    if (this.loaded) {
+      return;
+    }
+    if (!this.loadingPromise) {
+      this.loadingPromise = this.init().then(() => {
+        this.loaded = true;
+      });
+    }
+    await this.loadingPromise;
+  }
+
+  /**
    * Runs face detection on the provided frame and returns an array of ROIs.
    * @param frame - The input frame containing a batch of images as a Tensor4D.
    * @returns A promise resolving to an array of detected ROIs.
    */
   async detect(frame: Frame): Promise<ROI[]> {
-    if (!this.model) {
-      throw new Error("Face detection model is not loaded.");
+    if (!this.loaded || !this.model) {
+      throw new Error("Face detection model is not loaded. Call .load() first.");
     }
   
     const nFrames = frame.getShape().length === 3 ? 1 : frame.getShape()[0];
@@ -127,17 +142,18 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       const frameScores = allScoresArray[i]; // Shape: [N_ANCHORS]
       
       // Perform NMS using the arrays
-      const nmsIndices = nms(frameBoxes, frameScores, this.maxFaces, this.iouThreshold, this.scoreThreshold);
+      const nmsIndices = nms(
+        frameBoxes,
+        frameScores,
+        this.maxFaces,
+        this.iouThreshold,
+        this.scoreThreshold
+      );
 
       // Gather the selected boxes
       const selectedFrameBoxes = nmsIndices.map((index) => {
         const [xMin, yMin, xMax, yMax] = frameBoxes[index];
-        return {
-          x0: xMin,
-          y0: yMin,
-          x1: xMax,
-          y1: yMax,
-        };
+        return { x0: xMin, y0: yMin, x1: xMax, y1: yMax };
       });
 
       selectedBoxes.push(...selectedFrameBoxes);

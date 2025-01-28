@@ -39,7 +39,7 @@ global.MediaStream = class MediaStream {
 } as unknown as typeof MediaStream;
 
 const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, windowOverlap: 0, requiresState: false };
-const mockFaceDetector: jest.Mocked<IFaceDetector> = { detect: jest.fn(), run: jest.fn() };
+const mockFaceDetector: jest.Mocked<IFaceDetector> = { detect: jest.fn(), run: jest.fn(), load: jest.fn() };
 
 describe('FrameIteratorFactory (Browser)', () => {
   let factory: FrameIteratorFactory;

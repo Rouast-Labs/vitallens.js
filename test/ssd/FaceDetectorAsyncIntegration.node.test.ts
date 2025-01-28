@@ -5,13 +5,12 @@ import { FaceDetectorAsync } from '../../src/ssd/FaceDetectorAsync.node';
 import { Frame } from '../../src/processing/Frame';
 import { ROI } from '../../src/types/core';
 
-describe('FaceDetectorAsync.node Integration Test', () => {
+describe('FaceDetectorAsync (Node) Integration Test', () => {
   let faceDetector: FaceDetectorAsync;
 
   beforeAll(async () => {
     faceDetector = new FaceDetectorAsync(1, 0.5, 0.3);
-    // Wait for the model to load
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await faceDetector.load();
   });
 
   afterAll(() => {

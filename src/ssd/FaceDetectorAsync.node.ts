@@ -1,7 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
-// Or import '@tensorflow/tfjs-node' in your test environment if you need the native bindings.
 import { FaceDetectorAsyncBase } from "./FaceDetectorAsync.base";
-
 import * as path from 'path';
 
 export class FaceDetectorAsync extends FaceDetectorAsyncBase {
@@ -10,7 +8,6 @@ export class FaceDetectorAsync extends FaceDetectorAsyncBase {
    */
   protected async init(): Promise<void> {
     try {
-      // Example: the model files are in ../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB
       const modelJsonPath = path.resolve(__dirname, '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json');
       this.model = await tf.loadGraphModel(`file://${modelJsonPath}`);
 

@@ -91,6 +91,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
 
     // TODO: Support multiple streams
     // - separate buffer and state management per id in buffer manager
+    
+    await this.faceDetector.load();
 
     const frameIterator = this.frameIteratorFactory.createStreamFrameIterator(stream, videoElement);
 
@@ -117,6 +119,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   async processFile(videoInput: VideoInput): Promise<VitalLensResult> {
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
+
+    await this.faceDetector.load();
 
     const frameIterator = this.frameIteratorFactory.createFileFrameIterator(videoInput, this.methodConfig, this.faceDetector);
     // TODO init methodHandler

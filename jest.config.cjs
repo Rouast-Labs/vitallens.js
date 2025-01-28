@@ -7,6 +7,7 @@ module.exports = {
       transform: {
         '^.+\\.tsx?$': 'ts-jest',
       },
+      moduleNameMapper: {},
       setupFilesAfterEnv: ['./jest.setup.ts'],
     },
     {
@@ -16,16 +17,19 @@ module.exports = {
       transform: {
         '^.+\\.tsx?$': 'ts-jest',
       },
+      moduleNameMapper: {
+        '^@ffmpeg/ffmpeg$': '<rootDir>/node_modules/@ffmpeg/ffmpeg/dist/umd/ffmpeg.js',
+        'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model\\.json$':
+          '<rootDir>/__mocks__/modelJsonMock.js',
+        'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1\\.bin$':
+          '<rootDir>/__mocks__/modelBinMock.js',
+      },
       setupFilesAfterEnv: ['./jest.setup.ts'],
     },
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverage: true,
-  moduleNameMapper: {
-    '^@ffmpeg/ffmpeg$': '<rootDir>/node_modules/@ffmpeg/ffmpeg/dist/umd/ffmpeg.js',
-  },
   testPathIgnorePatterns: [
-    "/node_modules/",
-    "<rootDir>/test/utils/FFmpegWrapperBrowserIntegration.test.js"
+    "/node_modules/"
   ]
 };

@@ -9,6 +9,7 @@ const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMeth
 const mockFaceDetector: jest.Mocked<IFaceDetector> = {
   detect: jest.fn(),
   run: jest.fn(),
+  load: jest.fn()
 };
 
 describe('FrameIteratorFactory (Node)', () => {

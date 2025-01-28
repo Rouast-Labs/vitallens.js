@@ -18,6 +18,7 @@ jest.mock('../../src/ssd/FaceDetectorAsync.browser', () => {
   return {
     FaceDetectorAsync: jest.fn().mockImplementation(() => ({
       init: jest.fn(),
+      load: jest.fn(),
       detect: jest.fn(),
       run: jest.fn(),
     })),
