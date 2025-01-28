@@ -14,7 +14,6 @@ let stopTimeout = null;
 
 const MAX_DATA_POINTS = 300;
 
-// Initialize charts
 const charts = {
   ppgChart: createChart('ppgChart', 'Pulse', 'red'),
   respChart: createChart('respChart', 'Respiration', 'blue'),
@@ -30,7 +29,7 @@ function createChart(elementId, label, color) {
         data: [],
         borderColor: color,
         borderWidth: 2,
-        tension: 0.3,
+        tension: 0.1,
         pointRadius: 0,
       }],
     },
@@ -67,37 +66,56 @@ function updateChart(chart, data) {
 }
 
 function drawFaceBox(canvas, video, coordinates) {
-  const context = canvas.getContext('2d');
+  if (!coordinates || !coordinates.length) return;
 
-  // Clear the canvas
+  const context = canvas.getContext('2d');
   context.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Ensure the canvas matches the video dimensions
-  canvas.width = video.offsetWidth;
-  canvas.height = video.offsetHeight;
+  setCanvasDimensions(canvas);
 
-  // Check if coordinates are valid
-  if (!coordinates || coordinates.length === 0) {
-    console.warn('No coordinates provided to drawFaceBox.');
-    return;
+  const [x0, y0, x1, y1] = coordinates[coordinates.length - 1];
+  const w = x1 - x0;
+  const h = y1 - y0;
+
+  const containerWidth = canvas.width;
+  const containerHeight = canvas.height;
+
+  const videoWidth = video.videoWidth;
+  const videoHeight = video.videoHeight;
+  const videoAspect = videoWidth / videoHeight;
+  const containerAspect = containerWidth / containerHeight;
+
+  let displayedVideoWidth, displayedVideoHeight, offsetX, offsetY;
+
+  if (videoAspect > containerAspect) {
+    displayedVideoWidth = containerWidth;
+    displayedVideoHeight = containerWidth / videoAspect;
+    offsetX = 0;
+    offsetY = (containerHeight - displayedVideoHeight) / 2;
+  } else {
+    displayedVideoHeight = containerHeight;
+    displayedVideoWidth = containerHeight * videoAspect;
+    offsetX = (containerWidth - displayedVideoWidth) / 2;
+    offsetY = 0;
   }
 
-  // Get the most recent face box coordinates
-  const [x, y, width, height] = coordinates[coordinates.length - 1];
+  const scaleX = displayedVideoWidth / videoWidth;
+  const scaleY = displayedVideoHeight / videoHeight;
 
-  // Scale the coordinates to the current video size
-  const scaleX = canvas.width / video.videoWidth;
-  const scaleY = canvas.height / video.videoHeight;
+  const boxX = offsetX + x0 * scaleX;
+  const boxY = offsetY + y0 * scaleY;
+  const boxW = w * scaleX;
+  const boxH = h * scaleY;
 
-  const adjustedX = x * scaleX;
-  const adjustedY = y * scaleY;
-  const adjustedWidth = width * scaleX;
-  const adjustedHeight = height * scaleY;
-
-  // Draw the face box
   context.strokeStyle = 'rgba(0, 255, 0, 0.8)';
   context.lineWidth = 2;
-  context.strokeRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+  context.strokeRect(boxX, boxY, boxW, boxH);
+}
+
+function setCanvasDimensions(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
 }
 
 // VitalLens Event Handlers
@@ -124,65 +142,18 @@ function updateStats(elementId, label, value) {
   if (!element) return;
   const color = elementId === 'ppgStats' ? 'red' : 'blue';
   element.innerHTML = `
-    <p style="font-size: 12px; margin: 0; color: ${color};">${label}</p>
+    <p style="font-size: 16px; margin: 0; font-weight: bold; color: ${color};">${label}</p>
     <p style="font-size: 48px; margin: 16px 0 0; font-weight: bold; color: ${color};">${value?.toFixed(0) || 'N/A'}</p>
   `;
 }
 
-// Layout Adjustment
-function adjustVideoLayout(video) {
+function handleResize() {
   const canvas = document.getElementById('canvas');
-  const chartsContainer = document.querySelector('.charts-container');
-  const availableHeight = window.innerHeight - chartsContainer.offsetHeight;
-  const availableWidth = window.innerWidth;
-
-  const videoAspectRatio = video.videoWidth / video.videoHeight;
-  const availableAspectRatio = availableWidth / availableHeight;
-
-  if (videoAspectRatio > availableAspectRatio) {
-    // Fit by width, add black bars on top and bottom
-    video.style.width = '100%';
-    video.style.height = 'auto';
-    video.style.objectFit = 'contain';
-    video.style.position = 'absolute';
-    video.style.top = `${(availableHeight - video.offsetHeight) / 2}px`;
-    video.style.left = '0';
-
-    // Sync canvas dimensions and position
-    canvas.style.width = video.style.width;
-    canvas.style.height = video.offsetHeight + 'px';
-    canvas.style.top = video.style.top;
-    canvas.style.left = video.style.left;
-  } else {
-    // Fit by height, add black bars on left and right
-    video.style.width = 'auto';
-    video.style.height = `${availableHeight}px`;
-    video.style.objectFit = 'contain';
-    video.style.position = 'absolute';
-    video.style.top = '0';
-    video.style.left = `${(availableWidth - video.offsetWidth) / 2}px`;
-
-    // Sync canvas dimensions and position
-    canvas.style.width = video.offsetWidth + 'px';
-    canvas.style.height = video.style.height;
-    canvas.style.top = video.style.top;
-    canvas.style.left = video.style.left;
-  }
-}
-
-function adjustChartsAndStatsLayout() {
-  const chartsContainer = document.querySelector('.charts-container');
-  const statsElements = document.querySelectorAll('.stats-container');
-
-  if (chartsContainer) {
-    chartsContainer.style.height = `${window.innerHeight * 0.4}px`;
-    chartsContainer.style.width = '100%';
-  }
-
-  statsElements.forEach((stats) => {
-    stats.style.height = `${window.innerHeight * 0.2}px`;
-    stats.style.width = '100%';
-  });
+  setCanvasDimensions(canvas);
+  charts.ppgChart.resize();
+  charts.ppgChart.update();
+  charts.respChart.resize();
+  charts.respChart.update();
 }
 
 // Start/Stop VitalLens
@@ -225,19 +196,13 @@ async function setupCamera() {
     await vitallens.addStream(stream, video);
 
     video.onloadeddata = () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      adjustVideoLayout(video);
-      adjustChartsAndStatsLayout();
+      setCanvasDimensions(canvas);
       video.play();
 
       startVitalLens();
 
       video.addEventListener('click', toggleVitalLens);
-      window.addEventListener('resize', () => {
-        adjustVideoLayout(video);
-        adjustChartsAndStatsLayout();
-      });
+      window.addEventListener('resize', handleResize);
     };
   } catch (err) {
     console.error('Camera Error:', err);
