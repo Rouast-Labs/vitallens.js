@@ -58,11 +58,16 @@ export function getROIFromDetection(
 /**
  * Convert face detection into face ROI (reduces width to 60% and height to 80%).
  * @param det - The face detection {x, y, width, height}.
+ * @param clipDims - Optional constraints {frameWidth, frameHeight}.
  * @param forceEvenDims - Whether to force even dimensions for the ROI.
  * @returns The face ROI.
  */
-export function getFaceROI(det: ROI, forceEvenDims: boolean = false): ROI {
-  return getROIFromDetection(det, [-0.2, -0.1, -0.2, -0.1], undefined, forceEvenDims);
+export function getFaceROI(
+  det: ROI,
+  clipDims: { width: number; height: number },
+  forceEvenDims: boolean = false
+): ROI {
+  return getROIFromDetection(det, [-0.2, -0.1, -0.2, -0.1], clipDims, forceEvenDims);
 }
 
 /**
@@ -100,7 +105,7 @@ export function getROIForMethod(
 ): ROI {
   switch (methodConfig.roiMethod) {
     case 'face':
-      return getFaceROI(det, forceEvenDims);
+      return getFaceROI(det, clipDims, forceEvenDims);
     case 'upper_body':
       if (!clipDims) {
         throw new Error("clipDims must be provided for 'upper_body' ROI method.");
