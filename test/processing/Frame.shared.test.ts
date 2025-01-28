@@ -1,5 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
-import { Frame } from '../../src/processing/Frame';
+import { Frame, getActualSizeFromRawData } from '../../src/processing/Frame';
 import { ROI } from '../../src/types';
 
 describe('Frame Class', () => {
@@ -104,7 +104,7 @@ describe('Frame Class', () => {
   describe('getUint8Array', () => {
     test('returns Uint8Array for uint8 dtype', () => {
       const rawData = new Uint8Array([1, 2, 3]).buffer;
-      const frame = new Frame(rawData, [1, 3], 'uint8');
+      const frame = new Frame(rawData, [1, 3], 'uint8' as tf.DataType);
 
       const array = frame.getUint8Array();
       expect(Array.from(array)).toEqual([1, 2, 3]);
@@ -130,5 +130,30 @@ describe('Frame Class', () => {
       expect(float32Frame['getTypedArrayClass']()).toBe(Float32Array);
       expect(int32Frame['getTypedArrayClass']()).toBe(Int32Array);
     });
+  });
+});
+
+describe("getActualSizeFromRawData", () => {
+  it("calculates size for uint8 data", () => {
+    const buffer = new ArrayBuffer(8);
+    const result = getActualSizeFromRawData(buffer, "uint8" as tf.DataType);
+    expect(result).toBe(8);
+  });
+
+  it("calculates size for int32 data", () => {
+    const buffer = new ArrayBuffer(16);
+    const result = getActualSizeFromRawData(buffer, "int32");
+    expect(result).toBe(4);
+  });
+
+  it("calculates size for float32 data", () => {
+    const buffer = new ArrayBuffer(16);
+    const result = getActualSizeFromRawData(buffer, "float32");
+    expect(result).toBe(4);
+  });
+
+  it("throws an error for unsupported dtype", () => {
+    const buffer = new ArrayBuffer(8);
+    expect(() => getActualSizeFromRawData(buffer, "unknown" as any)).toThrow("Unsupported dtype: unknown");
   });
 });

@@ -98,22 +98,3 @@ export function applyMovingAverage(data: number[], windowSize: number): number[]
   }
   return result;
 }
-
-/**
- * Determines the size (number of elements) from an ArrayBuffer of raw data.
- * @param rawData The raw data
- * @param dtype The data type
- * @returns The number of elements in the raw data
- */
-export function getActualSizeFromRawData(rawData: ArrayBuffer, dtype: tf.DataType): number {
-  switch (dtype) {
-    case 'uint8':
-      return new Uint8Array(rawData).length;
-    case 'int32':
-      return new Int32Array(rawData).length;
-    case 'float32':
-      return new Float32Array(rawData).length;
-    default:
-      throw new Error(`Unsupported dtype: ${dtype}`);
-  }
-}

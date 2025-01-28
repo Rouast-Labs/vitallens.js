@@ -5,7 +5,6 @@ import {
   float32ArrayToBase64,
   movingAverageSizeForResponse,
   applyMovingAverage,
-  getActualSizeFromRawData,
 } from "../../src/utils/arrayOps";
 import { Frame } from "../../src/processing/Frame";
 
@@ -67,30 +66,5 @@ describe("applyMovingAverage", () => {
     const data = [1, 2, 3, 4, 5];
     const result = applyMovingAverage(data, 3);
     expect(result).toEqual([1, 1.5, 2, 3, 4]);
-  });
-});
-
-describe("getActualSizeFromRawData", () => {
-  it("calculates size for uint8 data", () => {
-    const buffer = new ArrayBuffer(8);
-    const result = getActualSizeFromRawData(buffer, "uint8" as tf.DataType);
-    expect(result).toBe(8);
-  });
-
-  it("calculates size for int32 data", () => {
-    const buffer = new ArrayBuffer(16);
-    const result = getActualSizeFromRawData(buffer, "int32");
-    expect(result).toBe(4);
-  });
-
-  it("calculates size for float32 data", () => {
-    const buffer = new ArrayBuffer(16);
-    const result = getActualSizeFromRawData(buffer, "float32");
-    expect(result).toBe(4);
-  });
-
-  it("throws an error for unsupported dtype", () => {
-    const buffer = new ArrayBuffer(8);
-    expect(() => getActualSizeFromRawData(buffer, "unknown" as any)).toThrow("Unsupported dtype: unknown");
   });
 });

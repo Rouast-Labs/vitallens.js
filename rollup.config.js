@@ -3,6 +3,16 @@ import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import url from '@rollup/plugin-url';
 import { terser } from 'rollup-plugin-terser';
+import json from '@rollup/plugin-json';
+
+function onwarn(warning, defaultHandler) {
+  // Ignore "`this` has been rewritten to `undefined`" warnings.
+  // It's common in older TS-compiled code and doesn't break anything.
+  if (warning.code === 'THIS_IS_UNDEFINED') return;
+  
+  // Otherwise, use Rollup's default warning handler.
+  defaultHandler(warning);
+}
 
 export default [
   // Node ESM build
@@ -14,9 +24,11 @@ export default [
       sourcemap: true,
       inlineDynamicImports: true,
     },
+    onwarn,
     plugins: [
       typescript(),
-      nodeResolve(),
+      json(),
+      nodeResolve({ browser: false, preferBuiltins: true }),
       commonjs(),
       terser(),
     ],
@@ -30,9 +42,11 @@ export default [
       sourcemap: true,
       inlineDynamicImports: true,
     },
+    onwarn,
     plugins: [
       typescript(),
-      nodeResolve(),
+      json(),
+      nodeResolve({ browser: false, preferBuiltins: true }),
       commonjs(),
       terser(),
     ],
@@ -46,6 +60,7 @@ export default [
       sourcemap: true,
       inlineDynamicImports: true,
     },
+    onwarn,
     plugins: [
       url({
         include: ['models/**/*'],
@@ -67,6 +82,7 @@ export default [
       name: 'FFmpegWrapper',
       sourcemap: true,
     },
+    onwarn,
     plugins: [
       typescript({
         tsconfig: './tsconfig.json',
@@ -76,6 +92,7 @@ export default [
           declarationDir: null,
         },
       }),
+      json(),
       nodeResolve({ browser: true }),
       commonjs(),
       terser(),
