@@ -9,8 +9,8 @@ import { IVitalLensController } from '../types/IVitalLensController';
 import { METHODS_CONFIG } from '../config/methodsConfig';
 import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
 import { IFaceDetector } from '../types/IFaceDetector';
-import { RestClient } from '../utils/RestClient';
 import { isBrowser } from '../utils/env';
+import { IRestClient } from '../types/IRestClient';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -47,6 +47,11 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   protected abstract createFaceDetector(): IFaceDetector;
 
   /**
+   * Subclasses must return the appropriate RestClient instance.
+   */
+  protected abstract createRestClient(apiKey: string): IRestClient;
+
+  /**
    * Creates the appropriate method handler based on the options.
    * @param options - Configuration options.
    * @returns The method handler instance.
@@ -64,7 +69,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
         ? new WebSocketClient(this.options.apiKey!)
         : undefined,
       restClient: options.method === 'vitallens' && requestMode === 'rest'
-        ? new RestClient(this.options.apiKey!)
+        ? this.createRestClient(this.options.apiKey!)
         : undefined
     };
     return MethodHandlerFactory.createHandler(options, dependencies);

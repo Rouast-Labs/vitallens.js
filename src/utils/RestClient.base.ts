@@ -1,14 +1,15 @@
 import { REST_ENDPOINT } from "../config/constants";
 import { VitalLensResult } from "../types";
+import { IRestClient } from "../types/IRestClient";
 import { float32ArrayToBase64, uint8ArrayToBase64 } from "./arrayOps";
 
 /**
  * Utility class for managing REST communication.
  */
-export class RestClient {
-  private url: string = REST_ENDPOINT;
+export abstract class RestClientBase implements IRestClient {
+  protected url: string = REST_ENDPOINT;
   private apiKey: string;
-  private headers: Record<string, string>;
+  protected headers: Record<string, string>;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -19,36 +20,26 @@ export class RestClient {
   }
 
   /**
-   * Send a JSON payload.
+   * Abstract method for sending HTTP requests.
+   * Implement this in environment-specific subclasses.
    * @param payload - The data to send in the request body.
    * @returns The server's response as a JSON-parsed object.
    */
-  private async post(payload: Record<string, any>): Promise<any> {
-    try {
-      const response = await fetch(this.url, {
-        method: 'POST',
-        headers: this.headers,
-        body: JSON.stringify(payload),
-      });
-      return this.handleResponse(response);
-    } catch (error) {
-      throw new Error(`POST request failed: ${error}`);
-    }
-  }
+  protected abstract postRequest(payload: Record<string, any>): Promise<any>;
 
   /**
    * Handles the HTTP response, throwing an error for non-OK status codes.
    * @param response - The Fetch API response object.
    * @returns The JSON-parsed response body.
    */
-  private async handleResponse(response: Response): Promise<any> {
+  protected async handleResponse(response: Response): Promise<any> {
     const bodyText = await response.text(); // Read the response body as text
   
     const structuredResponse = {
       statusCode: response.status,
       body: bodyText,
     };
-  
+      
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${bodyText}`);
     }
@@ -82,6 +73,6 @@ export class RestClient {
       payload.state = base64State;
     }
 
-    return this.post(payload);
+    return this.postRequest(payload);
   }
 }

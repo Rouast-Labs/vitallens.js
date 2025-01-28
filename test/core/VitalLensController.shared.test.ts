@@ -4,6 +4,7 @@ import { StreamProcessor } from '../../src/processing/StreamProcessor';
 import { MethodHandlerFactory } from '../../src/methods/MethodHandlerFactory';
 import { VitalsEstimateManager } from '../../src/processing/VitalsEstimateManager';
 import { VitalLensOptions } from '../../src/types/core';
+import { IRestClient } from '../../src/types/IRestClient';
 
 jest.mock('../../src/processing/BufferManager');
 jest.mock('../../src/processing/StreamProcessor');
@@ -20,6 +21,9 @@ class TestVitalLensController extends VitalLensControllerBase {
   }
   protected createFaceDetector() {
     return { detect: jest.fn(), run: jest.fn() };
+  }
+  protected createRestClient(apiKey: string): IRestClient {
+    return { sendFrames: jest.fn() };
   }
 }
 

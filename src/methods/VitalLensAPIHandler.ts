@@ -1,18 +1,18 @@
 import { VitalLensOptions, VitalLensResult } from '../types/core';
 import { MethodHandler } from './MethodHandler';
 import { WebSocketClient } from '../utils/WebSocketClient';
-import { RestClient } from '../utils/RestClient';
 import { Frame } from '../processing/Frame';
 import { VitalLensAPIError, VitalLensAPIKeyError, VitalLensAPIQuotaExceededError } from '../utils/errors';
+import { IRestClient, isRestClient } from '../types/IRestClient';
 
 /**
  * Handler for processing frames using the VitalLens API via WebSocket or REST.
  */
 export class VitalLensAPIHandler extends MethodHandler {
-  private client: WebSocketClient | RestClient;
+  private client: WebSocketClient | IRestClient;
   private options: VitalLensOptions;
 
-  constructor(client: WebSocketClient | RestClient, options: VitalLensOptions) {
+  constructor(client: WebSocketClient | IRestClient, options: VitalLensOptions) {
     super(options);
     this.client = client;
     this.options = options;
@@ -82,7 +82,7 @@ export class VitalLensAPIHandler extends MethodHandler {
       // Send the payload via the selected client
       if (this.client instanceof WebSocketClient) {
         response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state);
-      } else if (this.client instanceof RestClient) {
+      } else if (isRestClient(this.client)) {
         response = await this.client.sendFrames(metadata, framesChunk.getUint8Array(), state);
       }
 
