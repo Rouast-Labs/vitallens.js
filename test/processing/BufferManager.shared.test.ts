@@ -120,15 +120,16 @@ describe('BufferManager', () => {
 
   describe('add', () => {
     it('should add a frame to all active buffers', async () => {
-      const mockFrame = { getRawData: jest.fn() } as unknown as Frame;
       const mockBuffer = { add: jest.fn() };
+      const rawData = new Int32Array([1, 2, 3]).buffer;
+      const frame = new Frame(rawData, [1, 1, 3], 'int32', [1000]);
+      
       bufferManager['buffers'].set('id1', { buffer: mockBuffer as any, createdAt: mockTimestamp });
       bufferManager['buffers'].set('id2', { buffer: mockBuffer as any, createdAt: mockTimestamp });
 
-      await bufferManager.add(mockFrame);
+      await bufferManager.add(frame);
 
       expect(mockBuffer.add).toHaveBeenCalledTimes(2);
-      expect(mockBuffer.add).toHaveBeenCalledWith(mockFrame);
     });
   });
 

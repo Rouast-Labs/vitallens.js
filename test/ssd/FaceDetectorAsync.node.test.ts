@@ -57,9 +57,6 @@ describe('FaceDetector', () => {
     expect(tf.loadGraphModel).toHaveBeenCalledWith(
       expect.stringContaining('models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json')
     );
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Face detection model loaded in Node environment!')
-    );
   });
 
   it('should detect faces and return ROIs', async () => {

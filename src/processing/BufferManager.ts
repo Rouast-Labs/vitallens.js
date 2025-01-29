@@ -3,6 +3,7 @@ import { Frame } from './Frame';
 import { Buffer } from './Buffer';
 import { FrameBuffer } from './FrameBuffer';
 import { RGBBuffer } from './RGBBuffer';
+import * as tf from '@tensorflow/tfjs';
 
 /**
  * Manages multiple FrameBuffers for handling different ROIs and method configurations.
@@ -85,8 +86,14 @@ export class BufferManager {
    * @param frame - The frame to add.
    */
   async add(frame: Frame): Promise<void> {
-    for (const { buffer, createdAt } of this.buffers.values()) {
-      buffer.add(frame);
+    const tensor = frame.getTensor() as tf.Tensor3D;
+    const timestamp = frame.getTimestamp();
+    try {
+      for (const { buffer } of this.buffers.values()) {
+        buffer.add(tensor, timestamp);
+      }
+    } finally {
+      tensor.dispose();
     }
   }
 

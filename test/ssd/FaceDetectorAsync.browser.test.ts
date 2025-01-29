@@ -74,9 +74,6 @@ describe('FaceDetectorAsync.browser', () => {
       weightData: expect.any(ArrayBuffer),
     }));
     expect(tf.loadGraphModel).toHaveBeenCalledWith('mockedModelSource');
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Face detection model loaded in Browser environment!')
-    );
   });
 
   it('should detect faces and return ROIs', async () => {
@@ -87,7 +84,6 @@ describe('FaceDetectorAsync.browser', () => {
     const results: ROI[] = await faceDetector.detect(frame);
 
     const expectedResults = [{ x0: 0.2, y0: 0.2, x1: 0.6, y1: 0.6 }];
-    console.log("results:", results);
     expect(areROIsClose(results, expectedResults)).toBe(true);
 
     mockTensor.dispose();

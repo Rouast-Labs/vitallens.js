@@ -5,7 +5,7 @@ const options = {
   method: 'vitallens',
   waveformDataMode: 'aggregated',
   apiKey: "YOUR_API_KEY",
-  globalRoi: { x0: 200, y0: 70, x1: 450, y1: 370 }
+  fDetFs: 0.5,
 };
 
 const vitallens = new VitalLens(options);
@@ -72,7 +72,6 @@ function updateChart(chart, newData) {
 
   chart.update();
 }
-
 
 function drawFaceBox(canvas, video, coordinates) {
   if (!coordinates || !coordinates.length) return;
@@ -151,7 +150,7 @@ function updateStats(elementId, label, value) {
   if (!element) return;
   const color = elementId === 'ppgStats' ? 'red' : 'blue';
   element.innerHTML = `
-    <p style="font-size: 16px; margin: 0; font-weight: bold; color: ${color};">${label}</p>
+    <p style="font-size: 16px; margin: 10px 0 0; font-weight: bold; color: ${color};">${label}</p>
     <p style="font-size: 48px; margin: 16px 0 0; font-weight: bold; color: ${color};">${value?.toFixed(0) || 'N/A'}</p>
   `;
 }
@@ -185,7 +184,7 @@ async function startVitalLens() {
     vitallens.start();
     console.log('VitalLens started.');
     isProcessing = true;
-    stopTimeout = setTimeout(toggleVitalLens, 30000);
+    stopTimeout = setTimeout(toggleVitalLens, 60000);
   }
 }
 

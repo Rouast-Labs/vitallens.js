@@ -33,7 +33,6 @@ export class FaceDetectorAsync extends FaceDetectorAsyncBase {
       };
 
       this.model = await tf.loadGraphModel(tf.io.fromMemory(modelArtifacts));
-      console.log('Face detection model loaded in Browser environment!');
     } catch (error) {
       console.error('Failed to load the face detection model (Browser):', error);
     }

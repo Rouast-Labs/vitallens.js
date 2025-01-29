@@ -22,6 +22,16 @@ export class StreamProcessor {
   private methodHandler: MethodHandler;
   private useFaceDetector: boolean;
 
+  /**
+   * Creates a new StreamProcessor.
+   * @param options - Configuration options for VitalLens.
+   * @param methodConfig - Method-specific settings (e.g. fps, ROI sizing).
+   * @param frameIterator - Source of frames (webcam or other).
+   * @param bufferManager - Manages frames for each ROI and method state.
+   * @param faceDetector - Face detection interface (optional if global ROI is given).
+   * @param methodHandler - Handles actual vital sign algorithm processing.
+   * @param onPredict - Callback invoked with each new VitalLensResult.
+   */
   constructor(
     private options: VitalLensOptions,
     private methodConfig: MethodConfig,
@@ -38,6 +48,9 @@ export class StreamProcessor {
     this.useFaceDetector = this.options.globalRoi === undefined;
   }
 
+  /**
+   * Initializes the StreamProcessor, setting up a global ROI if provided.
+   */
   init() {
     if (!this.useFaceDetector && this.options.globalRoi) {
       this.roi = this.options.globalRoi;
@@ -52,74 +65,78 @@ export class StreamProcessor {
     this.init();
     this.isPaused = false;
     const iterator = this.frameIterator[Symbol.asyncIterator]();
+
     const processFrames = async () => {
       while (!this.isPaused) {
         const currentTime = performance.now()/1000; // In seconds
 
-        // Process frames only at the target frame rate
+        // Throttle to target FPS
         if (currentTime - this.lastProcessedTime < 1 / this.targetFps) {
           await new Promise((resolve) => setTimeout(resolve, 1 / this.targetFps - (currentTime - this.lastProcessedTime)));
           continue;
         }
         
-        // Grab full frame
         const { value: frame, done } = await iterator.next();
         if (done || this.isPaused) break;
+        if (!frame) continue;
 
-        if (frame) {
-          this.lastProcessedTime = currentTime;
+        this.lastProcessedTime = currentTime;
 
-          if (this.useFaceDetector && this.faceDetector && currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs) {
-            await this.handleFaceDetection(frame, currentTime);
-          }
+        if (this.useFaceDetector && this.faceDetector && currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs) {
+          this.lastFaceDetectionTime = currentTime;
+          this.handleFaceDetection(frame, currentTime);
+        }
 
-          // Add frame to buffer(s)
-          await this.bufferManager.add(frame);
-  
-          if (this.bufferManager.isReady() && this.methodHandler.getReady() && !this.isPredicting) {
-            this.isPredicting = true;
-            const frames = this.bufferManager.consume();       
-            mergeFrames(frames)
-              .then((framesChunk) => {
-                const currentState = this.bufferManager.getState();
-                return this.methodHandler.process(framesChunk, currentState);
-              })
-              .then((incrementalResult) => {
-                if (incrementalResult) {
-                  if (incrementalResult.state) {
-                    this.bufferManager.setState(new Float32Array(incrementalResult.state.data));
-                  } else {
-                    this.bufferManager.resetState();
-                  }
-                  this.onPredict(incrementalResult);
+        // Add frame to buffer(s)
+        await this.bufferManager.add(frame);
+
+        // If buffers + method are ready, run a prediction
+        if (this.bufferManager.isReady() && this.methodHandler.getReady() && !this.isPredicting) {
+          this.isPredicting = true;
+          const frames = this.bufferManager.consume();       
+          mergeFrames(frames)
+            .then((framesChunk) => {
+              const currentState = this.bufferManager.getState();
+              return this.methodHandler.process(framesChunk, currentState);
+            })
+            .then((incrementalResult) => {
+              if (incrementalResult) {
+                if (incrementalResult.state) {
+                  this.bufferManager.setState(new Float32Array(incrementalResult.state.data));
+                } else {
+                  this.bufferManager.resetState();
                 }
-              })
-              .catch((error) => {
-                console.error("Error during prediction:", error);
-              })
-              .finally(() => {
-                this.isPredicting = false;
-              });
-          }
+                this.onPredict(incrementalResult);
+              }
+            })
+            .catch((error) => {
+              console.error("Error during prediction:", error);
+            })
+            .finally(() => {
+              this.isPredicting = false;
+            });
         }
       }
     };
 
+    // Start capturing from frameIterator
     await this.frameIterator.start();
+
+    // Start the async loop
     processFrames().catch((error) => {
       console.error('Error in stream processing loop:', error);
     });
   }
 
   /**
-   * Handle face detection.
-   * @param frame TODO
-   * @param currentTime TODO 
-   * @returns TODO
+   * Runs face detection on a single frame. If a face is found, updates the ROI in bufferManager.
+   * @param frame - Current frame to detect face in.
+   * @param currentTime - Timestamp in seconds.
    */
-  private async handleFaceDetection(frame: Frame, currentTime: number): Promise<void> {  
-    this.lastFaceDetectionTime = currentTime;
-    await this.faceDetector!.run(frame, async (dets) => {
+  private async handleFaceDetection(frame: Frame, currentTime: number): Promise<void> {
+    this.faceDetector.run(frame, async (dets) => {
+      if (!dets || dets.length < 1) return;
+
       if (frame.getShape().length === 3) {
         const absoluteDet = {
           x0: Math.round(dets[0].x0 * frame.getShape()[1]),
@@ -127,12 +144,19 @@ export class StreamProcessor {
           x1: Math.round(dets[0].x1 * frame.getShape()[1]),
           y1: Math.round(dets[0].y1 * frame.getShape()[0]),
         };
-        const shouldUpdateROI = this.options.method === 'vitallens' || (!this.roi || !checkFaceInROI(absoluteDet, this.roi, [0.6, 1.0]));
+
+        // If method=vitallens or if face not in old ROI -> update ROI
+        const shouldUpdateROI =
+          this.options.method !== 'vitallens' ||
+          (!this.roi || !checkFaceInROI(absoluteDet, this.roi, [0.6, 1.0]));
+        
         if (shouldUpdateROI) {
-          this.roi = getROIForMethod(absoluteDet, this.methodConfig, {
-            height: frame.getShape()[0],
-            width: frame.getShape()[1],
-          }, true);
+          this.roi = getROIForMethod(
+            absoluteDet,
+            this.methodConfig,
+            { height: frame.getShape()[0], width: frame.getShape()[1] },
+            true
+          );
           this.bufferManager.addBuffer(this.roi, this.methodConfig, currentTime);
         }
       }
@@ -140,7 +164,7 @@ export class StreamProcessor {
   }
   
   /**
-   * Stops the processing loop and clears the buffer.
+   * Stops the processing loop, halts frame iteration, and clears buffers.
    */
   stop(): void {
     this.isPaused = true;

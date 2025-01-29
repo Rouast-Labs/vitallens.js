@@ -9,24 +9,20 @@ import * as tf from '@tensorflow/tfjs';
 export class RGBBuffer extends Buffer {
   /**
    * Preprocesses a frame by cropping and converting ROI to RGB.
-   * @param frame - The frame to preprocess.
+   * @param tensor - The frame to preprocess.
+   * @param timestamp - The timestamp of the frame.
    * @param roi - The region of interest for cropping.
    * @returns The processed frame.
    */
-  protected async preprocess(frame: Frame, roi: ROI): Promise<Frame> {    
+  protected async preprocess(tensor: tf.Tensor3D, timestamp: number[], roi: ROI): Promise<Frame> {    
     // Assert that the frame data is a 3D tensor
-    const shape = frame.getShape();
+    const shape = tensor.shape;
     if (shape.length !== 3) {
       throw new Error(`Frame data must be a 3D tensor. Received rank: ${shape.length}`);
     }
 
     // Validate ROI dimensions
-    if (
-      roi.x0 < 0 ||
-      roi.y0 < 0 ||
-      roi.x1 > shape[1] ||
-      roi.y1 > shape[0]
-    ) {
+    if (roi.x0 < 0 || roi.y0 < 0 || roi.x1 > shape[1] || roi.y1 > shape[0]) {
       throw new Error(
         `ROI dimensions are out of bounds. Frame dimensions: [${shape[0]}, ${shape[1]}], ROI: ${JSON.stringify(roi)}`
       );
@@ -34,9 +30,6 @@ export class RGBBuffer extends Buffer {
 
     // Perform all operations in one tf.tidy block
     const averagedFrame = tf.tidy(() => {
-      // Convert raw data back to a tensor
-      const tensor = frame.getTensor();
-
       // Crop the tensor based on the ROI
       const cropped = tensor.slice(
         [roi.y0, roi.x0, 0], // Start point [y, x, channel]
@@ -50,7 +43,7 @@ export class RGBBuffer extends Buffer {
     });
 
     // Return the processed frame with the original timestamp
-    const result = Frame.fromTensor(averagedFrame, frame.getTimestamp(), [roi]);
+    const result = Frame.fromTensor(averagedFrame, timestamp, [roi]);
 
     averagedFrame.dispose();
 
