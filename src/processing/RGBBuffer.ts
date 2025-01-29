@@ -50,7 +50,7 @@ export class RGBBuffer extends Buffer {
     });
 
     // Return the processed frame with the original timestamp
-    const result = Frame.fromTensor(averagedFrame, frame.getTimestamp(), frame.getROI());
+    const result = Frame.fromTensor(averagedFrame, frame.getTimestamp(), [roi]);
 
     averagedFrame.dispose();
 
