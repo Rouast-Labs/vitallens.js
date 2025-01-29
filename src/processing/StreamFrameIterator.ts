@@ -70,16 +70,13 @@ export class StreamFrameIterator extends FrameIteratorBase {
       return null;
     }
 
-    const tensorData = tidy(() => {
+    const tensor = tidy(() => {
       // TODO: Does this work with WebRTC stream?
       return browser.fromPixels(this.videoElement!);
     });
-
-    const result = Frame.fromTensor(tensorData, [performance.now()/1000]);
-
-    tensorData.dispose();
-
-    return result;
+    
+    // Keep tensor for full frame
+    return Frame.fromTensor(tensor, true, [performance.now()/1000]);
   }
 
   /**

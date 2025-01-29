@@ -13,6 +13,7 @@ export async function mergeFrames(frames: Frame[]): Promise<Frame> {
   }
 
   // Merge data using tf.tidy to manage memory
+  // TODO: Investigate if it would be smart to keep tensors from prev til here
   const concatenatedTensor = await tf.tidy(() => {
     const tensors = frames.map((frame) => frame.getTensor());
     return tf.stack(tensors); // Stack along a new dimension
@@ -25,7 +26,8 @@ export async function mergeFrames(frames: Frame[]): Promise<Frame> {
   const concatenatedROIs: ROI[] = frames.flatMap((frame) => frame.getROI());
 
   // Convert the tensor back to raw data for the new Frame
-  const mergedFrame = await Frame.fromTensor(concatenatedTensor, concatenatedTimestamps, concatenatedROIs);
+  // TODO keep tensor if simple method?
+  const mergedFrame = await Frame.fromTensor(concatenatedTensor, false, concatenatedTimestamps, concatenatedROIs);
   concatenatedTensor.dispose();
 
   return mergedFrame;

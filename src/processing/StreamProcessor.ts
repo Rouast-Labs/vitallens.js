@@ -82,39 +82,49 @@ export class StreamProcessor {
 
         this.lastProcessedTime = currentTime;
 
-        if (this.useFaceDetector && this.faceDetector && currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs) {
-          this.lastFaceDetectionTime = currentTime;
-          this.handleFaceDetection(frame, currentTime);
-        }
+        frame.retain();
 
-        // Add frame to buffer(s)
-        await this.bufferManager.add(frame);
+        try {
+          // Add frame to buffer(s)
+          await this.bufferManager.add(frame);
 
-        // If buffers + method are ready, run a prediction
-        if (this.bufferManager.isReady() && this.methodHandler.getReady() && !this.isPredicting) {
-          this.isPredicting = true;
-          const frames = this.bufferManager.consume();       
-          mergeFrames(frames)
-            .then((framesChunk) => {
-              const currentState = this.bufferManager.getState();
-              return this.methodHandler.process(framesChunk, currentState);
-            })
-            .then((incrementalResult) => {
-              if (incrementalResult) {
-                if (incrementalResult.state) {
-                  this.bufferManager.setState(new Float32Array(incrementalResult.state.data));
-                } else {
-                  this.bufferManager.resetState();
+          // If buffers + method are ready, run a prediction
+          if (this.bufferManager.isReady() && this.methodHandler.getReady() && !this.isPredicting) {
+            this.isPredicting = true;
+            const frames = this.bufferManager.consume();       
+            mergeFrames(frames)
+              .then((framesChunk) => {
+                const currentState = this.bufferManager.getState();
+                return this.methodHandler.process(framesChunk, currentState);
+              })
+              .then((incrementalResult) => {
+                if (incrementalResult) {
+                  if (incrementalResult.state) {
+                    this.bufferManager.setState(new Float32Array(incrementalResult.state.data));
+                  } else {
+                    this.bufferManager.resetState();
+                  }
+                  this.onPredict(incrementalResult);
                 }
-                this.onPredict(incrementalResult);
-              }
-            })
-            .catch((error) => {
-              console.error("Error during prediction:", error);
-            })
-            .finally(() => {
-              this.isPredicting = false;
-            });
+              })
+              .catch((error) => {
+                console.error("Error during prediction:", error);
+              })
+              .finally(() => {
+                this.isPredicting = false;
+              });
+          }
+
+          if (this.useFaceDetector && this.faceDetector && currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs) {
+            this.lastFaceDetectionTime = currentTime;
+            this.handleFaceDetection(frame, currentTime);
+          } else {
+            frame.release();
+          }
+
+        } catch (error) {
+          console.error('Error processing frame:', error);
+          frame.release();
         }
       }
     };
@@ -160,6 +170,8 @@ export class StreamProcessor {
           this.bufferManager.addBuffer(this.roi, this.methodConfig, currentTime);
         }
       }
+
+      frame.release();
     });
   }
   

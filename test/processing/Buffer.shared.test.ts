@@ -5,9 +5,9 @@ import * as tf from '@tensorflow/tfjs';
 
 // Mock Buffer class since it's abstract
 class MockBuffer extends Buffer {
-  protected async preprocess(tensor: tf.Tensor3D, timestamp: number[], roi: ROI): Promise<Frame> {
+  protected async preprocess(frame: Frame): Promise<Frame> {
     // Mock preprocessing: return the frame as-is
-    return Frame.fromTensor(tensor, timestamp);
+    return frame;
   }
 }
 
@@ -36,21 +36,17 @@ describe('Buffer', () => {
 
   test('adds frames to the buffer and retains them on add()', async () => {
     const rawData = new Int32Array([1, 2, 3]).buffer;
-    const frame = new Frame(rawData, [1, 1, 3], 'int32', [1000]);
-    const tensor = frame.getTensor() as tf.Tensor3D;
-    await buffer.add(tensor, frame.getTimestamp());
+    const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [1000] });
+    await buffer.add(frame);
     expect(buffer.isReady()).toBe(false);
     expect((buffer as any).buffer.size).toBe(1);
-    tensor.dispose();
   });
 
   test('buffer isReady() when minimum frames are added', async () => {
     for (let i = 0; i < methodConfig.minWindowLength; i++) {
       const rawData = new Int32Array([i, i + 1, i + 2]).buffer;
-      const frame = new Frame(rawData, [1, 1, 3], 'int32', [i * 1000]);
-      const tensor = frame.getTensor() as tf.Tensor3D;
-      await buffer.add(tensor, frame.getTimestamp());
-      tensor.dispose();
+      const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [i * 1000] });
+      await buffer.add(frame);
     }
 
     expect(buffer.isReady()).toBe(true);
@@ -59,10 +55,8 @@ describe('Buffer', () => {
   test('maintains buffer size within maxWindowLength', async () => {
     for (let i = 0; i < 7; i++) {
       const rawData = new Int32Array([i, i + 1, i + 2]).buffer;
-      const frame = new Frame(rawData, [1, 1, 3], 'int32', [i * 1000]);
-      const tensor = frame.getTensor() as tf.Tensor3D;
-      await buffer.add(tensor, frame.getTimestamp());
-      tensor.dispose();
+      const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [i * 1000] });
+      await buffer.add(frame);
     }
 
     expect((buffer as any).buffer.size).toBe(methodConfig.maxWindowLength);
@@ -71,10 +65,8 @@ describe('Buffer', () => {
   test('returns and clears frames beyond minWindowLength on consume()', async () => {
     for (let i = 0; i < 5; i++) {
       const rawData = new Int32Array([i, i + 1, i + 2]).buffer;
-      const frame = new Frame(rawData, [1, 1, 3], 'int32', [i * 1000]);
-      const tensor = frame.getTensor() as tf.Tensor3D;
-      await buffer.add(tensor, frame.getTimestamp());
-      tensor.dispose();
+      const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [i * 1000] });
+      await buffer.add(frame);
     }
 
     const consumedFrames = buffer.consume();
@@ -85,10 +77,8 @@ describe('Buffer', () => {
   test('empties the buffer on clear()', async () => {
     for (let i = 0; i < 3; i++) {
       const rawData = new Int32Array([i, i + 1, i + 2]).buffer;
-      const frame = new Frame(rawData, [1, 1, 3], 'int32', [i * 1000]);
-      const tensor = frame.getTensor() as tf.Tensor3D;
-      await buffer.add(tensor, frame.getTimestamp());
-      tensor.dispose();
+      const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [i * 1000] });
+      await buffer.add(frame);
     }
 
     buffer.clear();
@@ -98,10 +88,8 @@ describe('Buffer', () => {
   test('calls preprocess() for each added frame', async () => {
     const preprocessSpy = jest.spyOn(buffer as any, 'preprocess');
     const rawData = new Int32Array([1, 2, 3]).buffer;
-    const frame = new Frame(rawData, [1, 1, 3], 'int32', [1000]);
-    const tensor = frame.getTensor() as tf.Tensor3D;
-    await buffer.add(tensor, frame.getTimestamp());
-    tensor.dispose();
+    const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [1000] });
+    await buffer.add(frame);
     expect(preprocessSpy).toHaveBeenCalled();
     preprocessSpy.mockRestore();
   });
@@ -111,10 +99,8 @@ describe('Buffer', () => {
     buffer = new MockBuffer(roi, methodConfig);
     for (let i = 0; i < 2; i++) { // minWindowLengthState is 2
       const rawData = new Int32Array([i, i + 1, i + 2]).buffer;
-      const frame = new Frame(rawData, [1, 1, 3], 'int32', [i * 1000]);
-      const tensor = frame.getTensor() as tf.Tensor3D;
-      await buffer.add(tensor, frame.getTimestamp());
-      tensor.dispose();
+      const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [i * 1000] });
+      await buffer.add(frame);
     }
 
     expect(buffer.isReadyState()).toBe(true);

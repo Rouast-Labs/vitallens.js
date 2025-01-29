@@ -48,11 +48,6 @@ const mockMethodConfigPOS: MethodConfig = {
 };
 const mockTimestamp = Date.now();
 
-const createMockFrame = (): Frame => {
-  const rawData = new Uint8Array([1, 2, 3]).buffer;
-  return new Frame(rawData, [1, 3], 'int32', [mockTimestamp]);
-};
-
 describe('BufferManager', () => {
   let bufferManager: BufferManager;
 
@@ -122,7 +117,7 @@ describe('BufferManager', () => {
     it('should add a frame to all active buffers', async () => {
       const mockBuffer = { add: jest.fn() };
       const rawData = new Int32Array([1, 2, 3]).buffer;
-      const frame = new Frame(rawData, [1, 1, 3], 'int32', [1000]);
+      const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [1000] });
       
       bufferManager['buffers'].set('id1', { buffer: mockBuffer as any, createdAt: mockTimestamp });
       bufferManager['buffers'].set('id2', { buffer: mockBuffer as any, createdAt: mockTimestamp });

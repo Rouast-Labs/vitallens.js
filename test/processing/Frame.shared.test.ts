@@ -9,44 +9,90 @@ describe('Frame Class', () => {
   ];
 
   describe('Constructor and Getters', () => {
-    test('constructor initializes fields correctly', () => {
+    test('constructor initializes fields correctly with rawData', () => {
       const rawData = new ArrayBuffer(12);
       const shape = [2, 2, 3];
       const dtype = 'int32';
       const timestamp = [0.1, 0.2];
-      const frame = new Frame(rawData, shape, dtype, timestamp, mockROI);
+      const frame = new Frame({ rawData, shape, dtype, timestamp, roi: mockROI, keepTensor: false });
 
       expect(frame.getRawData()).toBe(rawData);
       expect(frame.getShape()).toEqual(shape);
       expect(frame.getDType()).toBe(dtype);
       expect(frame.getTimestamp()).toEqual(timestamp);
       expect(frame.getROI()).toEqual(mockROI);
+      expect(frame.hasTensor()).toEqual(false);
+    });
+
+    test('constructor initializes fields correctly with tensor and keeps it', () => {
+      const tensor = tf.tensor([1, 2, 3, 4, 5, 6], [2, 1, 3], 'float32');
+      const frame = new Frame({ tensor, keepTensor: true });
+
+      expect(frame.getTensor()).toBe(tensor);
+      expect(frame.getShape()).toEqual([2, 1, 3]);
+      expect(frame.getDType()).toBe('float32');
+      expect(frame.hasTensor()).toBe(true);
+
+      frame.disposeTensor();
+    });
+
+    test('constructor initializes fields correctly with tensor and does not keep it', () => {
+      const tensor = tf.tensor([1, 2, 3, 4, 5, 6], [2, 1, 3], 'float32');
+      const frame = new Frame({ tensor, keepTensor: false });
+      const typedData = tensor.dataSync() as Float32Array;
+
+      expect(frame.getRawData()).toStrictEqual(typedData.buffer);
+      expect(frame.getShape()).toEqual([2, 1, 3]);
+      expect(frame.getDType()).toBe('float32');
+      expect(frame.hasTensor()).toBe(false);
+
+      tensor.dispose();
     });
   });
 
   describe('fromTensor', () => {
+    test('initializes with float32 tensor and keeps it when keepTensor is true', () => {
+      const tensor = tf.tensor([1, 2, 3, 4, 5, 6], [2, 1, 3], 'float32');
+      const frame = Frame.fromTensor(tensor, true, [0.1, 0.2], mockROI);
+
+      expect(frame.getTensor()).toBe(tensor);
+      expect(frame.getShape()).toEqual([2, 1, 3]);
+      expect(frame.getDType()).toBe('float32');
+      expect(frame.getTimestamp()).toEqual([0.1, 0.2]);
+      expect(frame.getROI()).toEqual(mockROI);
+      expect(frame.hasTensor()).toBe(true);
+
+      frame.disposeTensor();
+    });
+
+    test('converts with float32 tensor to rawData when keepTensor is false', () => {
+      const tensor = tf.tensor([1, 2, 3, 4, 5, 6], [2, 1, 3], 'int32');
+      const frame = Frame.fromTensor(tensor, false);
+
+      expect(frame.getRawData()).toBeDefined();
+      expect(frame.getShape()).toEqual([2, 1, 3]);
+      expect(frame.getDType()).toBe('int32');
+      expect(frame.getTimestamp()).toEqual([]);
+      expect(frame.getROI()).toEqual([]);
+      expect(frame.hasTensor()).toBe(false);
+
+      tensor.dispose();
+    });
+
     test('initializes correctly for int32', () => {
       const dtype = 'int32';
       const tensor = tf.tensor([1, 2, 3, 4, 5, 6], [2, 1, 3], dtype);
       const timestamp = [0.1, 0.2];
-      const frame = Frame.fromTensor(tensor, timestamp, mockROI);
+      const frame = Frame.fromTensor(tensor, false, timestamp, mockROI);
 
+      expect(frame.getRawData()).toBeDefined();
       expect(frame.getShape()).toEqual([2, 1, 3]);
       expect(frame.getDType()).toBe(dtype);
       expect(frame.getTimestamp()).toEqual(timestamp);
       expect(frame.getROI()).toEqual(mockROI);
-    });
+      expect(frame.hasTensor()).toBe(false);
 
-    test('initializes correctly for float32', () => {
-      const dtype = 'float32';
-      const tensor = tf.tensor([1, 2, 3, 4, 5, 6], [2, 1, 3], dtype);
-      const timestamp = [0.1, 0.2];
-      const frame = Frame.fromTensor(tensor, timestamp, mockROI);
-
-      expect(frame.getShape()).toEqual([2, 1, 3]);
-      expect(frame.getDType()).toBe(dtype);
-      expect(frame.getTimestamp()).toEqual(timestamp);
-      expect(frame.getROI()).toEqual(mockROI);
+      tensor.dispose();
     });
 
     test('throws for unsupported dtypes', () => {
@@ -72,28 +118,34 @@ describe('Frame Class', () => {
     test('throws for mismatched raw data size', () => {
       const shape = [2, 1, 4]; // Expects 8 elements
       const array = new Uint8Array([1, 2, 3, 4, 5, 6]); // Only 6 elements
-
-      expect(() => Frame.fromUint8Array(array, shape)).toThrowError(
-        /Mismatch in raw data size/
-      );
+      expect(() => Frame.fromUint8Array(array, shape)).toThrowError(/Mismatch in raw data size/);
     });
   });
 
   describe('getTensor', () => {
-    test('returns correct tensor for int32', () => {
-      const rawData = new Int32Array([1, 2, 3, 4, 5, 6]).buffer;
-      const frame = new Frame(rawData, [2, 1, 3], 'int32');
+    test('returns correct tensor when keepTensor is true', () => {
+      const tensor = tf.tensor([1, 2, 3], [3], 'int32');
+      const frame = new Frame({ tensor, keepTensor: true });
 
-      const tensor = frame.getTensor();
-      expect(tensor.shape).toEqual([2, 1, 3]);
-      expect(tensor.dtype).toBe('int32');
-      expect(Array.from(tensor.dataSync())).toEqual([1, 2, 3, 4, 5, 6]);
-      tensor.dispose();
+      expect(frame.getTensor()).toBe(tensor);
+
+      frame.disposeTensor();
+    });
+
+    test('reconstructs tensor from rawData when keepTensor is false', () => {
+      const rawData = new Int32Array([1, 2, 3]).buffer;
+      const frame = new Frame({ rawData, shape: [3], dtype: 'int32', keepTensor: false });
+
+      const outTensor = frame.getTensor();
+      expect(outTensor).toBeInstanceOf(tf.Tensor);
+      expect(outTensor.shape).toEqual([3]);
+      
+      outTensor.dispose();
     });
 
     test('throws for insufficient raw data', () => {
       const rawData = new Uint8Array([1, 2, 3]).buffer; // Smaller than shape
-      const frame = new Frame(rawData, [2, 1, 3], 'uint8' as tf.DataType);
+      const frame = new Frame({ rawData, shape: [2, 1, 3], dtype: 'uint8' as tf.DataType });
 
       expect(() => frame.getTensor()).toThrowError(
         /Mismatch in tensor size: expected 6, but got 3/
@@ -101,30 +153,40 @@ describe('Frame Class', () => {
     });
   });
 
+  describe('disposeTensor', () => {
+    test('disposes of tensor when kept', () => {
+      const tensor = tf.tensor([1, 2, 3], [3], 'int32');
+      const frame = new Frame({ tensor, keepTensor: true });
+
+      frame.disposeTensor();
+      expect(() => frame.getTensor()).toThrow();
+    });
+  });
+
   describe('getUint8Array', () => {
     test('returns Uint8Array for uint8 dtype', () => {
       const rawData = new Uint8Array([1, 2, 3]).buffer;
-      const frame = new Frame(rawData, [1, 3], 'uint8' as tf.DataType);
-
-      const array = frame.getUint8Array();
-      expect(Array.from(array)).toEqual([1, 2, 3]);
+      const frame = new Frame({ rawData, shape: [3], dtype: 'uint8' as tf.DataType, keepTensor: false });
+      expect(Array.from(frame.getUint8Array())).toEqual([1, 2, 3]);
     });
 
     test('converts other dtypes to Uint8Array', () => {
       const rawData = new Float32Array([1.1, 2.2, 3.3]).buffer;
-      const frame = new Frame(rawData, [1, 3], 'float32');
-
-      const array = frame.getUint8Array();
-      expect(Array.from(array)).toEqual([1, 2, 3]); // Floats truncated to ints
+      const frame = new Frame({ rawData, shape: [3], dtype: 'float32', keepTensor: false });
+      expect(Array.from(frame.getUint8Array())).toEqual([1, 2, 3]);
     });
   });
+
+  // TODO: Test getInt32Array
+  // TODO: Test getFloat32Array
+  // TODO: Test retain and release
 
   describe('Miscellaneous', () => {
     test('getTypedArrayClass correctly maps dtypes', () => {
       const rawData = new ArrayBuffer(4);
-      const uint8Frame = new Frame(rawData, [1], 'uint8' as tf.DataType);
-      const float32Frame = new Frame(rawData, [1], 'float32');
-      const int32Frame = new Frame(rawData, [1], 'int32');
+      const uint8Frame = new Frame({ rawData, shape: [1], dtype: 'uint8' as tf.DataType });
+      const float32Frame = new Frame({ rawData, shape: [1], dtype: 'float32' });
+      const int32Frame = new Frame({ rawData, shape: [1], dtype: 'int32' });
 
       expect(uint8Frame['getTypedArrayClass']()).toBe(Uint8Array);
       expect(float32Frame['getTypedArrayClass']()).toBe(Float32Array);

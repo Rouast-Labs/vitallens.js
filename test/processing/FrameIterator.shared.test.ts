@@ -31,8 +31,8 @@ describe('FrameIteratorBase', () => {
 
   beforeEach(() => {
     mockFrames = [
-      new Frame(new ArrayBuffer(8), [2, 2], 'int32', [0]),
-      new Frame(new ArrayBuffer(16), [4, 4], 'float32', [1]),
+      new Frame({ rawData: new ArrayBuffer(8), shape: [2, 2], dtype: 'int32', timestamp: [0] }),
+      new Frame({ rawData: new ArrayBuffer(16), shape: [4, 4], dtype: 'float32', timestamp: [1] }),
     ];
   });
 

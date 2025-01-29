@@ -25,7 +25,6 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
       expect(roi).toHaveProperty('x1');
       expect(roi).toHaveProperty('y1');
     });
-
   });
 
   it('should detect faces in a batch of two images', async () => {
@@ -34,7 +33,7 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
     const singleImageBatch = imageTensor.expandDims(0) as tf.Tensor4D;
 
     const batchedImage = tf.concat([singleImageBatch, singleImageBatch], 0);
-    const frame = Frame.fromTensor(batchedImage, [0, 1]);
+    const frame = Frame.fromTensor(batchedImage, true, [0, 1]);
 
     const results: ROI[] = await faceDetector.detect(frame);
 
@@ -50,5 +49,6 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
     imageTensor.dispose();
     singleImageBatch.dispose();
     batchedImage.dispose();
-  }, 60000);
+    frame.disposeTensor();
+  });
 });

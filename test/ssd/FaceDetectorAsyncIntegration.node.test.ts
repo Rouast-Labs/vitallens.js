@@ -27,7 +27,7 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     const resizedImage = tf.image.resizeBilinear(imageTensor, [240, 320]); // Resize to [240, 320]
     
     // Create a Frame instance
-    const frame = Frame.fromTensor(resizedImage, [0]);
+    const frame = Frame.fromTensor(resizedImage, true, [0]);
 
     // Run face detection
     const results: ROI[] = await faceDetector.detect(frame);
@@ -45,6 +45,7 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     // Clean up
     imageTensor.dispose();
     resizedImage.dispose();
+    frame.disposeTensor();
   });
 
   it('should detect faces in a batch of two images', async () => {
@@ -61,7 +62,7 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     const batchedImage = tf.concat([singleImageBatch, singleImageBatch], 0); // Batch size 2
 
     // Create a Frame instance
-    const frame = Frame.fromTensor(batchedImage, [0, 1]);
+    const frame = Frame.fromTensor(batchedImage, true, [0, 1]);
 
     // Run face detection
     const results: ROI[] = await faceDetector.detect(frame);
@@ -81,5 +82,6 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     resizedImage.dispose();
     singleImageBatch.dispose();
     batchedImage.dispose();
+    frame.disposeTensor();
   });
 });

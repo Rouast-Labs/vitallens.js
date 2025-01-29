@@ -8,8 +8,8 @@ import { Frame } from '../../src/processing/Frame';
 import * as tf from '@tensorflow/tfjs';
 
 const mockROI: ROI = { x0: 0, y0: 0, x1: 100, y1: 100 };
-const mockFrame3D1 = Frame.fromTensor(tf.tensor3d([1, 2, 3, 4], [2, 2, 1]), [0.1], [mockROI]);
-const mockFrame3D2 = Frame.fromTensor(tf.tensor3d([5, 6, 7, 8], [2, 2, 1]), [0.2], [mockROI]);
+const mockFrame3D1 = Frame.fromTensor(tf.tensor3d([1, 2, 3, 4], [2, 2, 1]), false, [0.1], [mockROI]);
+const mockFrame3D2 = Frame.fromTensor(tf.tensor3d([5, 6, 7, 8], [2, 2, 1]), false, [0.2], [mockROI]);
 const options: VitalLensOptions = { method: 'vitallens', globalRoi: { x0: 0, y0: 0, x1: 100, y1: 100 }, overrideFpsTarget: 30 };
 const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, requiresState: false };
 
@@ -48,7 +48,7 @@ describe('StreamProcessor', () => {
 
     mockFrameIterator = {
       [Symbol.asyncIterator]: jest.fn(() => ({
-        next: jest.fn(() => Promise.resolve({ value: { /* mocked frame */ }, done: false })),
+        next: jest.fn(() => Promise.resolve({ value: mockFrame3D1, done: false })),
       })),
       start: jest.fn(),
       stop: jest.fn(),
@@ -96,7 +96,6 @@ describe('StreamProcessor', () => {
   });
 
   test('should update ROI on face detection', async () => {
-    const frame = { getShape: jest.fn(() => [480, 640, 3]) };
     const streamProcessor = new StreamProcessor(
       options,
       methodConfig,
@@ -107,9 +106,9 @@ describe('StreamProcessor', () => {
       onPredictMock
     );
 
-    await streamProcessor['handleFaceDetection'](frame as any, 0);
+    await streamProcessor['handleFaceDetection'](mockFrame3D1 as any, 0);
 
-    expect(mockFaceDetector.run).toHaveBeenCalledWith(frame, expect.any(Function));
+    expect(mockFaceDetector.run).toHaveBeenCalledWith(mockFrame3D1, expect.any(Function));
     expect(mockBufferManager.addBuffer).toHaveBeenCalled();
   });
 

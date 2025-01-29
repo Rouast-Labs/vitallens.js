@@ -1,6 +1,5 @@
 import { MethodConfig, ROI } from '../types/core';
 import { Frame } from './Frame';
-import * as tf from '@tensorflow/tfjs';
 
 /**
  * An abstract class to manage buffering of frames.
@@ -9,18 +8,17 @@ export abstract class Buffer {
   private buffer: Map<number, Frame> = new Map(); // Frame data mapped by timestamp
 
   constructor(
-    private roi: ROI,
+    protected roi: ROI,
     protected methodConfig: MethodConfig) {
   }
 
   /**
    * Adds a frame to the buffer.
-   * @param tensor - The frame to add.
-   * @param timestamp - The frame timestamp
+   * @param frame - The frame to add.
    */
-  async add(tensor: tf.Tensor3D, timestamp: number[]): Promise<void> {
-    const processedFrame = await this.preprocess(tensor, timestamp, this.roi);
-    const frameTime = timestamp[0];
+  async add(frame: Frame): Promise<void> {
+    const processedFrame = await this.preprocess(frame);
+    const frameTime = frame.getTimestamp()[0];
     this.buffer.set(frameTime, processedFrame);
 
     // Maintain the maximum buffer size
@@ -84,10 +82,8 @@ export abstract class Buffer {
   /**
    * Abstract method for preprocessing a frame.
    * Must be implemented in subclasses.
-   * @param tensor - The frame to preprocess.
-   * @param timestamp - The timestamp of the frame.
-   * @param roi - The region of interest for cropping.
+   * @param frame - The frame to preprocess.
    * @returns The processed frame.
    */
-  protected abstract preprocess(tensor: tf.Tensor3D, timestamp: number[], roi: ROI): Promise<Frame>;
+  protected abstract preprocess(frame: Frame): Promise<Frame>;
 }

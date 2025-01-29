@@ -11,7 +11,7 @@ export function getTestImageFrame(): Frame {
   const filePath = path.resolve(__dirname, '../../examples/test.png');
   const buffer = fs.readFileSync(filePath);
   const imageTensor = tf.node.decodeImage(new Uint8Array(buffer), 3);
-  const frame = Frame.fromTensor(imageTensor, [0]);
+  const frame = Frame.fromTensor(imageTensor, false, [0]);
   imageTensor.dispose();
   return frame;
 }

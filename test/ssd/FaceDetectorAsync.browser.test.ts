@@ -79,7 +79,7 @@ describe('FaceDetectorAsync.browser', () => {
   it('should detect faces and return ROIs', async () => {
     const mockData = new Float32Array(224 * 224 * 3).fill(0);
     const mockTensor = tf.tensor4d(mockData, [1, 224, 224, 3]);
-    const frame = Frame.fromTensor(mockTensor, [0]);
+    const frame = Frame.fromTensor(mockTensor, true, [0]);
 
     const results: ROI[] = await faceDetector.detect(frame);
 
@@ -87,12 +87,13 @@ describe('FaceDetectorAsync.browser', () => {
     expect(areROIsClose(results, expectedResults)).toBe(true);
 
     mockTensor.dispose();
+    frame.disposeTensor();
   });
 
   it('should call the onFinish callback with results', async () => {
     const mockData = new Float32Array(224 * 224 * 3).fill(0);
     const mockTensor = tf.tensor4d(mockData, [1, 224, 224, 3]);
-    const frame = Frame.fromTensor(mockTensor, [0]);
+    const frame = Frame.fromTensor(mockTensor, true, [0]);
     const onFinish = jest.fn();
 
     await faceDetector.run(frame, onFinish);
@@ -111,13 +112,14 @@ describe('FaceDetectorAsync.browser', () => {
     }
 
     mockTensor.dispose();
+    frame.disposeTensor();
   });
 
   it('should throw an error if the model is not loaded', async () => {
     const uninitializedDetector = new FaceDetectorAsync(1, 0.5, 0.3);
     const mockData = new Float32Array(224 * 224 * 3).fill(0);
     const mockTensor = tf.tensor4d(mockData, [1, 224, 224, 3]);
-    const frame = Frame.fromTensor(mockTensor, [0]);
+    const frame = Frame.fromTensor(mockTensor, true, [0]);
 
     (uninitializedDetector as any).model = null;
 
@@ -125,5 +127,6 @@ describe('FaceDetectorAsync.browser', () => {
       'Face detection model is not loaded.'
     );
     mockTensor.dispose();
+    frame.disposeTensor();
   });
 });
