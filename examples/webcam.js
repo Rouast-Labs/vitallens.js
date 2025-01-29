@@ -29,7 +29,7 @@ function createChart(elementId, label, color) {
         data: [],
         borderColor: color,
         borderWidth: 2,
-        tension: 0.1,
+        tension: 0,
         pointRadius: 0,
       }],
     },
@@ -48,22 +48,31 @@ function createChart(elementId, label, color) {
           },
         },
       },
+      animation: false,      
       scales: { x: { display: false }, y: { display: false } },
     },
   });
 }
 
-function updateChart(chart, data) {
-  chart.data.datasets[0].data.push(...data);
-  chart.data.labels.push(...data.map((_, i) => i));
+function updateChart(chart, newData) {
+  let dataToDisplay = newData;
 
-  if (chart.data.datasets[0].data.length > MAX_DATA_POINTS) {
-    chart.data.datasets[0].data = chart.data.datasets[0].data.slice(-MAX_DATA_POINTS);
-    chart.data.labels = chart.data.labels.slice(-MAX_DATA_POINTS);
+  if (dataToDisplay.length > MAX_DATA_POINTS) {
+    dataToDisplay = dataToDisplay.slice(-MAX_DATA_POINTS);
   }
+
+  if (dataToDisplay.length < MAX_DATA_POINTS) {
+    const zerosNeeded = MAX_DATA_POINTS - dataToDisplay.length;
+    const zeroPad = new Array(zerosNeeded).fill(0);
+    dataToDisplay = zeroPad.concat(dataToDisplay);
+  }
+
+  chart.data.datasets[0].data = dataToDisplay;
+  chart.data.labels = Array.from({ length: MAX_DATA_POINTS }, (_, i) => i);
 
   chart.update();
 }
+
 
 function drawFaceBox(canvas, video, coordinates) {
   if (!coordinates || !coordinates.length) return;
@@ -128,7 +137,7 @@ function handleVitalLensResults(result) {
     drawFaceBox(canvas, video, face.coordinates);
   }
 
-  const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } = result.vital_signs;
+  const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } = vital_signs;
 
   if (ppg_waveform?.data) updateChart(charts.ppgChart, ppg_waveform.data);
   if (respiratory_waveform?.data) updateChart(charts.respChart, respiratory_waveform.data);
