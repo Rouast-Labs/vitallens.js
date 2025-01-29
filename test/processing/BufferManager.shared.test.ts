@@ -35,7 +35,6 @@ const mockMethodConfigVitalLens: MethodConfig = {
   roiMethod: 'face',
   minWindowLength: 5,
   maxWindowLength: 10,
-  windowOverlap: 2,
   requiresState: false,
 };
 const mockMethodConfigPOS: MethodConfig = {
@@ -45,7 +44,6 @@ const mockMethodConfigPOS: MethodConfig = {
   roiMethod: 'face',
   minWindowLength: 5,
   maxWindowLength: 10,
-  windowOverlap: 2,
   requiresState: false,
 };
 const mockTimestamp = Date.now();

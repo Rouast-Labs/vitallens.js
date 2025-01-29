@@ -27,7 +27,6 @@ export interface MethodConfig {
   minWindowLength: number;
   minWindowLengthState?: number;
   maxWindowLength: number;
-  windowOverlap: number;
   requiresState: boolean;
 }
 

@@ -24,7 +24,6 @@ describe('Buffer', () => {
       roiMethod: 'face',
       minWindowLength: 3,
       maxWindowLength: 5,
-      windowOverlap: 2,
       requiresState: false,
     };
     buffer = new MockBuffer(roi, methodConfig);

@@ -11,7 +11,7 @@ const mockROI: ROI = { x0: 0, y0: 0, x1: 100, y1: 100 };
 const mockFrame3D1 = Frame.fromTensor(tf.tensor3d([1, 2, 3, 4], [2, 2, 1]), [0.1], [mockROI]);
 const mockFrame3D2 = Frame.fromTensor(tf.tensor3d([5, 6, 7, 8], [2, 2, 1]), [0.2], [mockROI]);
 const options: VitalLensOptions = { method: 'vitallens', globalRoi: { x0: 0, y0: 0, x1: 100, y1: 100 }, overrideFpsTarget: 30 };
-const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, windowOverlap: 0, requiresState: false };
+const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, requiresState: false };
 
 describe('StreamProcessor', () => {
   let mockBufferManager: jest.Mocked<BufferManager>;
@@ -75,7 +75,7 @@ describe('StreamProcessor', () => {
 
   test('should start processing frames and trigger prediction', async () => {
     const options: VitalLensOptions = { method: 'vitallens', globalRoi: { x0: 0, y0: 0, x1: 100, y1: 100 }, overrideFpsTarget: 30 };
-    const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, windowOverlap: 0, requiresState: false };
+    const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, requiresState: false };
     const streamProcessor = new StreamProcessor(
       options,
       methodConfig,

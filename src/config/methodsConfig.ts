@@ -9,7 +9,6 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     minWindowLength: 16,
     minWindowLengthState: 4,
     maxWindowLength: 900,
-    windowOverlap: 0,
     requiresState: true
   },
   pos: {
@@ -18,7 +17,6 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     fpsTarget: 30,
     minWindowLength: 48,
     maxWindowLength: 48,
-    windowOverlap: 47,
     requiresState: false
   },
   chrom: {
@@ -27,7 +25,6 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     fpsTarget: 30,
     minWindowLength: 48,
     maxWindowLength: 48,
-    windowOverlap: 47,
     requiresState: false
   },
   g: {
@@ -36,7 +33,6 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     fpsTarget: 30,
     minWindowLength: 64,
     maxWindowLength: 64,
-    windowOverlap: 63,
     requiresState: false
   },
 };

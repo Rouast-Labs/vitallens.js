@@ -61,7 +61,7 @@ describe("getUpperBodyROI", () => {
 describe("getROIForMethod", () => {
   it("returns face ROI when roiMethod is 'face'", () => {
     const det = { x0: 50, y0: 50, x1: 150, y1: 150 };
-    const methodConfig: MethodConfig = { roiMethod: "face", method: 'vitallens', fpsTarget: 1, minWindowLength: 0, maxWindowLength: 10, windowOverlap: 0, requiresState: false };
+    const methodConfig: MethodConfig = { roiMethod: "face", method: 'vitallens', fpsTarget: 1, minWindowLength: 0, maxWindowLength: 10, requiresState: false };
     const clipDims = { width: 200, height: 200 };
     const result = getROIForMethod(det, methodConfig, clipDims);
     expect(result).toEqual(getFaceROI(det, clipDims));
@@ -69,7 +69,7 @@ describe("getROIForMethod", () => {
 
   it("returns upper body ROI when roiMethod is 'upper_body'", () => {
     const det = { x0: 50, y0: 50, x1: 150, y1: 150 };
-    const methodConfig: MethodConfig = { roiMethod: "upper_body", method: 'vitallens', fpsTarget: 1, minWindowLength: 0, maxWindowLength: 10, windowOverlap: 0, requiresState: false };
+    const methodConfig: MethodConfig = { roiMethod: "upper_body", method: 'vitallens', fpsTarget: 1, minWindowLength: 0, maxWindowLength: 10, requiresState: false };
     const clipDims = { width: 200, height: 200 };
     const result = getROIForMethod(det, methodConfig, clipDims);
     expect(result).toEqual(getUpperBodyROI(det, clipDims));

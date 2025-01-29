@@ -5,7 +5,7 @@ import { FileRGBIterator } from '../../src/processing/FileRGBIterator';
 import { MethodConfig } from '../../src/types';
 import { IFaceDetector } from '../../src/types/IFaceDetector';
 
-const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, windowOverlap: 0, requiresState: false };
+const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, requiresState: false };
 const mockFaceDetector: jest.Mocked<IFaceDetector> = {
   detect: jest.fn(),
   run: jest.fn(),

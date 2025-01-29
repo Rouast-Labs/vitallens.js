@@ -92,7 +92,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     // TODO: Support multiple streams
     // - separate buffer and state management per id in buffer manager
     
-    await this.faceDetector.load();
+    // If required, make sure face detector is loaded
+    if (!this.options.globalRoi) await this.faceDetector.load();
 
     const frameIterator = this.frameIteratorFactory.createStreamFrameIterator(stream, videoElement);
 

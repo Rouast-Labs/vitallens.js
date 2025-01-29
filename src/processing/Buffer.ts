@@ -54,7 +54,7 @@ export abstract class Buffer {
    */
   consume(): Frame[] {
     const keys = Array.from(this.buffer.keys()).sort((a, b) => a - b);
-    const minWindowLength = (this.methodConfig.minWindowLengthState)
+    const minWindowLength = this.methodConfig.minWindowLengthState
       ? Math.min(this.methodConfig.minWindowLengthState, this.methodConfig.minWindowLength)
       : this.methodConfig.minWindowLength; 
     const retainCount = Math.min(minWindowLength-1, this.buffer.size);

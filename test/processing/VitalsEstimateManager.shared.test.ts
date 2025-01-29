@@ -26,7 +26,6 @@ describe('VitalsEstimateManager', () => {
       fpsTarget: 1,
       minWindowLength: 10,
       maxWindowLength: 10,
-      windowOverlap: 5,
       requiresState: false
     };
     options = {
