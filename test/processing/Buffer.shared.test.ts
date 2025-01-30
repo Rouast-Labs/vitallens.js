@@ -1,7 +1,6 @@
 import { Buffer } from '../../src/processing/Buffer';
 import { Frame } from '../../src/processing/Frame';
 import { MethodConfig, ROI } from '../../src/types/core';
-import * as tf from '@tensorflow/tfjs';
 
 // Mock Buffer class since it's abstract
 class MockBuffer extends Buffer {
@@ -38,6 +37,14 @@ describe('Buffer', () => {
     const rawData = new Int32Array([1, 2, 3]).buffer;
     const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [1000] });
     await buffer.add(frame);
+    expect(buffer.isReady()).toBe(false);
+    expect((buffer as any).buffer.size).toBe(1);
+  });
+
+  test('adds frames to the buffer and retains them with overrideRoi on add()', async () => {
+    const rawData = new Int32Array([1, 2, 3]).buffer;
+    const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [1000] });
+    await buffer.add(frame, roi);
     expect(buffer.isReady()).toBe(false);
     expect((buffer as any).buffer.size).toBe(1);
   });

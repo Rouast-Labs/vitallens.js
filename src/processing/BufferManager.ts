@@ -83,11 +83,12 @@ export class BufferManager {
   /**
    * Adds a frame to the active buffers.
    * @param frame - The frame to add.
+   * @param overrideRoi - Use this ROI instead of buffer ROI (optional).
    */
-  async add(frame: Frame): Promise<void> {
+  async add(frame: Frame, overrideRoi?: ROI): Promise<void> {
     for (const { buffer } of this.buffers.values()) {
-      buffer.add(frame);
-    } 
+      buffer.add(frame, overrideRoi);
+    }
   }
 
   /**
@@ -110,6 +111,13 @@ export class BufferManager {
         this.buffers.delete(id);
       }
     });
+  }
+
+  /**
+   * Check if this manager has no buffers.
+   */
+  isEmpty(): boolean {
+    return this.buffers.size === 0;
   }
 
   /**

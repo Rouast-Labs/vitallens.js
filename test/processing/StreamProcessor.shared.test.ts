@@ -30,6 +30,7 @@ describe('StreamProcessor', () => {
       setState: jest.fn(),
       resetState: jest.fn(),
       cleanup: jest.fn(),
+      isEmpty: jest.fn(),
     } as unknown as jest.Mocked<BufferManager>;
   
     mockMethodHandler = {

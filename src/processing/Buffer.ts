@@ -16,9 +16,10 @@ export abstract class Buffer {
   /**
    * Adds a frame to the buffer.
    * @param frame - The frame to add.
+   * @param overrideRoi - Use this ROI instead of buffer ROI (optional).
    */
-  async add(frame: Frame): Promise<void> {
-    const processedFrame = await this.preprocess(frame, true);
+  async add(frame: Frame, overrideRoi?: ROI): Promise<void> {
+    const processedFrame = await this.preprocess(frame, true, overrideRoi);
     const frameTime = frame.getTimestamp()[0];
     this.buffer.set(frameTime, processedFrame);
 
@@ -103,7 +104,8 @@ export abstract class Buffer {
    * Must be implemented in subclasses.
    * @param frame - The frame to preprocess.
    * @param keepTensor - Whether to keep the tensor in the resulting frame.
+   * @param overrideRoi - Use this ROI instead of buffer ROI (optional).
    * @returns The processed frame.
    */
-  protected abstract preprocess(frame: Frame, keepTensor: boolean): Promise<Frame>;
+  protected abstract preprocess(frame: Frame, keepTensor: boolean, overrideRoi?: ROI): Promise<Frame>;
 }

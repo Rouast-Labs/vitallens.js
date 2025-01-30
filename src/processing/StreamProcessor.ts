@@ -84,8 +84,8 @@ export class StreamProcessor {
         frame.retain();
 
         try {
-          // Add frame to buffer(s)
-          await this.bufferManager.add(frame);
+          // Add frame to buffer(s). Use buffer ROI for vitallens, otherwise pass this.roi
+          await this.bufferManager.add(frame, this.methodConfig.method !== 'vitallens' ? (this.roi ?? undefined) : undefined);
 
           // If buffers + method are ready, run a prediction
           if (this.bufferManager.isReady() && this.methodHandler.getReady() && !this.isPredicting) {
@@ -159,10 +159,11 @@ export class StreamProcessor {
           y1: Math.round(dets[0].y1 * frame.getShape()[0]),
         };
 
-        // If method=vitallens or if face not in old ROI -> update ROI
+        // Update ROI if it is null or the face has moved outside of the current ROI. 
         const shouldUpdateROI =
-          this.options.method !== 'vitallens' ||
-          (!this.roi || !checkFaceInROI(absoluteDet, this.roi, [0.6, 1.0]));
+          this.roi === null ||
+          (this.options.method === 'vitallens' && !checkFaceInROI(absoluteDet, this.roi, [0.6, 1.0])) ||
+          (this.options.method !== 'vitallens' && !checkFaceInROI(absoluteDet, this.roi, [1.0, 1.0]))
         
         if (shouldUpdateROI) {
           this.roi = getROIForMethod(
@@ -171,7 +172,10 @@ export class StreamProcessor {
             { height: frame.getShape()[0], width: frame.getShape()[1] },
             true
           );
-          this.bufferManager.addBuffer(this.roi, this.methodConfig, currentTime);
+          if (this.bufferManager.isEmpty() || this.options.method === 'vitallens') {
+            // Add a new buffer only if we don't have one yet or if method is vitallens 
+            this.bufferManager.addBuffer(this.roi, this.methodConfig, currentTime);
+          }
         }
       }
 

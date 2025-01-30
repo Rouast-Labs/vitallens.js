@@ -126,6 +126,19 @@ describe('BufferManager', () => {
 
       expect(mockBuffer.add).toHaveBeenCalledTimes(2);
     });
+
+    it('should add a frame to all active buffers with overrideRoi', async () => {
+      const mockBuffer = { add: jest.fn() };
+      const rawData = new Int32Array([1, 2, 3]).buffer;
+      const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [1000] });
+      
+      bufferManager['buffers'].set('id1', { buffer: mockBuffer as any, createdAt: mockTimestamp });
+      bufferManager['buffers'].set('id2', { buffer: mockBuffer as any, createdAt: mockTimestamp });
+
+      await bufferManager.add(frame, mockROI);
+
+      expect(mockBuffer.add).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('consume', () => {
@@ -162,6 +175,23 @@ describe('BufferManager', () => {
       expect(bufferManager['buffers'].has('id2')).toBe(true);
     });
   });
+
+  describe('isEmpty', () => {
+    it('should return true when there are no buffers', () => {
+      expect(bufferManager.isEmpty()).toBe(true);
+    });
+  
+    it('should return false when at least one buffer exists', () => {
+      bufferManager.addBuffer(mockROI, mockMethodConfigVitalLens, mockTimestamp);
+      expect(bufferManager.isEmpty()).toBe(false);
+    });
+  
+    it('should return true after cleanup is called', () => {
+      bufferManager.addBuffer(mockROI, mockMethodConfigVitalLens, mockTimestamp);
+      bufferManager.cleanup();
+      expect(bufferManager.isEmpty()).toBe(true);
+    });
+  });  
 
   describe('cleanup', () => {
     it('should clear all buffers and reset state', () => {
