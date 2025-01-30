@@ -71,6 +71,21 @@ export function getFaceROI(
 }
 
 /**
+ * Convert face detection into forehead ROI.
+ * @param det - The face detection {x, y, width, height}.
+ * @param clipDims - Optional constraints {frameWidth, frameHeight}.
+ * @param forceEvenDims - Whether to force even dimensions for the ROI.
+ * @returns The forehead ROI.
+ */
+export function getForeheadROI(
+  det: ROI,
+  clipDims: { width: number; height: number },
+  forceEvenDims: boolean = false
+): ROI {
+  return getROIFromDetection(det, [-0.35, -0.15, -0.35, -0.75], clipDims, forceEvenDims);
+}
+
+/**
  * Convert face detection into upper body ROI and clip to frame constraints.
  * @param det - The face detection {x0, y0, x1, y1}.
  * @param clipDims - Constraints {frameWidth, frameHeight}.
@@ -106,6 +121,8 @@ export function getROIForMethod(
   switch (methodConfig.roiMethod) {
     case 'face':
       return getFaceROI(det, clipDims, forceEvenDims);
+    case 'forehead':
+      return getForeheadROI(det, clipDims, forceEvenDims);
     case 'upper_body':
       if (!clipDims) {
         throw new Error("clipDims must be provided for 'upper_body' ROI method.");
@@ -218,4 +235,34 @@ export function checkFaceInROI(
     (faceBottom - roi.y0 >= requiredHeight) && (roiBottom - face.y0 >= requiredHeight);
 
   return isWidthInsideROI && isHeightInsideROI;
+}
+
+/**
+ * Check whether an ROI is sufficiently inside a face.
+ * @param roi - The region of interest (ROI) represented as { x0, y0, x1, y1 }.
+ * @param face - The face represented as an ROI { x0, y0, x1, y1 }.
+ * @param percentageRequiredInsideFace - Percentage of the ROI's width and height required to remain inside the face.
+ * @returns True if the ROI is sufficiently inside the face.
+ */
+export function checkROIInFace(
+  roi: ROI,
+  face: ROI,
+  percentageRequiredInsideFace: [number, number] = [0.5, 0.5]
+): boolean {
+  const roiRight = roi.x1;
+  const roiBottom = roi.y1;
+
+  const faceRight = face.x1;
+  const faceBottom = face.y1;
+
+  const requiredWidth = percentageRequiredInsideFace[0] * (roi.x1 - roi.x0);
+  const requiredHeight = percentageRequiredInsideFace[1] * (roi.y1 - roi.y0);
+
+  const isWidthInsideFace =
+    (roiRight - face.x0 >= requiredWidth) && (faceRight - roi.x0 >= requiredWidth);
+
+  const isHeightInsideFace =
+    (roiBottom - face.y0 >= requiredHeight) && (faceBottom - roi.y0 >= requiredHeight);
+
+  return isWidthInsideFace && isHeightInsideFace;
 }

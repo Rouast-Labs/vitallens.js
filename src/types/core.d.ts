@@ -22,7 +22,7 @@ export interface VitalLensOptions {
 export interface MethodConfig {
   method: 'vitallens' | 'pos' | 'chrom' | 'g';
   fpsTarget: number;
-  roiMethod: 'face' | 'upper_body';
+  roiMethod: 'face' | 'upper_body' | 'forehead';
   inputSize?: number;
   minWindowLength: number;
   minWindowLengthState?: number;
