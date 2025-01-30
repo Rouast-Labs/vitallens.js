@@ -112,6 +112,9 @@ export class StreamProcessor {
                 })
                 .finally(() => {
                   this.isPredicting = false;
+                  if (this.methodConfig.method !== 'vitallens') {
+                    mergedFrame.release();
+                  }
                 });
             });
           }

@@ -53,6 +53,8 @@ export class FrameBuffer extends Buffer {
     if (keepTensor) {
       // Keep processed frame tensor - need to release() appropriately!
       result.retain();
+    } else {
+      processedFrame.dispose();
     }
 
     return result;

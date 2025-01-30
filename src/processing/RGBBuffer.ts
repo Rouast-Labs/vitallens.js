@@ -47,6 +47,8 @@ export class RGBBuffer extends Buffer {
     if (keepTensor) {
       // Keep processed frame tensor - need to release() appropriately!
       result.retain();
+    } else {
+      averagedFrame.dispose();
     }
 
     return result;

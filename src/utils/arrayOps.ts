@@ -5,15 +5,15 @@ import { ROI } from '../types/core';
 /**
  * Merges an array of Frame objects into a single Frame asynchronously.
  * @param frames - An array of Frame objects to merge.
+ * @param keepTensor - Whether to keep the tensor in the resulting frame.
  * @returns A Promise resolving to a single Frame with concatenated data and concatenated timestamps.
  */
-export async function mergeFrames(frames: Frame[]): Promise<Frame> {
+export async function mergeFrames(frames: Frame[], keepTensor: boolean = false): Promise<Frame> {
   if (frames.length === 0) {
     throw new Error('Cannot merge an empty array of frames.');
   }
 
   // Merge data using tf.tidy to manage memory
-  // TODO: Investigate if it would be smart to keep tensors from prev til here
   const concatenatedTensor = await tf.tidy(() => {
     const tensors = frames.map((frame) => frame.getTensor());
     return tf.stack(tensors); // Stack along a new dimension
@@ -25,10 +25,14 @@ export async function mergeFrames(frames: Frame[]): Promise<Frame> {
   // Concatenate all ROIs into a single array
   const concatenatedROIs: ROI[] = frames.flatMap((frame) => frame.getROI());
 
-  // Convert the tensor back to raw data for the new Frame
-  // TODO keep tensor if simple method?
-  const mergedFrame = await Frame.fromTensor(concatenatedTensor, false, concatenatedTimestamps, concatenatedROIs);
-  concatenatedTensor.dispose();
+  // Wrap in a Frame
+  const mergedFrame = await Frame.fromTensor(concatenatedTensor, keepTensor, concatenatedTimestamps, concatenatedROIs);
+  
+  if (keepTensor) {
+    mergedFrame.retain();
+  } else {
+    concatenatedTensor.dispose();
+  }
 
   return mergedFrame;
 }
