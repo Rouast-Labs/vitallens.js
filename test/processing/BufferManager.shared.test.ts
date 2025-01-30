@@ -10,7 +10,7 @@ jest.mock('../../src/processing/FrameBuffer', () => {
       add: jest.fn(),
       isReady: jest.fn().mockReturnValue(false),
       isReadyState: jest.fn().mockReturnValue(false),
-      consume: jest.fn().mockReturnValue([]),
+      consume: jest.fn().mockReturnValue(null),
       clear: jest.fn(), // Mock the clear method
     })),
   };
@@ -21,7 +21,7 @@ jest.mock('../../src/processing/RGBBuffer', () => {
       add: jest.fn(),
       isReady: jest.fn().mockReturnValue(false),
       isReadyState: jest.fn().mockReturnValue(false),
-      consume: jest.fn().mockReturnValue([]),
+      consume: jest.fn().mockReturnValue(null),
       clear: jest.fn(), // Mock the clear method
     })),
   };
@@ -129,20 +129,21 @@ describe('BufferManager', () => {
   });
 
   describe('consume', () => {
-    it('should consume frames from the most recent ready buffer', () => {
+    it('should consume frames from the most recent ready buffer', async () => {
       const mockBuffer = {
         isReady: jest.fn().mockReturnValue(true),
         consume: jest.fn().mockReturnValue(['frame1', 'frame2']),
       };
       bufferManager['buffers'].set('id', { buffer: mockBuffer as any, createdAt: mockTimestamp });
 
-      const frames = bufferManager.consume();
+      const frames = await bufferManager.consume();
       expect(frames).toEqual(['frame1', 'frame2']);
       expect(mockBuffer.consume).toHaveBeenCalled();
     });
 
-    it('should return an empty array if no buffer is ready', () => {
-      expect(bufferManager.consume()).toEqual([]);
+    it('should return null if no buffer is ready', async () => {
+      const frames = await bufferManager.consume();
+      expect(frames).toEqual(null);
     });
   });
 

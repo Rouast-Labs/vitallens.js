@@ -5,7 +5,7 @@ import * as tf from '@tensorflow/tfjs';
 
 // Mock Buffer class since it's abstract
 class MockBuffer extends Buffer {
-  protected async preprocess(frame: Frame): Promise<Frame> {
+  protected async preprocess(frame: Frame, keepTensor: boolean): Promise<Frame> {
     // Mock preprocessing: return the frame as-is
     return frame;
   }
@@ -69,8 +69,8 @@ describe('Buffer', () => {
       await buffer.add(frame);
     }
 
-    const consumedFrames = buffer.consume();
-    expect(consumedFrames.length).toBe(methodConfig.maxWindowLength);
+    const consumedFrames = await buffer.consume();
+    expect(consumedFrames!.getShape()[0]).toBe(methodConfig.maxWindowLength);
     expect((buffer as any).buffer.size).toBe(methodConfig.minWindowLength-1);
   });
 

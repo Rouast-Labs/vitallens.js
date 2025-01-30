@@ -8,8 +8,8 @@ import { Frame } from '../../src/processing/Frame';
 import * as tf from '@tensorflow/tfjs';
 
 const mockROI: ROI = { x0: 0, y0: 0, x1: 100, y1: 100 };
-const mockFrame3D1 = Frame.fromTensor(tf.tensor3d([1, 2, 3, 4], [2, 2, 1]), false, [0.1], [mockROI]);
-const mockFrame3D2 = Frame.fromTensor(tf.tensor3d([5, 6, 7, 8], [2, 2, 1]), false, [0.2], [mockROI]);
+const mockFrame3D = Frame.fromTensor(tf.tensor3d([1, 2, 3, 4], [2, 2, 1]), false, [0.1], [mockROI]);
+const mockFrame4D = Frame.fromTensor(tf.tensor4d([1, 2, 3, 4], [1, 2, 2, 1]), false, [0.1], [mockROI]);
 const options: VitalLensOptions = { method: 'vitallens', globalRoi: { x0: 0, y0: 0, x1: 100, y1: 100 }, overrideFpsTarget: 30 };
 const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, requiresState: false };
 
@@ -25,37 +25,37 @@ describe('StreamProcessor', () => {
       addBuffer: jest.fn(),
       add: jest.fn(),
       isReady: jest.fn(() => true),
-      consume: jest.fn(() => [mockFrame3D1, mockFrame3D2]),
+      consume: jest.fn(async () => mockFrame4D),
       getState: jest.fn(() => new Float32Array([1.0, 2.0, 3.0])),
       setState: jest.fn(),
       resetState: jest.fn(),
       cleanup: jest.fn(),
     } as unknown as jest.Mocked<BufferManager>;
-
+  
     mockMethodHandler = {
       process: jest.fn(async () => ({
         state: { data: new Float32Array([1, 2, 3]) },
-      })),
+      })), // Ensure it returns an object with a `state`
       getReady: jest.fn(() => true),
     } as unknown as jest.Mocked<MethodHandler>;
-
+  
     mockFaceDetector = {
       run: jest.fn(async (frame, callback) => {
         const mockDetections = [{ x0: 0.1, y0: 0.2, x1: 0.6, y1: 0.7 }];
         await callback(mockDetections);
       }),
     } as unknown as jest.Mocked<IFaceDetector>;
-
+  
     mockFrameIterator = {
       [Symbol.asyncIterator]: jest.fn(() => ({
-        next: jest.fn(() => Promise.resolve({ value: mockFrame3D1, done: false })),
+        next: jest.fn(() => Promise.resolve({ value: mockFrame3D, done: false })),
       })),
       start: jest.fn(),
       stop: jest.fn(),
     } as unknown as jest.Mocked<IFrameIterator>;
-
+  
     onPredictMock = jest.fn();
-  });
+  });  
 
   test('should initialize with the correct ROI and buffer', () => {
     const streamProcessor = new StreamProcessor(
@@ -106,9 +106,9 @@ describe('StreamProcessor', () => {
       onPredictMock
     );
 
-    await streamProcessor['handleFaceDetection'](mockFrame3D1 as any, 0);
+    await streamProcessor['handleFaceDetection'](mockFrame3D as any, 0);
 
-    expect(mockFaceDetector.run).toHaveBeenCalledWith(mockFrame3D1, expect.any(Function));
+    expect(mockFaceDetector.run).toHaveBeenCalledWith(mockFrame3D, expect.any(Function));
     expect(mockBufferManager.addBuffer).toHaveBeenCalled();
   });
 

@@ -1,4 +1,3 @@
-import { ROI } from '../types/core';
 import { Frame } from './Frame';
 import { Buffer } from './Buffer';
 import * as tf from '@tensorflow/tfjs';
@@ -10,9 +9,10 @@ export class FrameBuffer extends Buffer {
   /**
    * Preprocesses a frame by cropping and resizing it.
    * @param frame - The frame to preprocess.
+   * @param keepTensor - Whether to keep the tensor in the resulting frame.
    * @returns The processed frame.
    */
-  protected async preprocess(frame: Frame): Promise<Frame> {
+  protected async preprocess(frame: Frame, keepTensor: boolean = false): Promise<Frame> {
     // Assert that the frame data is a 3D tensor
     const shape = frame.getShape();
     if (shape.length !== 3) {
@@ -48,9 +48,12 @@ export class FrameBuffer extends Buffer {
       return resized;
     });
 
-    // Keep processed frame tensor - need to release() appropriately!
-    const result = Frame.fromTensor(processedFrame, true, frame.getTimestamp(), [this.roi])
-    result.retain();
+    const result = Frame.fromTensor(processedFrame, keepTensor, frame.getTimestamp(), [this.roi])
+    
+    if (keepTensor) {
+      // Keep processed frame tensor - need to release() appropriately!
+      result.retain();
+    }
 
     return result;
   }

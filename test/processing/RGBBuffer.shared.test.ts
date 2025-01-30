@@ -24,12 +24,12 @@ describe('RGBBuffer', () => {
     jest.clearAllMocks();
   });
 
-  test('preprocess() crops and averages frame correctly', async () => {
+  test('preprocess() crops and averages frame correctly with keepTensor=false', async () => {
     const rawData = new Float32Array([
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
     ]).buffer;
     const frame = new Frame({ rawData, keepTensor: false, shape: [2, 2, 3], dtype: 'float32', timestamp: [1000] });
-    const processedFrame = await (buffer as any).preprocess(frame);
+    const processedFrame = await (buffer as any).preprocess(frame, false);
     expect(processedFrame.getShape()).toEqual([3]);
     expect(processedFrame.getDType()).toBe('float32');
     expect(processedFrame.getTimestamp()).toEqual([1000]);
@@ -37,10 +37,25 @@ describe('RGBBuffer', () => {
     expect(processedData).toEqual(new Float32Array([5.5, 6.5, 7.5]));
   });
 
+  test('preprocess() crops and averages frame correctly with keepTensor=true', async () => {
+    const rawData = new Float32Array([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    ]).buffer;
+    const frame = new Frame({ rawData, keepTensor: true, shape: [2, 2, 3], dtype: 'float32', timestamp: [1000] });
+    const processedFrame = await (buffer as any).preprocess(frame, true);
+    expect(processedFrame.getShape()).toEqual([3]);
+    expect(processedFrame.getDType()).toBe('float32');
+    expect(processedFrame.getTimestamp()).toEqual([1000]);
+    const processedTensor = processedFrame.getTensor();
+    expect(processedTensor.dataSync()).toEqual(new Float32Array([5.5, 6.5, 7.5]));
+    frame.disposeTensor();
+    processedFrame.release();
+  });
+
   test('preprocess() throws error for non-3D tensor frames', async () => {
     const rawData = new Float32Array([1, 2, 3]).buffer; // Shape [3]
     const frame = new Frame({ rawData, keepTensor: false, shape: [3], dtype: 'float32', timestamp: [1000] });
-    await expect((buffer as any).preprocess(frame)).rejects.toThrow(
+    await expect((buffer as any).preprocess(frame, false)).rejects.toThrow(
       'Frame data must be a 3D tensor. Received rank: 1'
     );
   });
@@ -52,7 +67,7 @@ describe('RGBBuffer', () => {
     const invalidROI: ROI = { x0: 1, y0: 1, x1: 3, y1: 3 }; // Exceeds bounds
     (buffer as any).roi = invalidROI;
     const frame = new Frame({ rawData, keepTensor: false, shape: [2, 2, 3], dtype: 'float32', timestamp: [1000] });
-    await expect((buffer as any).preprocess(frame)).rejects.toThrow(
+    await expect((buffer as any).preprocess(frame, false)).rejects.toThrow(
       /ROI dimensions are out of bounds/
     );
   });
@@ -91,8 +106,9 @@ describe('RGBBuffer', () => {
       const frame = new Frame({ rawData, keepTensor: false, shape: [2, 2, 3], dtype: 'float32', timestamp: [1000 + i] });
       await buffer.add(frame);
     }
-    const consumedFrames = buffer.consume();
-    expect(consumedFrames.length).toBe(5);
+    const consumedFrames = await buffer.consume();
+    
+    expect(consumedFrames!.getShape()[0]).toBe(5);
     expect((buffer as any).buffer.size).toBe(2);
   });
 

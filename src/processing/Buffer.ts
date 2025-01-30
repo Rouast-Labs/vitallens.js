@@ -18,7 +18,7 @@ export abstract class Buffer {
    * @param frame - The frame to add.
    */
   async add(frame: Frame): Promise<void> {
-    const processedFrame = await this.preprocess(frame);
+    const processedFrame = await this.preprocess(frame, true);
     const frameTime = frame.getTimestamp()[0];
     this.buffer.set(frameTime, processedFrame);
 
@@ -102,7 +102,8 @@ export abstract class Buffer {
    * Abstract method for preprocessing a frame.
    * Must be implemented in subclasses.
    * @param frame - The frame to preprocess.
+   * @param keepTensor - Whether to keep the tensor in the resulting frame.
    * @returns The processed frame.
    */
-  protected abstract preprocess(frame: Frame): Promise<Frame>;
+  protected abstract preprocess(frame: Frame, keepTensor: boolean): Promise<Frame>;
 }
