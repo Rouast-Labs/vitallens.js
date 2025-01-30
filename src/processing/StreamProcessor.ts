@@ -2,7 +2,6 @@ import { MethodConfig, ROI, VitalLensOptions, VitalLensResult } from '../types';
 import { BufferManager } from './BufferManager';
 import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
 import { IFaceDetector } from '../types/IFaceDetector';
-import { mergeFrames } from '../utils/arrayOps';
 import { MethodHandler } from '../methods/MethodHandler';
 import { Frame } from './Frame';
 import { IFrameIterator } from '../types/IFrameIterator';
@@ -91,28 +90,30 @@ export class StreamProcessor {
           // If buffers + method are ready, run a prediction
           if (this.bufferManager.isReady() && this.methodHandler.getReady() && !this.isPredicting) {
             this.isPredicting = true;
-            const frames = this.bufferManager.consume();       
-            mergeFrames(frames)
-              .then((framesChunk) => {
-                const currentState = this.bufferManager.getState();
-                return this.methodHandler.process(framesChunk, currentState);
-              })
-              .then((incrementalResult) => {
-                if (incrementalResult) {
-                  if (incrementalResult.state) {
-                    this.bufferManager.setState(new Float32Array(incrementalResult.state.data));
-                  } else {
-                    this.bufferManager.resetState();
-                  }
-                  this.onPredict(incrementalResult);
-                }
-              })
-              .catch((error) => {
-                console.error("Error during prediction:", error);
-              })
-              .finally(() => {
+            this.bufferManager.consume().then((mergedFrame) => {
+              if (!mergedFrame) {
                 this.isPredicting = false;
-              });
+                return;
+              }
+              const currentState = this.bufferManager.getState();
+              this.methodHandler.process(mergedFrame, currentState)
+                .then((incrementalResult) => {
+                  if (incrementalResult) {
+                    if (incrementalResult.state) {
+                      this.bufferManager.setState(new Float32Array(incrementalResult.state.data));
+                    } else {
+                      this.bufferManager.resetState();
+                    }
+                    this.onPredict(incrementalResult);
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error during prediction:", error);
+                })
+                .finally(() => {
+                  this.isPredicting = false;
+                });
+            });
           }
 
           if (this.useFaceDetector && this.faceDetector && currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs) {

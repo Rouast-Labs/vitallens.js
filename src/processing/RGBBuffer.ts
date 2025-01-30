@@ -41,10 +41,9 @@ export class RGBBuffer extends Buffer {
       return averaged;
     });
 
-    // TODO: Investigate speedup and memory implications if keeping tensor here
-    const result = Frame.fromTensor(averagedFrame, false, frame.getTimestamp(), [this.roi]);
-
-    averagedFrame.dispose();
+    // Keep processed frame tensor - need to release() appropriately!
+    const result = Frame.fromTensor(averagedFrame, true, frame.getTimestamp(), [this.roi]);
+    result.retain();
 
     return result;
   }

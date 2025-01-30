@@ -48,10 +48,9 @@ export class FrameBuffer extends Buffer {
       return resized;
     });
 
-    // TODO: Investigate speedup and memory implications if keeping tensor here
-    const result = Frame.fromTensor(processedFrame, false, frame.getTimestamp(), [this.roi])
-
-    processedFrame.dispose();
+    // Keep processed frame tensor - need to release() appropriately!
+    const result = Frame.fromTensor(processedFrame, true, frame.getTimestamp(), [this.roi])
+    result.retain();
 
     return result;
   }

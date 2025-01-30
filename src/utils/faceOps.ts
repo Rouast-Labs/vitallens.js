@@ -81,7 +81,7 @@ export function getFaceROI(
 export function getUpperBodyROI(
   det: ROI,
   clipDims: { width: number; height: number },
-  cropped: boolean = false,
+  cropped: boolean = true,
   forceEvenDims: boolean = false
 ): ROI {
   let relChange: [number, number, number, number];
@@ -110,7 +110,7 @@ export function getROIForMethod(
       if (!clipDims) {
         throw new Error("clipDims must be provided for 'upper_body' ROI method.");
       }
-      return getUpperBodyROI(det, clipDims, false, forceEvenDims);
+      return getUpperBodyROI(det, clipDims, true, forceEvenDims);
     default:
       throw new Error(`Unsupported roiMethod: ${methodConfig.roiMethod}`);
   }

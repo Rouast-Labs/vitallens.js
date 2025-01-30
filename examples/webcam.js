@@ -3,9 +3,7 @@ import { VitalLens } from './dist/vitallens.browser.js';
 
 const options = {
   method: 'vitallens',
-  waveformDataMode: 'aggregated',
   apiKey: "YOUR_API_KEY",
-  fDetFs: 0.5,
 };
 
 const vitallens = new VitalLens(options);

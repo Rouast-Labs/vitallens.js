@@ -1,4 +1,5 @@
 import { MethodConfig, ROI } from '../types/core';
+import { mergeFrames } from '../utils/arrayOps';
 import { Frame } from './Frame';
 
 /**
@@ -24,6 +25,8 @@ export abstract class Buffer {
     // Maintain the maximum buffer size
     while (this.buffer.size > this.methodConfig.maxWindowLength) {
       const oldestKey = Math.min(...this.buffer.keys());
+      const oldestFrame = this.buffer.get(oldestKey);
+      if (oldestFrame) oldestFrame.release();
       this.buffer.delete(oldestKey);
     }
   }
@@ -49,33 +52,49 @@ export abstract class Buffer {
   }
   
   /**
-   * Consumes frames from the buffer but retains the last `minFrames`.
-   * @returns An array of consumed frames.
+   * Consumes frames from the buffer but retains the last `minFrames`, returning a single merged Frame.
+   * @returns A single merged Frame or null if no frames are available.
    */
-  consume(): Frame[] {
+  async consume(): Promise<Frame | null> {
     const keys = Array.from(this.buffer.keys()).sort((a, b) => a - b);
+    if (keys.length === 0) {
+      return null;
+    }
+  
     const minWindowLength = this.methodConfig.minWindowLengthState
       ? Math.min(this.methodConfig.minWindowLengthState, this.methodConfig.minWindowLength)
-      : this.methodConfig.minWindowLength; 
-    const retainCount = Math.min(minWindowLength-1, this.buffer.size);
+      : this.methodConfig.minWindowLength;
+    const retainCount = Math.min(minWindowLength - 1, this.buffer.size);
     const retainKeys = keys.slice(-retainCount);
-
-    const consumedFrames = keys.map((key) => {
-      const frame = this.buffer.get(key)!;
-      if (!retainKeys.includes(key)) {
-        this.buffer.delete(key);
+  
+    // Extract frames to be consumed
+    const consumedFrames = keys.map((key) => this.buffer.get(key)!);
+  
+    // Merge frames asynchronously
+    return mergeFrames(consumedFrames).then((mergedFrame) => {
+      // Release tensors of frames that are not retained
+      for (const key of keys) {
+        if (!retainKeys.includes(key)) {
+          const frame = this.buffer.get(key);
+          frame?.release();
+          this.buffer.delete(key);
+        }
       }
-      return frame;
+  
+      // Keep only the retained frames
+      this.buffer = new Map(retainKeys.map((key) => [key, this.buffer.get(key)!]));
+  
+      return mergedFrame;
     });
-
-    this.buffer = new Map(retainKeys.map((key) => [key, this.buffer.get(key)!]));
-    return consumedFrames;
   }
 
   /**
    * Clears the buffer.
    */
   clear(): void {
+    for (const frame of this.buffer.values()) {
+      frame.release();
+    }
     this.buffer.clear();
   }
 

@@ -92,11 +92,11 @@ export class BufferManager {
 
   /**
    * Consumes frames from the newest ready buffer.
-   * @returns The consumed frames or an empty array if no buffer is ready.
+   * @returns The merged Frame or null if no buffer is ready.
    */
-  consume(): Frame[] {
+  async consume(): Promise<Frame | null> {
     const readyBuffer = this.getReadyBuffer();
-    return readyBuffer ? readyBuffer.consume() : [];
+    return readyBuffer ? readyBuffer.consume() : Promise.resolve(null);
   }
 
   /**
