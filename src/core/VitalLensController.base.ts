@@ -88,11 +88,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   async addStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
     if (!isBrowser) throw new Error('addStream is not supported yet in the Node environment.');
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
-
-    // TODO: Support multiple streams
-    // - separate buffer and state management per id in buffer manager
     
-    // If required, make sure face detector is loaded
     if (!this.options.globalRoi) await this.faceDetector.load();
 
     const frameIterator = this.frameIteratorFactory.createStreamFrameIterator(stream, videoElement);
@@ -112,27 +108,27 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   }
 
   /**
-   * TODO: Implementation incomplete
-   * TODO: Write test
    * Processes a video file or input.
    * @param videoInput - The video input to process (string, File, or Blob).
    * @returns The results after processing the video.
    */
   async processFile(videoInput: VideoInput): Promise<VitalLensResult> {
+    if (isBrowser) throw new Error('processFile is not supported yet in the Browser environment.');
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
 
+    await this.methodHandler.init();
     await this.faceDetector.load();
 
     const frameIterator = this.frameIteratorFactory.createFileFrameIterator(videoInput, this.methodConfig, this.faceDetector);
-    // TODO init methodHandler
-
+    await frameIterator.start();
     for await (const framesChunk of frameIterator) {
       const incrementalResult = await this.methodHandler.process(framesChunk, this.bufferManager.getState());
       if (incrementalResult) {
         await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "complete");   
       }
     }
-    // TODO cleanup methodHandler
+
+    await this.methodHandler.cleanup();
 
     return await this.vitalsEstimateManager.getResult(frameIterator.getId());
   }

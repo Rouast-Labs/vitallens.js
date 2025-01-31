@@ -46,8 +46,8 @@ export class FileFrameIterator extends FrameIteratorBase {
       this.roi = Array(this.probeInfo.totalFrames).fill(this.options.globalRoi);
     } else {
       const fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0
-      this.dsFactor = Math.max(Math.round(this.probeInfo.fps / fDetFs), 1);
-      const nDsFrames = Math.ceil(this.probeInfo.totalFrames / this.dsFactor);
+      const fDetDsFactor = Math.max(Math.round(this.probeInfo.fps / fDetFs), 1);
+      const fDetNDsFrames = Math.ceil(this.probeInfo.totalFrames / fDetDsFactor);
       const video = await this.ffmpeg.readVideo(
         this.videoInput,
         {
@@ -57,7 +57,7 @@ export class FileFrameIterator extends FrameIteratorBase {
         this.probeInfo
       );
       // Run face detector (nFrames, 4)
-      const videoFrames = Frame.fromUint8Array(video, [nDsFrames, 240, 320, 3]);
+      const videoFrames = Frame.fromUint8Array(video, [fDetNDsFrames, 240, 320, 3]);
       const faces = await this.faceDetector.detect(videoFrames) as ROI[];
       // Convert to absolute units
       const absoluteROIs = faces.map(({ x0, y0, x1, y1 }) => ({

@@ -31,36 +31,74 @@ describe('VitalLensController (Node)', () => {
     );
   });
   
+  test('should call createFileFrameIterator and processFile correctly', async () => {
+    const mockFileInput = 'path/to/video/file.mp4';
 
-  // TODO
-  // test('should call createFileFrameIterator and processFile correctly', async () => {
-  //   const mockFileInput = 'path/to/video/file.mp4';
-  //   const mockFrameIterator = {
-  //     start: jest.fn(),
-  //     stop: jest.fn(),
-  //     [Symbol.asyncIterator]: jest.fn().mockReturnValue({
-  //       next: jest.fn().mockResolvedValue({ value: null, done: true }),
-  //     }),
-  //   };
+    // Mock frame iterator
+    const mockFrameIterator = {
+      start: jest.fn(),
+      stop: jest.fn(),
+      getId: jest.fn().mockReturnValue('frameIteratorId'),
+      [Symbol.asyncIterator]: jest.fn().mockReturnValue((async function* () {
+        yield { frames: [new Uint8Array([1, 2, 3])], timestamp: 0 }; // Simulated frame chunk
+        yield { frames: [new Uint8Array([4, 5, 6])], timestamp: 1 }; // Another frame chunk
+      })()),
+    };
 
-  //   // Mock the createFileFrameIterator method
-  //   controller['frameIteratorFactory']!.createFileFrameIterator = jest
-  //     .fn()
-  //     .mockReturnValue(mockFrameIterator);
+    // Mock dependencies
+    controller['frameIteratorFactory']!.createFileFrameIterator = jest
+      .fn()
+      .mockReturnValue(mockFrameIterator);
 
-  //   const mockResult = { message: 'Processing complete' };
-  //   controller['vitalsEstimateManager'].getResult = jest.fn().mockResolvedValue(mockResult);
+    const mockIncrementalResult = { some: 'incremental data' };
+    controller['methodHandler'].process = jest.fn().mockResolvedValue(mockIncrementalResult);
+    controller['methodHandler'].init = jest.fn();
+    controller['methodHandler'].cleanup = jest.fn();
 
-  //   const result = await controller.processFile(mockFileInput);
+    controller['vitalsEstimateManager'].processIncrementalResult = jest.fn().mockResolvedValue({});
+    const mockFinalResult = { message: 'Processing complete' };
+    controller['vitalsEstimateManager'].getResult = jest.fn().mockResolvedValue(mockFinalResult);
 
-  //   // Verify createFileFrameIterator was called
-  //   expect(controller['frameIteratorFactory']!.createFileFrameIterator).toHaveBeenCalledWith(
-  //     mockFileInput,
-  //     controller['methodConfig'],
-  //     controller['faceDetector']
-  //   );
+    // Run processFile
+    const result = await controller.processFile(mockFileInput);
 
-  //   // Verify that the correct result is returned
-  //   expect(result).toEqual(mockResult);
-  // });
+    // Verify createFileFrameIterator was called
+    expect(controller['frameIteratorFactory']!.createFileFrameIterator).toHaveBeenCalledWith(
+      mockFileInput,
+      controller['methodConfig'],
+      controller['faceDetector']
+    );
+
+    // Ensure dependencies are initialized
+    expect(controller['faceDetector'].load).toHaveBeenCalled();
+    expect(controller['methodHandler'].init).toHaveBeenCalled();
+
+    // Ensure frameIterator started processing
+    expect(mockFrameIterator.start).toHaveBeenCalled();
+
+    // Ensure process was called for each frame chunk
+    expect(controller['methodHandler'].process).toHaveBeenCalledTimes(2);
+    expect(controller['methodHandler'].process).toHaveBeenCalledWith(
+      { frames: [new Uint8Array([1, 2, 3])], timestamp: 0 },
+      controller['bufferManager'].getState()
+    );
+    expect(controller['methodHandler'].process).toHaveBeenCalledWith(
+      { frames: [new Uint8Array([4, 5, 6])], timestamp: 1 },
+      controller['bufferManager'].getState()
+    );
+
+    // Ensure vitalsEstimateManager processes incremental results
+    expect(controller['vitalsEstimateManager'].processIncrementalResult).toHaveBeenCalledTimes(2);
+    expect(controller['vitalsEstimateManager'].processIncrementalResult).toHaveBeenCalledWith(
+      mockIncrementalResult,
+      'frameIteratorId',
+      'complete'
+    );
+
+    // Ensure final cleanup is called
+    expect(controller['methodHandler'].cleanup).toHaveBeenCalled();
+
+    // Verify final result
+    expect(result).toEqual(mockFinalResult);
+  });
 });

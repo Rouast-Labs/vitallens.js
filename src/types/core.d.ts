@@ -106,7 +106,7 @@ export interface VideoProcessingOptions {
   scale?: { width: number; height: number };
   trim?: { startFrame: number; endFrame: number };
   preserveAspectRatio?: boolean;
-  pixelFormat?: "rgb24";
+  pixelFormat?: 'rgb24' | 'bgr24';
   scaleAlgorithm?: "bicubic" | "bilinear" | "area" | "lanczos";
 }
 

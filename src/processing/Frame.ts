@@ -166,8 +166,17 @@ export class Frame {
       );
     }
 
-    const TypedArrayClass = this.getTypedArrayClass();
-    const typedArray = new TypedArrayClass(this.rawData);
+    let typedArray;
+    let tensorDType: tf.DataType = this.dtype;
+
+    if (this.dtype === 'uint8') {
+      // Convert uint8 to int32 since tfjs does not support uint8 tensors
+      typedArray = new Int32Array(new Uint8Array(this.rawData));
+      tensorDType = 'int32'; // Use int32 for compatibility
+    } else {
+      const TypedArrayClass = this.getTypedArrayClass();
+      typedArray = new TypedArrayClass(this.rawData);
+    }
 
     const expectedSize = this.shape.reduce((a, b) => a * b, 1);
     const actualSize = typedArray.length;
@@ -178,7 +187,7 @@ export class Frame {
       );
     }
 
-    return tf.tensor(typedArray, this.shape, this.dtype);
+    return tf.tensor(typedArray, this.shape, tensorDType);
   }
 
   /**

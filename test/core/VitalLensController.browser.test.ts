@@ -67,4 +67,10 @@ describe('VitalLensController (Browser)', () => {
     );
     expect(StreamProcessor).toHaveBeenCalled();
   });
+
+  test('should throw an error if processFile is called in Browser environment', async () => {
+    await expect(controller.processFile('./test/path.mp4')).rejects.toThrowError(
+      'processFile is not supported yet in the Browser environment.'
+    );
+  });
 });

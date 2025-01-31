@@ -1,4 +1,4 @@
-import * as tf from '@tensorflow/tfjs';
+import * as tf from '@tensorflow/tfjs-node';
 import { FaceDetectorAsyncBase } from "./FaceDetectorAsync.base";
 import * as path from 'path';
 

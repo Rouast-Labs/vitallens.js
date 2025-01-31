@@ -5,7 +5,6 @@ import * as fs from "fs";
 import ffmpeg from "fluent-ffmpeg";
 
 export default class FFmpegWrapper extends FFmpegWrapperBase {
-  private loadedFilePath: string | null = null;
 
   /**
    * Initializes FFmpeg. For the Node.js implementation, this is a no-op.
@@ -24,16 +23,10 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
       throw new Error("Only file paths are supported for Node.js FFmpegWrapper.");
     }
 
-    if (this.loadedFilePath === input) {
-      // Skip re-loading if already loaded
-      return input;
-    }
-
     if (!fs.existsSync(input)) {
       throw new Error(`File not found: ${input}`);
     }
 
-    this.loadedFilePath = input;
     return input;
   }
 
@@ -41,7 +34,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
    * Cleans up any loaded video file reference.
    */
   cleanup(): void {
-    this.loadedFilePath = null;
+    // No cleanup needed for Node.js implementation
   }
 
   /**
@@ -125,6 +118,8 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
       let command = ffmpeg(filePath)
         .outputOptions("-pix_fmt", options.pixelFormat || "rgb24")
         .outputOptions("-f", "rawvideo")
+        .outputOptions("-vsync", "passthrough")
+        .outputOptions("-frame_pts", "true") 
         .videoFilters(filters);
   
       command
