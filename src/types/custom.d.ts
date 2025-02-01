@@ -7,3 +7,8 @@ declare module '*.bin' {
   const value: string; // Base64 string
   export default value;
 }
+
+declare module '*ffmpeg-worker.bundle.js' {
+  const value: string;
+  export default value;
+}

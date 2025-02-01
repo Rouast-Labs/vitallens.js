@@ -3,6 +3,9 @@ import { toBlobURL, fetchFile } from "@ffmpeg/util";
 import { FFmpegWrapperBase } from "./FFmpegWrapper.base";
 import { VideoInput, VideoProbeResult, VideoProcessingOptions } from "../types";
 
+// Import the worker bundle as a URL (which will be inlined as a data URI)
+import workerBundleDataURI from '../../dist/ffmpeg-worker.bundle.js';
+
 export default class FFmpegWrapper extends FFmpegWrapperBase {
   private ffmpeg?: any;
   private loadedFileName: string | null = null;
@@ -10,28 +13,21 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
   /**
    * Initialize the FFmpeg instance for the appropriate environment.
    */
-  // Please leave this method as is.
   async init() {
     if (!this.ffmpeg) {
       this.ffmpeg = new FFmpeg();
-      const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
       console.debug("Preparing to load FFmpeg resources...");
       try {
         // Await and log each Blob URL
-        const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
-        console.debug("Core Blob URL:", coreURL);
-        const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
-        console.debug("WASM Blob URL:", wasmURL);
-        // const workerURL = await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, "text/javascript");
-        // console.log("Worker Blob URL:", workerURL);
+        const coreURL = await toBlobURL("https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js", "text/javascript");
+        const wasmURL = await toBlobURL("https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm", "application/wasm");
+        // Passing worker bundle to avoid issues: https://github.com/ffmpegwasm/ffmpeg.wasm/issues/532
+        const workerURL = this.createWorkerBlobURL(workerBundleDataURI);
         // Now load FFmpeg with the obtained Blob URLs
-        // TODO: Load times out as there is an issue with worker.js
-        // https://github.com/ffmpegwasm/ffmpeg.wasm/issues/532
         await this.ffmpeg.load({
           coreURL: coreURL,
           wasmURL: wasmURL,
-          // workerURL: workerURL,
-          // classWorkerURL: workerURL,
+          classWorkerURL: workerURL,
         });
         console.debug("FFmpeg loaded successfully.");
       } catch (err) {
@@ -39,6 +35,25 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
         throw err;
       }
     }
+  }
+
+  /**
+   * Converts a data URI or base64-encoded string of a worker script into a Blob URL.
+   * @param dataURI - A string containing either a full data URI or a base64-encoded worker script.
+   * @returns A Blob URL string representing the worker script.
+   */
+  createWorkerBlobURL(dataURI: string): string {
+    let encoded = dataURI;
+    if (dataURI.startsWith('data:')) {
+      const parts = dataURI.split(',');
+      if (parts.length < 2) {
+        throw new Error('Unexpected worker data URI format.');
+      }
+      encoded = parts[1];
+    }
+    const workerScript = atob(encoded);
+    const blob = new Blob([workerScript], { type: 'application/javascript' });
+    return URL.createObjectURL(blob);
   }
 
   /**

@@ -113,7 +113,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @returns The results after processing the video.
    */
   async processFile(videoInput: VideoInput): Promise<VitalLensResult> {
-    if (isBrowser) throw new Error('processFile is not supported yet in the Browser environment.');
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
 
     await this.methodHandler.init();

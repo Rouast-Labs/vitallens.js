@@ -4,6 +4,8 @@ import commonjs from '@rollup/plugin-commonjs';
 import url from '@rollup/plugin-url';
 import { terser } from 'rollup-plugin-terser';
 import json from '@rollup/plugin-json';
+import alias from '@rollup/plugin-alias';
+import path from 'path';
 
 function onwarn(warning, defaultHandler) {
   // Ignore "`this` has been rewritten to `undefined`" warnings.
@@ -14,88 +16,115 @@ function onwarn(warning, defaultHandler) {
   defaultHandler(warning);
 }
 
-export default [
-  // Node ESM build
-  {
-    input: 'src/index.node.ts',
-    output: {
-      file: 'dist/vitallens.esm.js',
-      format: 'esm',
-      sourcemap: true,
-      inlineDynamicImports: true,
-    },
-    onwarn,
-    plugins: [
-      typescript(),
-      json(),
-      nodeResolve({ browser: false, preferBuiltins: true }),
-      commonjs(),
-      terser(),
-    ],
+const nodeEsmConfig = {
+  input: 'src/index.node.ts',
+  output: {
+    file: 'dist/vitallens.esm.js',
+    format: 'esm',
+    sourcemap: true,
+    inlineDynamicImports: true,
   },
-  // Node CJS build
-  {
-    input: 'src/index.node.ts',
-    output: {
-      file: 'dist/vitallens.cjs.js',
-      format: 'cjs',
-      sourcemap: true,
-      inlineDynamicImports: true,
-    },
-    onwarn,
-    plugins: [
-      typescript(),
-      json(),
-      nodeResolve({ browser: false, preferBuiltins: true }),
-      commonjs(),
-      terser(),
-    ],
+  onwarn,
+  plugins: [
+    typescript(),
+    json(),
+    nodeResolve({ browser: false, preferBuiltins: true }),
+    commonjs(),
+    terser(),
+  ],
+}
+
+const nodeCjsConfig = {
+  input: 'src/index.node.ts',
+  output: {
+    file: 'dist/vitallens.cjs.js',
+    format: 'cjs',
+    sourcemap: true,
+    inlineDynamicImports: true,
   },
-  // Browser ESM build
-  {
-    input: 'src/index.browser.ts',
-    output: {
-      file: 'dist/vitallens.browser.js',
-      format: 'esm',
-      sourcemap: true,
-      inlineDynamicImports: true,
-    },
-    onwarn,
-    plugins: [
-      url({
-        include: ['models/**/*'],
-        limit: Infinity,
-        emitFiles: false,
-      }),
-      typescript(),
-      nodeResolve({ browser: true, preferBuiltins: false }),
-      commonjs(),
-      terser(),
-    ],
+  onwarn,
+  plugins: [
+    typescript(),
+    json(),
+    nodeResolve({ browser: false, preferBuiltins: true }),
+    commonjs(),
+    terser(),
+  ],
+}
+
+const browserConfig = {
+  input: 'src/index.browser.ts',
+  output: {
+    file: 'dist/vitallens.browser.js',
+    format: 'esm',
+    sourcemap: true,
+    inlineDynamicImports: true,
   },
-  // UMD Build for FFmpegWrapper.browser (for integration test)
-  {
-    input: 'src/utils/FFmpegWrapper.browser.ts',
-    output: {
-      file: 'dist/utils/FFmpegWrapper.browser.umd.js',
-      format: 'umd',
-      name: 'FFmpegWrapper',
-      sourcemap: true,
-    },
-    onwarn,
-    plugins: [
-      typescript({
-        tsconfig: './tsconfig.json',
-        compilerOptions: {
-          declaration: false,
-          declarationMap: false,
-          declarationDir: null,
+  onwarn,
+  plugins: [
+    url({
+      include: ['models/**/*', '**/ffmpeg-worker.bundle.js'],
+      limit: Infinity,
+      emitFiles: false,
+    }),
+    typescript(),
+    nodeResolve({ browser: true, preferBuiltins: false }),
+    commonjs(),
+    terser(),
+  ],
+}
+
+const workerBundleConfig = {
+  input: 'src/ffmpeg-worker-entry.js',
+  output: {
+    file: 'dist/ffmpeg-worker.bundle.js',
+    format: 'esm', // using esm for a module worker
+    sourcemap: false,
+  },
+  plugins: [
+    alias({
+      entries: [
+        {
+          // Force resolution of the internal worker file:
+          find: '@ffmpeg/ffmpeg/dist/esm/worker.js',
+          replacement: path.resolve(__dirname, 'node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js'),
         },
-      }),
-      json(),
-      nodeResolve({ browser: true }),
-      commonjs(),
-      terser(),
-    ],
-  },
+      ],
+    }),
+    nodeResolve({ browser: true, preferBuiltins: false }),
+    commonjs(),
+    terser(),
+  ],
+};
+
+export default [
+  nodeEsmConfig,
+  nodeCjsConfig,
+  workerBundleConfig,
+  browserConfig,
+  // // UMD Build for FFmpegWrapper.browser (for integration test)
+  // {
+  //   input: 'src/utils/FFmpegWrapper.browser.ts',
+  //   output: {
+  //     file: 'dist/utils/FFmpegWrapper.browser.umd.js',
+  //     format: 'umd',
+  //     name: 'FFmpegWrapper',
+  //     sourcemap: true,
+  //   },
+  //   onwarn,
+  //   plugins: [
+  //     typescript({
+  //       tsconfig: './tsconfig.json',
+  //       compilerOptions: {
+  //         declaration: false,
+  //         declarationMap: false,
+  //         declarationDir: null,
+  //       },
+  //     }),
+  //     json(),
+  //     nodeResolve({ browser: true }),
+  //     commonjs(),
+  //     terser(),
+  //   ],
+  // },
 ];

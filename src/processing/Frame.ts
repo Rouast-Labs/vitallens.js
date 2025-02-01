@@ -72,13 +72,13 @@ export class Frame {
           typedData.byteOffset,
           typedData.byteOffset + typedData.byteLength
         );
-        const actualSize = getActualSizeFromRawData(exactBuffer, tensor.dtype);
+        const actualSize = getActualSizeFromRawData(exactBuffer as ArrayBuffer, tensor.dtype);
         if (expectedSize !== actualSize) {
           throw new Error(
             `Mismatch in tensor size: expected ${expectedSize}, but got ${actualSize}`
           );
         }
-        this.rawData = exactBuffer;
+        this.rawData = exactBuffer as ArrayBuffer;
       }
       this.shape = tensor.shape;
       this.dtype = tensor.dtype;
@@ -130,7 +130,7 @@ export class Frame {
     timestamp?: number[],
     roi?: ROI[]
   ): Frame {
-    const rawData = array.buffer;
+    const rawData = array.buffer as ArrayBuffer;
     const expectedSize = shape.reduce((a, b) => a * b, 1);
     const actualSize = getActualSizeFromRawData(rawData, 'uint8');
 

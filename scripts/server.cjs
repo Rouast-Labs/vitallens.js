@@ -3,12 +3,35 @@ const path = require('path');
 const { exec } = require('child_process');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 8080;
 
+// Middleware to set required security headers
+app.use((_, res, next) => {
+  res.set({
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'require-corp',
+    'Cross-Origin-Resource-Policy': 'cross-origin',
+    'Origin-Agent-Cluster': '?1',
+    "Access-Control-Allow-Credentials": "true",
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Range',
+    'Content-Security-Policy': 
+      "default-src 'self' blob: data:; " +
+      "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/; " +
+      "worker-src 'self' blob:; " +
+      "connect-src 'self' blob: data: https://unpkg.com/; " +
+      "style-src 'self' 'unsafe-inline';"
+  });
+  next();
+});
+
+// Serve static files for examples and dist
 app.use(express.static(path.join(__dirname, '../examples')));
+app.use(express.static(path.join(__dirname, '../dist')));
 
-app.use('/dist', express.static(path.join(__dirname, '../dist')));
-
+// Handle dynamic example selection
 app.get('/:example', (req, res) => {
   const examplePath = path.join(__dirname, '../examples', `${req.params.example}.html`);
   res.sendFile(examplePath, (err) => {
@@ -18,6 +41,7 @@ app.get('/:example', (req, res) => {
   });
 });
 
+// Start server and optionally open browser if EXAMPLE_TO_OPEN is set
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   const exampleToOpen = process.env.EXAMPLE_TO_OPEN;

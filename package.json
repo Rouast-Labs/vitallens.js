@@ -21,7 +21,8 @@
     "test:node": "jest --selectProjects node",
     "lint": "eslint src/**/*.ts",
     "start:webcam": "EXAMPLE_TO_OPEN=webcam nodemon scripts/server.cjs",
-    "start:minimal": "EXAMPLE_TO_OPEN=minimal nodemon scripts/server.cjs"
+    "start:minimal": "EXAMPLE_TO_OPEN=minimal nodemon scripts/server.cjs",
+    "start:processFile": "EXAMPLE_TO_OPEN=processFile nodemon scripts/server.cjs"
   },
   "keywords": [
     "vital signs",
@@ -43,6 +44,7 @@
   },
   "homepage": "https://www.rouast.com/",
   "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "fft.js": "^4.0.4",
@@ -58,6 +60,7 @@
   "devDependencies": {
     "@babel/preset-env": "^7.26.7",
     "@babel/preset-typescript": "^7.26.0",
+    "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-commonjs": "^28.0.2",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.0",
@@ -75,6 +78,7 @@
     "express": "^4.21.2",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "jest-puppeteer": "^11.0.0",
     "nodemon": "^3.1.9",
     "puppeteer": "^23.11.1",
     "rollup": "^2.79.2",

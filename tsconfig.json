@@ -20,6 +20,6 @@
     "typeRoots": ["./node_modules/@types", "./typings"],
     "sourceMap": true,
   },
-  "include": ["src/**/*", "typings/**/*"],
+  "include": ["src/**/*.ts", "typings/**/*.ts"],
   "exclude": ["node_modules", "dist", "test", "**/*.test.ts", "**/*.spec.ts"]
 }

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VitalLens ProcessFile Test</title>
+  <style>
+    #dropZone {
+      width: 100%;
+      height: 200px;
+      border: 2px dashed #007bff;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 18px;
+      color: #007bff;
+      margin-bottom: 20px;
+      transition: background-color 0.3s;
+    }
+
+    #dropZone.hover {
+      background-color: #f0f8ff;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>VitalLens FFmpeg Test</h1>
+
+  <div id="dropZone">Drag & drop a video file here or click to select one</div>
+  <input type="file" id="videoInput" accept="video/*">
+  <pre id="log"></pre>
+
+  <script type="module">
+    import { VitalLens } from './vitallens.browser.js';
+
+    let vitallens;
+
+    async function initializeVitalLens() {
+      const log = document.getElementById("log");
+      log.textContent = "Initializing VitalLens...\n";
+
+      const options = {
+        method: 'vitallens',
+        apiKey: 'YOUR_API_KEY', // Replace with actual API key
+        globalRoi: { x0: 200, y0: 70, x1: 450, y1: 370 },
+        requestMode: 'rest' // or 'websocket' if using WebSocket mode
+      };
+
+      try {
+        vitallens = new VitalLens(options);
+        log.textContent += "✔ VitalLens initialized.\n";
+      } catch (error) {
+        log.textContent += "❌ Initialization Error: " + error.message + "\n";
+        console.error(error);
+      }
+    }
+
+    async function processVideo(videoFile) {
+      const log = document.getElementById("log");
+
+      if (!videoFile) {
+        log.textContent += "❌ No video file provided.\n";
+        return;
+      }
+
+      try {
+        log.textContent += `🔄 Processing file: ${videoFile.name}\n`;
+        const result = await vitallens.processFile(videoFile);
+        log.textContent += "✔ Processing complete!\n";
+        log.textContent += JSON.stringify(result, null, 2) + "\n";
+      } catch (error) {
+        log.textContent += "❌ Error processing file: " + error.message + "\n";
+        console.error(error);
+      }
+    }
+
+    // Handle traditional file input
+    const fileInput = document.getElementById("videoInput");
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length) {
+        processVideo(fileInput.files[0]);
+      }
+    });
+
+    // Handle Drag & Drop
+    const dropZone = document.getElementById("dropZone");
+
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    dropZone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      dropZone.classList.add("hover");
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+      dropZone.classList.remove("hover");
+    });
+
+    dropZone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dropZone.classList.remove("hover");
+
+      const files = event.dataTransfer.files;
+      if (files.length) {
+        processVideo(files[0]);
+      }
+    });
+
+    // Initialize VitalLens when the page loads
+    initializeVitalLens();
+  </script>
+</body>
+</html>
