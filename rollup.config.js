@@ -97,34 +97,41 @@ const workerBundleConfig = {
   ],
 };
 
+// UMD Build for FFmpegWrapper.browser (for integration test)
+const ffmpegWrapperBrowserConfig = {
+  input: 'src/utils/FFmpegWrapper.browser.ts',
+  output: {
+    file: 'dist/utils/FFmpegWrapper.browser.umd.js',
+    format: 'umd',
+    name: 'FFmpegWrapper',
+    sourcemap: true,
+  },
+  onwarn,
+  plugins: [
+    url({
+      include: ['**/ffmpeg-worker.bundle.js'],
+      limit: Infinity,
+      emitFiles: false,
+    }),
+    typescript({
+      tsconfig: './tsconfig.json',
+      compilerOptions: {
+        declaration: false,
+        declarationMap: false,
+        declarationDir: null,
+      },
+    }),
+    json(),
+    nodeResolve({ browser: true }),
+    commonjs(),
+    terser(),
+  ],
+}
+
 export default [
   nodeEsmConfig,
   nodeCjsConfig,
   workerBundleConfig,
   browserConfig,
-  // // UMD Build for FFmpegWrapper.browser (for integration test)
-  // {
-  //   input: 'src/utils/FFmpegWrapper.browser.ts',
-  //   output: {
-  //     file: 'dist/utils/FFmpegWrapper.browser.umd.js',
-  //     format: 'umd',
-  //     name: 'FFmpegWrapper',
-  //     sourcemap: true,
-  //   },
-  //   onwarn,
-  //   plugins: [
-  //     typescript({
-  //       tsconfig: './tsconfig.json',
-  //       compilerOptions: {
-  //         declaration: false,
-  //         declarationMap: false,
-  //         declarationDir: null,
-  //       },
-  //     }),
-  //     json(),
-  //     nodeResolve({ browser: true }),
-  //     commonjs(),
-  //     terser(),
-  //   ],
-  // },
+  ffmpegWrapperBrowserConfig
 ];

@@ -1,3 +1,5 @@
+/// <reference types="jest-puppeteer" />
+
 describe('FFmpegWrapper (Browser)', () => {
 
   beforeAll(async () => {
@@ -27,7 +29,7 @@ describe('FFmpegWrapper (Browser)', () => {
       type: 'module',
     });
     const logs = await page.evaluate(async () => {
-      const logs = [];
+      const logs: string[] = [];
       logs.push('Initializing FFmpegWrapper...');
       const wrapper = new (window as any).FFmpegWrapper();
       try {

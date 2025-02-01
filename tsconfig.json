@@ -18,6 +18,7 @@
     "declarationDir": "./dist/types",
     "declarationMap": true,
     "typeRoots": ["./node_modules/@types", "./typings"],
+    "types": ["jest"],
     "sourceMap": true,
   },
   "include": ["src/**/*.ts", "typings/**/*.ts"],
