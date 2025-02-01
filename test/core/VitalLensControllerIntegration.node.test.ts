@@ -3,10 +3,14 @@ import fs from 'fs';
 import { VitalLensController } from '../../src/core/VitalLensController.node';
 import { VitalLensOptions, VitalLensResult } from '../../src/types/core';
 import { CALC_HR_MAX, CALC_HR_MIN, CALC_RR_MAX, CALC_RR_MIN } from '../../src/config/constants';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 describe('VitalLensController Integration (Node)', () => {
   let controller: VitalLensController;
   const SAMPLE_VIDEO = path.resolve(__dirname, '../../examples/sample_video_1.mp4');
+  const API_KEY = process.env.VITALLENS_DEV_API_KEY;
 
   beforeAll(async () => {
     if (!fs.existsSync(SAMPLE_VIDEO)) {
@@ -14,7 +18,7 @@ describe('VitalLensController Integration (Node)', () => {
     }
 
     const options: VitalLensOptions = {
-      apiKey: 'aCtMZv9be53gpau6HodUb6txNHQXVPt8Rf4PIGvi', // Ensure API key is set in the environment
+      apiKey: API_KEY,
       method: 'vitallens',
       requestMode: 'rest',
     };
