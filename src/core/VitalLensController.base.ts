@@ -123,6 +123,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     for await (const framesChunk of frameIterator) {
       const incrementalResult = await this.methodHandler.process(framesChunk, this.bufferManager.getState());
       if (incrementalResult) {
+        if (incrementalResult.state) this.bufferManager.setState(new Float32Array(incrementalResult.state.data));
         await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "complete");   
       }
     }
