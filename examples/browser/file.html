@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>VitalLens ProcessFile Test</title>
+  <title>VitalLens File Browser Test</title>
   <style>
     #dropZone {
       width: 100%;
@@ -29,14 +29,14 @@
   </style>
 </head>
 <body>
-  <h1>VitalLens FFmpeg Test</h1>
+  <h1>VitalLens File Browser Test</h1>
 
   <div id="dropZone">Drag & drop a video file here or click to select one</div>
   <input type="file" id="videoInput" accept="video/*">
   <pre id="log"></pre>
 
   <script type="module">
-    import { VitalLens } from './vitallens.browser.js';
+    import { VitalLens } from '../vitallens.browser.js';
 
     let vitallens;
 
@@ -47,8 +47,7 @@
       const options = {
         method: 'vitallens',
         apiKey: 'YOUR_API_KEY', // Replace with actual API key
-        globalRoi: { x0: 200, y0: 70, x1: 450, y1: 370 },
-        requestMode: 'rest' // or 'websocket' if using WebSocket mode
+        requestMode: 'rest'
       };
 
       try {

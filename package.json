@@ -22,9 +22,10 @@
     "test:node": "jest --selectProjects node",
     "test:integration": "npm run build:integration && jest --selectProjects integration-browser",
     "lint": "eslint src/**/*.ts",
-    "start:webcam": "EXAMPLE_TO_OPEN=webcam nodemon scripts/server.cjs",
-    "start:minimal": "EXAMPLE_TO_OPEN=minimal nodemon scripts/server.cjs",
-    "start:processFile": "EXAMPLE_TO_OPEN=processFile nodemon scripts/server.cjs"
+    "start:browser-webcam-minimal": "EXAMPLE_TO_OPEN=browser/webcam_minimal nodemon scripts/server.cjs",
+    "start:browser-webcam": "EXAMPLE_TO_OPEN=browser/webcam nodemon scripts/server.cjs",
+    "start:browser-file": "EXAMPLE_TO_OPEN=browser/file nodemon scripts/server.cjs",
+    "start:node-file": "node ./examples/node/file.js"
   },
   "keywords": [
     "vital signs",
@@ -46,7 +47,6 @@
   },
   "homepage": "https://www.rouast.com/",
   "dependencies": {
-    "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "fft.js": "^4.0.4",
@@ -66,6 +66,7 @@
     "@rollup/plugin-commonjs": "^28.0.2",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-replace": "^6.0.2",
     "@rollup/plugin-typescript": "^12.1.2",
     "@rollup/plugin-url": "^8.0.2",
     "@tensorflow/tfjs": "^4.22.0",
@@ -91,6 +92,6 @@
     "typescript": "^5.5.3"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=16.0.0"
   }
 }

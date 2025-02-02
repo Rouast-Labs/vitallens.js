@@ -1,5 +1,5 @@
 // Import VitalLens
-import { VitalLens } from './vitallens.browser.js';
+import { VitalLens } from '../vitallens.browser.js';
 
 const options = {
   method: 'vitallens',

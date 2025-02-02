@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'url';
+import path from 'path';
 import typescript from '@rollup/plugin-typescript';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
@@ -5,7 +7,11 @@ import url from '@rollup/plugin-url';
 import { terser } from 'rollup-plugin-terser';
 import json from '@rollup/plugin-json';
 import alias from '@rollup/plugin-alias';
-import path from 'path';
+import replace from '@rollup/plugin-replace';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const bundleDir = path.resolve(__dirname, 'dist');
 
 function onwarn(warning, defaultHandler) {
   // Ignore "`this` has been rewritten to `undefined`" warnings.
@@ -27,17 +33,16 @@ const nodeEsmConfig = {
     sourcemap: true,
     inlineDynamicImports: true,
   },
-  external: [
-    'aws-sdk',
-    'nock',
-    'mock-aws-s3',
-  ],
   onwarn,
   plugins: [
     typescript(),
     json(),
     nodeResolve({ browser: false, preferBuiltins: true }),
-    commonjs(),
+    commonjs({ transformMixedEsModules: true, requireReturnsDefault: "auto" }),
+    replace({
+      __dirname: JSON.stringify(bundleDir),
+      preventAssignment: true,
+    }),
     terser(),
   ],
 }
@@ -50,11 +55,6 @@ const nodeCjsConfig = {
     sourcemap: true,
     inlineDynamicImports: true,
   },
-  external: [
-    'aws-sdk',
-    'nock',
-    'mock-aws-s3',
-  ],
   onwarn,
   plugins: [
     typescript(),

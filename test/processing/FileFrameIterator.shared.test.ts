@@ -3,7 +3,6 @@ import { Frame } from '../../src/processing/Frame';
 import { VideoProbeResult, ROI, VitalLensOptions, MethodConfig, VideoInput } from '../../src/types/core';
 import { IFFmpegWrapper } from '../../src/types/IFFmpegWrapper';
 import { IFaceDetector } from '../../src/types/IFaceDetector';
-import { getRepresentativeROI } from '../../src/utils/faceOps';
 
 // Dummy FFmpeg wrapper that simulates behavior for testing.
 class DummyFFmpegWrapper implements IFFmpegWrapper {

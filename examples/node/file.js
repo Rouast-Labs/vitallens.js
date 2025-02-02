@@ -1,9 +1,8 @@
-import { VitalLens } from 'vitallens.js';
+import { VitalLens } from '../../dist/vitallens.esm.js';
 
 const options = {
-  method: 'pos',
+  method: 'g',
   apiKey: 'YOUR_API_KEY',
-  globalRoi: { x0: 50, y0: 50, y1: 250, y1: 250 },
 };
 
 const vitallens = new VitalLens(options);
@@ -18,5 +17,5 @@ async function processFile(filePath) {
 }
 
 // Replace with the path to your video file
-const videoFilePath = './sample-video.mp4';
+const videoFilePath = './examples/sample_video_1.mp4';
 processFile(videoFilePath);

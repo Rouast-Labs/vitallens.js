@@ -32,8 +32,9 @@ app.use(express.static(path.join(__dirname, '../examples')));
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // Handle dynamic example selection
-app.get('/:example', (req, res) => {
-  const examplePath = path.join(__dirname, '../examples', `${req.params.example}.html`);
+app.get('/browser/:example', (req, res) => {
+  const example = req.params.example;
+  const examplePath = path.join(__dirname, '../examples', 'browser', example + '.html');
   res.sendFile(examplePath, (err) => {
     if (err) {
       res.status(404).send('Example not found');
