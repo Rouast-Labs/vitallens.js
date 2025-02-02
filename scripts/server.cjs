@@ -18,14 +18,14 @@ app.use((_, res, next) => {
     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Range',
     'Content-Security-Policy': 
       "default-src 'self' blob: data:; " +
-      "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/; " +
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/; " +
+      "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/ https://cdn.jsdelivr.net; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/ https://cdn.jsdelivr.net; " +
       "worker-src 'self' blob:; " +
-      "connect-src 'self' blob: data: https://unpkg.com/; " +
+      "connect-src 'self' blob: data: https://unpkg.com/ https://api.rouast.com; " +
       "style-src 'self' 'unsafe-inline';"
   });
   next();
-});
+})
 
 // Serve static files for examples and dist
 app.use(express.static(path.join(__dirname, '../examples')));
