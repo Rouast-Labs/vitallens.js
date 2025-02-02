@@ -149,6 +149,37 @@ export class Frame {
   }
 
   /**
+   * Creates a Frame from a Float32Array (no tf.Tensor involved).
+   * @param array The Float32Array containing data.
+   * @param shape The shape of the data (e.g. [nFrames, height, width, channels]).
+   * @param timestamp Optional timestamps.
+   * @param roi Optional regions of interest.
+   */
+  static fromFloat32Array(
+    array: Float32Array,
+    shape: number[],
+    timestamp?: number[],
+    roi?: ROI[]
+  ): Frame {
+    const rawData = array.buffer as ArrayBuffer;
+    const expectedSize = shape.reduce((a, b) => a * b, 1);
+    const actualSize = getActualSizeFromRawData(rawData, 'float32');
+
+    if (expectedSize !== actualSize) {
+      throw new Error(`Mismatch in raw data size: expected ${expectedSize}, but got ${actualSize}`);
+    }
+    
+    return new Frame({
+      rawData,
+      shape,
+      dtype: 'float32',
+      keepTensor: false,
+      timestamp,
+      roi
+    });
+  }
+
+  /**
    * Returns a tf.Tensor. If `keepTensor` was true, this will be the same reference
    * originally passed in (unless disposed of). If `keepTensor` was false,
    * this will create a new tensor from raw data each time.
