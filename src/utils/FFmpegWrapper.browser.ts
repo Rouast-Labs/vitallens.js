@@ -16,7 +16,6 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
   async init() {
     if (!this.ffmpeg) {
       this.ffmpeg = new FFmpeg();
-      console.debug("Preparing to load FFmpeg resources...");
       try {
         // Await and log each Blob URL
         const coreURL = await toBlobURL("https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js", "text/javascript");
@@ -29,7 +28,6 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
           wasmURL: wasmURL,
           classWorkerURL: workerURL,
         });
-        console.debug("FFmpeg loaded successfully.");
       } catch (err) {
         console.error("FFmpeg load error:", err);
         throw err;

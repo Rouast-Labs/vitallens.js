@@ -39,15 +39,16 @@ export class FileFrameIterator extends FrameIteratorBase {
     if (!this.probeInfo) {
       throw new Error('Failed to retrieve video probe information. Ensure the input is valid.');
     }
+    const totalFrames = this.probeInfo.totalFrames;
     // Derive fps target and downsampling factor
     this.fpsTarget = this.options.overrideFpsTarget ? this.options.overrideFpsTarget : this.methodConfig.fpsTarget;
     this.dsFactor = Math.max(Math.round(this.probeInfo.fps / this.fpsTarget), 1);
     if (this.options.globalRoi) {
-      this.roi = Array(this.probeInfo.totalFrames).fill(this.options.globalRoi);
+      this.roi = Array(totalFrames).fill(this.options.globalRoi);
     } else {
       const fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0
       const fDetDsFactor = Math.max(Math.round(this.probeInfo.fps / fDetFs), 1);
-      const fDetNDsFrames = Math.ceil(this.probeInfo.totalFrames / fDetDsFactor);
+      const fDetNDsFrames = Math.ceil(totalFrames / fDetDsFactor);
       const video = await this.ffmpeg.readVideo(
         this.videoInput,
         {
@@ -67,7 +68,14 @@ export class FileFrameIterator extends FrameIteratorBase {
         y1: Math.round(y1 * this.probeInfo!.height),
       }));
       // Derive roi from faces (fDetNDsFrames, 4)
-      this.roi = absoluteROIs.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));
+      const dsRoi = absoluteROIs.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));
+      let roiCandidates: ROI[] = dsRoi.flatMap((roi) => Array(fDetDsFactor).fill(roi));
+      if (roiCandidates.length > totalFrames) {
+        roiCandidates = roiCandidates.slice(0, totalFrames);
+      } else if (roiCandidates.length < totalFrames) {
+        roiCandidates = roiCandidates.concat(Array(totalFrames - roiCandidates.length).fill(dsRoi[dsRoi.length - 1]));
+      }
+      this.roi = roiCandidates
     }
   }
 
