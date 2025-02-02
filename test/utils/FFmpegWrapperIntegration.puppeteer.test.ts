@@ -25,89 +25,73 @@ describe('FFmpegWrapper (Browser)', () => {
     });
   });
 
-  it('initializes FFmpegWrapper in browser', async () => {
-    const logs = await page.evaluate(async () => {
-      const logs: string[] = [];
-      logs.push('Initializing FFmpegWrapper...');
-      const wrapper = new (window as any).FFmpegWrapper();
-      try {
-        await wrapper.init();
-        logs.push('FFmpegWrapper initialized successfully');
-      } catch (error) {
-        logs.push(`Error during initialization: ${(error as Error).message}`);
-      }
-      return logs;
-    });
-
-    console.log('BROWSER LOGS:', logs.join('\n'));
-    expect(logs).toContain('FFmpegWrapper initialized successfully');
-  }, 10000);
-
   it('should probe a real video file in the browser', async () => {
-    const result = await page.evaluate(async (videoUrl) => {
-      const logs: string[] = [];
+    const probeInfo = await page.evaluate(async (videoUrl) => {
       try {
-        logs.push("Browser script: Creating FFmpegWrapper...");
         const wrapper = new (window as any).FFmpegWrapper();
-        logs.push("Browser script: wrapper created, calling probeVideo...");
-  
-        const metadata = await wrapper.probeVideo(videoUrl);
-  
-        return { info: metadata, logs };
+        // Return the metadata directly
+        return await wrapper.probeVideo(videoUrl);
       } catch (e: any) {
-        // If there's a top-level error outside probeVideo
-        logs.push(`Top-level error in browser code: ${e.message}`);
-        return { info: null, logs };
+        throw new Error(`Browser code failed: ${e.message}`);
       }
     }, SAMPLE_VIDEO_URL);
   
-    // Now on the Node side, we always get a `result` with logs
-    console.log("BROWSER DEBUG LOGS:\n", result.logs.join("\n"));
-  
-    if (!result.info) {
-      // If there's an error, throw it so the test fails, but we still see logs
-      throw new Error(`Browser code failed: See logs above}`);
-    }
-  
-    // If no error, proceed with normal checks
-    const { info } = result;
-    expect(info).toBeDefined();
-    expect(info).toHaveProperty('fps');
-    expect(info).toHaveProperty('totalFrames');
-    expect(info).toHaveProperty('width');
-    expect(info).toHaveProperty('height');
-    expect(info).toHaveProperty('codec');
-    expect(info).toHaveProperty('bitrate');
-    expect(info).toHaveProperty('rotation');
-    expect(info).toHaveProperty('issues');
+    // Now perform assertions on probeInfo.
+    expect(probeInfo).toBeDefined();
+    expect(probeInfo).toHaveProperty('fps');
+    expect(probeInfo).toHaveProperty('totalFrames');
+    expect(probeInfo).toHaveProperty('width');
+    expect(probeInfo).toHaveProperty('height');
+    expect(probeInfo).toHaveProperty('codec');
+    expect(probeInfo).toHaveProperty('bitrate');
+    expect(probeInfo).toHaveProperty('rotation');
+    expect(probeInfo).toHaveProperty('issues');
+
+    // Validate expected values (ensure they are reasonable)
+    expect(probeInfo.fps).toBeCloseTo(30.1);
+    expect(probeInfo.totalFrames).toEqual(354);
+    expect(probeInfo.width).toEqual(640);
+    expect(probeInfo.height).toEqual(480);
+    expect(probeInfo.codec).toBeTruthy();
+    expect(probeInfo.bitrate).toBeGreaterThan(0);
+    expect(probeInfo.rotation).toEqual(0);
+    expect(probeInfo.issues).toBe(false);
   }, 20000);
   
-  // it('should process a real video file in the browser', async () => {
-  //   const options = {
-  //     crop: { x0: 0, y0: 0, x1: 100, y1: 100 },
-  //     scale: { width: 40, height: 40 },
-  //     pixelFormat: 'rgb24',
-  //   };
-
-  //   const probeInfo = {
-  //     fps: 30,
-  //     totalFrames: 354,
-  //     width: 640,
-  //     height: 480,
-  //     codec: 'h264',
-  //     bitrate: 13051,
-  //     rotation: 0,
-  //     issues: false,
-  //   };
-
-  //   const buffer = await page.evaluate(async (videoUrl, opts, probe) => {
-  //     const wrapper = new (window as any).FFmpegWrapper();
-  //     await wrapper.init();
-  //     return await wrapper.readVideo(videoUrl, opts, probe);
-  //   }, SAMPLE_VIDEO_URL, options, probeInfo);
-
-  //   expect(buffer).toBeDefined();
-  //   expect(buffer).toBeInstanceOf(Uint8Array);
-  //   expect(buffer.length).toBeGreaterThan(0);
-  // }, 30000);
+  it('should process a real video file in the browser', async () => {
+    const options = {
+      crop: { x0: 0, y0: 0, x1: 100, y1: 100 },
+      scale: { width: 40, height: 40 },
+      pixelFormat: 'rgb24',
+    };
+  
+    const probeInfo = {
+      fps: 30.1,
+      totalFrames: 354,
+      width: 640,
+      height: 480,
+      codec: 'h264',
+      bitrate: 13051,
+      rotation: 0,
+      issues: false,
+    };
+  
+    const plainBuffer = await page.evaluate(async (videoUrl, options, probeInfo) => {
+      try {
+        const wrapper = new (window as any).FFmpegWrapper();
+        const buffer = await wrapper.readVideo(videoUrl, options, probeInfo);
+        // Convert the Uint8Array into a plain array for serialization.
+        return Array.from(buffer);
+      } catch (e: any) {
+        throw new Error(`Browser code failed: ${e.message}`);
+      }
+    }, SAMPLE_VIDEO_URL, options, probeInfo);
+  
+    // Reconstruct the Uint8Array on the Node side.
+    const bufferUint8 = new Uint8Array(plainBuffer as number[]);
+    expect(bufferUint8).toBeDefined();
+    expect(bufferUint8).toBeInstanceOf(Uint8Array);
+    expect(bufferUint8.length).toEqual(354 * 40 * 40 * 3);
+  }, 30000);
+  
 });

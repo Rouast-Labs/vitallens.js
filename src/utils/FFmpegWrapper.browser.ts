@@ -123,15 +123,13 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
 
     // Run a probe command.
     // This command simply causes ffmpeg to output the file information without trying to produce an output file.
-    const ret = await this.ffmpeg.exec(["-hide_banner", "-i", inputName]);
-    console.debug("Probe command returned:", ret);
+    await this.ffmpeg.exec(["-hide_banner", "-i", inputName]);
 
     // Remove the temporary log handler.
     this.ffmpeg.off("log", logHandler);
 
     // Combine the log lines into one string for parsing.
     const output = logLines.join("\n");
-    console.debug("FFmpeg probe output:\n", output);
 
     // Parse the output.
     const metadata = this.parseFFmpegOutput(output);
@@ -159,7 +157,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
     const filters = this.assembleVideoFilters(options, probeInfo);
   
     const outputName = "output.rgb";
-    await this.ffmpeg.exec([
+    const ret = await this.ffmpeg.exec([
       "-i", inputName,
       ...(filters.length ? ["-vf", filters.join(",")] : []),
       "-pix_fmt", options.pixelFormat || "rgb24",
@@ -167,8 +165,9 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
       outputName,
     ]);
   
-    const output = this.ffmpeg.readFile(outputName);
-    this.ffmpeg.unlink(outputName);
+    const output = await this.ffmpeg.readFile(outputName);
+
+    await this.ffmpeg.deleteFile(outputName);
     return output;
   }
   

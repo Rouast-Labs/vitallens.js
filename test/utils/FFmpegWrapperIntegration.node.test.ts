@@ -31,13 +31,13 @@ describe('FFmpegWrapper (Node)', () => {
     expect(probeInfo).toHaveProperty('issues');
 
     // Validate expected values (ensure they are reasonable)
-    expect(probeInfo.fps).toBeGreaterThan(0);
-    expect(probeInfo.totalFrames).toBeGreaterThan(0);
-    expect(probeInfo.width).toBeGreaterThan(0);
-    expect(probeInfo.height).toBeGreaterThan(0);
-    expect(probeInfo.codec).toBeTruthy(); // Ensures it's a valid string
+    expect(probeInfo.fps).toBeCloseTo(30.1);
+    expect(probeInfo.totalFrames).toEqual(354);
+    expect(probeInfo.width).toEqual(640);
+    expect(probeInfo.height).toEqual(480);
+    expect(probeInfo.codec).toBeTruthy();
     expect(probeInfo.bitrate).toBeGreaterThan(0);
-    expect(probeInfo.rotation).toBeGreaterThanOrEqual(0);
+    expect(probeInfo.rotation).toEqual(0);
     expect(probeInfo.issues).toBe(false);
   }, 10000);
 
@@ -53,7 +53,7 @@ describe('FFmpegWrapper (Node)', () => {
     };
 
     const probeInfo: VideoProbeResult = {
-      fps: 30,
+      fps: 30.1,
       totalFrames: 354,
       width: 640,
       height: 480,
@@ -67,6 +67,6 @@ describe('FFmpegWrapper (Node)', () => {
 
     expect(buffer).toBeDefined();
     expect(buffer).toBeInstanceOf(Uint8Array);
-    expect(buffer.length).toBeGreaterThan(0);
+    expect(buffer.length).toEqual(354 * 40 * 40 * 3);
   });
 });
