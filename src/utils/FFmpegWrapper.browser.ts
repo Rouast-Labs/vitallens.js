@@ -92,7 +92,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
   cleanup(): void {
     if (this.loadedFileName) {
       try {
-        this.ffmpeg.unlink(this.loadedFileName);
+        this.ffmpeg.deleteFile(this.loadedFileName);
         this.loadedFileName = null;
       } catch (err) {
         console.error('Failed to cleanup input file:', err);
