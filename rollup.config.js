@@ -128,10 +128,8 @@ const ffmpegWrapperBrowserConfig = {
   ],
 }
 
-export default [
-  nodeEsmConfig,
-  nodeCjsConfig,
-  workerBundleConfig,
-  browserConfig,
-  ffmpegWrapperBrowserConfig
-];
+const config = process.env.BUILD_INTEGRATION
+  ? [workerBundleConfig, ffmpegWrapperBrowserConfig]
+  : [nodeEsmConfig, nodeCjsConfig, workerBundleConfig, browserConfig];
+
+export default config;

@@ -16,9 +16,11 @@
   "type": "module",
   "scripts": {
     "build": "tsc && rollup -c",
+    "build:integration": "rollup -c --environment BUILD_INTEGRATION",
     "test": "jest --coverage",
     "test:browser": "jest --selectProjects browser",
     "test:node": "jest --selectProjects node",
+    "test:integration": "npm run build:integration && jest --selectProjects integration-browser",
     "lint": "eslint src/**/*.ts",
     "start:webcam": "EXAMPLE_TO_OPEN=webcam nodemon scripts/server.cjs",
     "start:minimal": "EXAMPLE_TO_OPEN=minimal nodemon scripts/server.cjs",

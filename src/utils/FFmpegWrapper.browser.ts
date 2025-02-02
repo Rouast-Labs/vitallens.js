@@ -63,8 +63,8 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
    */
   async loadInput(input: VideoInput): Promise<string> {
     const inputName = typeof input === 'string' 
-    ? `input_${encodeURIComponent(input)}.mp4` 
-    : 'input.mp4';
+      ? `input_${encodeURIComponent(input.replace(/\.mp4$/, ''))}.mp4` 
+      : 'input.mp4';
 
     if (this.loadedFileName === inputName) {
       // Skip re-loading if already loaded
@@ -81,7 +81,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
       throw new Error('Unsupported input type.');
     }
 
-    this.ffmpeg.writeFile(inputName, data);
+    await this.ffmpeg.writeFile(inputName, data);
     this.loadedFileName = inputName;
     return inputName;
   }
@@ -107,16 +107,38 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
    */
   async probeVideo(input: VideoInput): Promise<VideoProbeResult> {
     await this.init();
-
+  
+    // Load the file into MEMFS and get its virtual filename.
     const inputName = await this.loadInput(input);
-    const probeOutput = await this.ffmpeg.exec(['-show_streams', '-count_frames', '-pretty', inputName]);
-    const videoStream = this.parseVideoStream(probeOutput);
 
-    if (!videoStream) {
-      throw new Error('No video streams found in the file.');
+    // We'll capture log messages in an array.
+    const logLines: string[] = [];
+
+    // Register a temporary log handler.
+    const logHandler = (log: { type: string; message: string }) => {
+      // You can filter by type if needed (e.g. "stderr" vs. "stdout")
+      logLines.push(log.message);
+    };
+    this.ffmpeg.on("log", logHandler);
+
+    // Run a probe command.
+    // This command simply causes ffmpeg to output the file information without trying to produce an output file.
+    const ret = await this.ffmpeg.exec(["-hide_banner", "-i", inputName]);
+    console.debug("Probe command returned:", ret);
+
+    // Remove the temporary log handler.
+    this.ffmpeg.off("log", logHandler);
+
+    // Combine the log lines into one string for parsing.
+    const output = logLines.join("\n");
+    console.debug("FFmpeg probe output:\n", output);
+
+    // Parse the output.
+    const metadata = this.parseFFmpegOutput(output);
+    if (!metadata) {
+      throw new Error("Failed to extract metadata from ffmpeg output.");
     }
-
-    return this.extractMetadata(videoStream);
+    return metadata;
   }
 
   /**
@@ -151,111 +173,70 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
   }
   
   /**
-   * Extracts the metadata from the parsed video stream.
-   * @param videoStream - The video stream data.
-   * @returns The extracted metadata as a VideoProbeResult object.
+   * A helper function that takes ffmpeg log output and extracts metadata.
+   *
+   * It attempts to parse:
+   * - Duration (in the format "Duration: hh:mm:ss.ss")
+   * - Video stream details (codec, resolution, and frame rate)
+   * - Bitrate (in kb/s)
+   *
+   * It then infers the total frame count as (duration * fps).
+   *
+   * @param output - The combined ffmpeg log output.
+   * @returns A VideoProbeResult object or null if parsing fails.
    */
-  private extractMetadata(videoStream: any): VideoProbeResult {
-    let issues = false;
-
-    const fps = this.extractFrameRate(videoStream) || 0;
-    const duration = parseFloat(videoStream['duration']) || null;
-
-    let totalFrames = parseInt(videoStream['nb_frames'], 10);
-    if (isNaN(totalFrames)) {
-      issues = true;
-      if (fps !== null && duration !== null) {
-        console.warn(
-          'Number of frames missing. Inferring using duration and fps.'
-        );
-        totalFrames = Math.round(duration * fps);
-      } else {
-        console.warn('Cannot infer the total number of frames.');
-        totalFrames = 0;
-      }
-    }
-
-    const width = parseInt(videoStream['width'], 10) || 0;
-    const height = parseInt(videoStream['height'], 10) || 0;
-    const codec = videoStream['codec_name'] || '';
-    const bitrate = parseFloat(videoStream['bit_rate']) / 1000 || 0;
-
-    let rotation = 0;
-    if (videoStream['tags']?.rotate) {
-      rotation = parseInt(videoStream['tags'].rotate, 10);
-    } else if (
-      videoStream['side_data_list']?.[0]?.rotation !== undefined
-    ) {
-      rotation = parseInt(videoStream['side_data_list'][0].rotation, 10);
-    }
-
-    if (!issues && totalFrames && fps && duration) {
-      const expectedFrames = Math.round(duration * fps);
-      if (Math.abs(totalFrames - expectedFrames) > 1) {
-        console.warn(
-          'Mismatch between the total number of frames and duration/fps information.'
-        );
-        issues = true;
-      }
-    }
-
-    return { fps, totalFrames, width, height, codec, bitrate, rotation, issues };
-  }
-
-  /**
-   * Extracts the frame rate from the video stream.
-   * @param videoStream - The video stream data.
-   * @returns The frame rate as a number or null if unavailable.
-   */
-  private extractFrameRate(videoStream: any): number | null {
-    try {
-      const frameRate = videoStream['avg_frame_rate'];
-      if (!frameRate) return null;
-
-      const [numerator, denominator] = frameRate.split('/').map(Number);
-      if (denominator === 0) return null;
-
-      return numerator / denominator;
-    } catch {
-      console.warn('Frame rate information missing.');
+  parseFFmpegOutput(output: string): VideoProbeResult | null {
+    // Parse Duration: "Duration: 00:00:11.76"
+    const durationMatch = output.match(/Duration:\s*(\d+):(\d+):([\d.]+)/);
+    if (!durationMatch) {
+      console.warn("Could not parse duration from ffmpeg output.");
       return null;
     }
-  }
-
-  /**
-   * Parses the video stream information from FFmpeg output.
-   * @param output - The FFmpeg probe output.
-   * @returns The video stream data or null if no video stream is found.
-   */
-  private parseVideoStream(output: string): any {
-    const streams = output.match(/^\[STREAM\][\s\S]+?\[\/STREAM\]/gm);
-    if (!streams) return null;
-
-    for (const stream of streams) {
-      if (/codec_type=video/.test(stream)) {
-        return this.parseKeyValuePairs(stream);
-      }
+    const hours = parseInt(durationMatch[1], 10);
+    const minutes = parseInt(durationMatch[2], 10);
+    const seconds = parseFloat(durationMatch[3]);
+    const duration = hours * 3600 + minutes * 60 + seconds;
+  
+    // Parse video stream details:
+    // Expected pattern example:
+    //   "Stream #0:0... Video: h264 (High) (avc1 / 0x31637661), 640x480 ... 30.10 fps"
+    const streamRegex = /Stream.*Video:\s*([^,]+).*?,\s*(\d+)x(\d+).*?(\d+(?:\.\d+)?)\s*fps/;
+    const streamMatch = output.match(streamRegex);
+    if (!streamMatch) {
+      console.warn("Could not parse video stream details from ffmpeg output.");
+      return null;
     }
-
-    return null;
-  }
-
-  /**
-   * Parses key-value pairs from the FFmpeg output stream.
-   * @param section - The FFmpeg output section containing key-value pairs.
-   * @returns An object with the parsed key-value pairs.
-   */
-  private parseKeyValuePairs(section: string): Record<string, any> {
-    const lines = section.split('\n');
-    const result: Record<string, any> = {};
-
-    for (const line of lines) {
-      const [key, value] = line.split('=');
-      if (key && value) {
-        result[key.trim()] = value.trim();
-      }
-    }
-
-    return result;
-  }
+    // The full codec string might be something like "h264 (High) (avc1 / 0x31637661)"
+    const fullCodec = streamMatch[1].trim();
+    // Extract only the first token (e.g., "h264")
+    const codec = fullCodec.split(" ")[0];
+  
+    const width = parseInt(streamMatch[2], 10);
+    const height = parseInt(streamMatch[3], 10);
+    const fps = parseFloat(streamMatch[4]);
+  
+    // Parse bitrate if available (e.g., "bitrate: 13055 kb/s")
+    const bitrateMatch = output.match(/bitrate:\s*(\d+)\s*kb\/s/);
+    const bitrate = bitrateMatch ? parseInt(bitrateMatch[1], 10) : 0;
+  
+    // Infer total frames based on duration and fps.
+    const totalFrames = Math.round(duration * fps);
+  
+    // Rotation is not available from this output; default to 0.
+    const rotation = 0;
+  
+    // Flag indicating potential issues (if values had to be inferred, etc.)
+    const issues = false;
+  
+    return {
+      fps,
+      totalFrames,
+      width,
+      height,
+      codec,
+      bitrate,
+      rotation,
+      issues,
+    };
+  }  
 }
