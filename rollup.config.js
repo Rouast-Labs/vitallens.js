@@ -12,6 +12,9 @@ function onwarn(warning, defaultHandler) {
   // It's common in older TS-compiled code and doesn't break anything.
   if (warning.code === 'THIS_IS_UNDEFINED') return;
   
+  // Suppress circular dependency warnings.
+  if (warning.code === 'CIRCULAR_DEPENDENCY') return;
+  
   // Otherwise, use Rollup's default warning handler.
   defaultHandler(warning);
 }
@@ -24,6 +27,11 @@ const nodeEsmConfig = {
     sourcemap: true,
     inlineDynamicImports: true,
   },
+  external: [
+    'aws-sdk',
+    'nock',
+    'mock-aws-s3',
+  ],
   onwarn,
   plugins: [
     typescript(),
@@ -42,6 +50,11 @@ const nodeCjsConfig = {
     sourcemap: true,
     inlineDynamicImports: true,
   },
+  external: [
+    'aws-sdk',
+    'nock',
+    'mock-aws-s3',
+  ],
   onwarn,
   plugins: [
     typescript(),
