@@ -56,7 +56,7 @@ export class FileFrameIterator extends FrameIteratorBase {
         },
         this.probeInfo
       );
-      // Run face detector (nFrames, 4)
+      // Run face detector (fDetNDsFrames, 4)
       const videoFrames = Frame.fromUint8Array(video, [fDetNDsFrames, 240, 320, 3]);
       const faces = await this.faceDetector.detect(videoFrames) as ROI[];
       // Convert to absolute units
@@ -66,7 +66,7 @@ export class FileFrameIterator extends FrameIteratorBase {
         x1: Math.round(x1 * this.probeInfo!.width),
         y1: Math.round(y1 * this.probeInfo!.height),
       }));
-      // Derive roi from faces (nFrames, 4)
+      // Derive roi from faces (fDetNDsFrames, 4)
       this.roi = absoluteROIs.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));
     }
   }
@@ -141,7 +141,10 @@ export class FileFrameIterator extends FrameIteratorBase {
       (startFrameIndex + i) / this.probeInfo!.fps
     );
 
-    return Frame.fromUint8Array(frameData, shape, frameTimestamps);
+    // ROI for each frame in the batch
+    const rois: ROI[] = Array.from({ length: dsFramesExpected }, () => roi);
+
+    return Frame.fromUint8Array(frameData, shape, frameTimestamps, rois);
   }
 
   /**
