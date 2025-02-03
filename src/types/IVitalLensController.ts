@@ -1,10 +1,11 @@
 import { VideoInput, VitalLensResult } from "./core";
 
 export interface IVitalLensController {
-  addStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void>;
-  processFile(filePath: VideoInput): Promise<VitalLensResult>;
-  start(): void;
-  pause(): void;
-  stop(): void;
+  setVideoStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void>;
+  startVideoStream(): void;
+  pauseVideoStream(): void;
+  stopVideoStream(): void;
+  processVideoFile(filePath: VideoInput): Promise<VitalLensResult>;
   addEventListener(event: string, listener: (data: any) => void): void;
+  removeEventListener(event: string): void;
 }

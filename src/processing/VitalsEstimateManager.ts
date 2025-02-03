@@ -605,4 +605,44 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   async getResult(sourceId: string): Promise<VitalLensResult> {
     return await this.assembleResult(sourceId, "complete");
   }
+
+  /**
+   * Returns an empty VitalLensResult.
+   * @returns An empty VitalLensResult
+   */
+  getEmptyResult(): VitalLensResult {
+    return {
+      face: {},
+      vital_signs: {},
+      time: [],
+      message: "Prediction is empty because no face was detected."
+    }
+  }
+
+  /**
+   * Reset the buffered information.
+   * @param sourceId - The source identifier.
+   */
+  reset(sourceId: string) {
+    this.waveforms.delete(sourceId);
+    this.waveformNotes.delete(sourceId);
+    this.timestamps.delete(sourceId);
+    this.faces.delete(sourceId);
+    this.faceNote.delete(sourceId);
+    this.message.delete(sourceId);
+    this.lastEstimateTimestamps.delete(sourceId);
+  }
+
+  /**
+   * Reset all buffered information for all sources.
+   */
+  resetAll() {
+    this.waveforms.clear();
+    this.waveformNotes.clear();
+    this.timestamps.clear();
+    this.faces.clear();
+    this.faceNote.clear();
+    this.message.clear();
+    this.lastEstimateTimestamps.clear();
+  }
 }

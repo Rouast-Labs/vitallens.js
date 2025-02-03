@@ -81,12 +81,12 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   }
 
   /**
-   * Adds a MediaStream, an HTMLVideoElement, or both for live stream processing.
+   * Sets a MediaStream, an HTMLVideoElement, or both for live stream processing.
    * @param stream - MediaStream to process (optional).
    * @param videoElement - HTMLVideoElement to use for processing (optional).
    */
-  async addStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
-    if (!isBrowser) throw new Error('addStream is not supported yet in the Node environment.');
+  async setVideoStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
+    if (!isBrowser) throw new Error('setVideoStream is not supported yet in the Node environment.');
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
     
     if (!this.options.globalRoi) await this.faceDetector.load();
@@ -100,11 +100,56 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.bufferManager,
       this.faceDetector,
       this.methodHandler,
+      // onPredict
       async (incrementalResult) => {
-        const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "windowed");
-        this.dispatchEvent('vitals', result);
+        if (this.processing) {
+          const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "windowed");
+          this.dispatchEvent('vitals', result);
+        }
+      },
+      // onNoFace
+      async () => {
+        this.vitalsEstimateManager.reset(frameIterator.getId());
+        this.dispatchEvent('vitals', this.vitalsEstimateManager.getEmptyResult());
       }
     );
+  }
+
+  /**
+   * Starts processing for live streams or resumes if paused.
+   */
+  startVideoStream(): void {
+    if (!this.processing && this.streamProcessor) {
+      this.methodHandler.init();
+      this.streamProcessor.start();
+      this.processing = true;
+    }
+  }
+
+  /**
+   * Pauses processing for live streams, including frame capture and predictions.
+   */
+  pauseVideoStream(): void {
+    if (this.processing && this.streamProcessor) {
+      this.streamProcessor.stop();
+      this.processing = false;
+      this.methodHandler.cleanup();
+      this.vitalsEstimateManager.resetAll();
+    }
+  }
+
+  /**
+   * Stops all ongoing processing and clears resources.
+   */
+  stopVideoStream(): void {
+    if (this.streamProcessor) {
+      this.streamProcessor.stop();
+      this.streamProcessor = null;
+    }
+    this.processing = false;
+    this.bufferManager.cleanup();
+    this.methodHandler.cleanup();
+    this.vitalsEstimateManager.resetAll();
   }
 
   /**
@@ -112,7 +157,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @param videoInput - The video input to process (string, File, or Blob).
    * @returns The results after processing the video.
    */
-  async processFile(videoInput: VideoInput): Promise<VitalLensResult> {
+  async processVideoFile(videoInput: VideoInput): Promise<VitalLensResult> {
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
 
     await this.methodHandler.init();
@@ -134,41 +179,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   }
 
   /**
-   * Starts processing for live streams or resumes if paused.
-   */
-  start(): void {
-    if (!this.processing && this.streamProcessor) {
-      this.methodHandler.init();
-      this.streamProcessor.start();
-      this.processing = true;
-    }
-  }
-
-  /**
-   * Pauses processing for live streams, including frame capture and predictions.
-   */
-  pause(): void {
-    if (this.processing && this.streamProcessor) {
-      this.streamProcessor.stop();
-      this.processing = false;
-      this.methodHandler.cleanup();
-    }
-  }
-
-  /**
-   * Stops all ongoing processing and clears resources.
-   */
-  stop(): void {
-    if (this.streamProcessor) {
-      this.streamProcessor.stop();
-      this.streamProcessor = null;
-    }
-    this.processing = false;
-    this.bufferManager.cleanup();
-    this.methodHandler.cleanup();
-  }
-
-  /**
    * Adds an event listener for a specific event.
    * @param event - Event name (e.g., 'vitals').
    * @param listener - Callback to invoke when the event is emitted.
@@ -178,6 +188,16 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.eventListeners[event] = [];
     }
     this.eventListeners[event].push(listener);
+  }
+
+  /**
+   * Removes and event listener for a specific event.
+   * @param event - Event name (e.g., 'vitals')
+   */
+  removeEventListener(event: string): void {
+    if (this.eventListeners[event]) {
+      delete this.eventListeners[event];
+    }
   }
 
   /**

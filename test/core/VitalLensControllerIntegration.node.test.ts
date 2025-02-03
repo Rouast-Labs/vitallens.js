@@ -27,7 +27,7 @@ describe('VitalLensController Integration (Node)', () => {
   });
 
   it('should process a real video file and return structured vital sign results', async () => {
-    const result: VitalLensResult = await controller.processFile(SAMPLE_VIDEO);
+    const result: VitalLensResult = await controller.processVideoFile(SAMPLE_VIDEO);
 
     // Ensure result structure
     expect(result).toBeDefined();

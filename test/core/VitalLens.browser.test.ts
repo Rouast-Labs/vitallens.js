@@ -2,11 +2,11 @@ import { VitalLens } from '../../src/core/VitalLens.browser';
 
 jest.mock('../../src/core/VitalLensController.browser', () => ({
   VitalLensController: jest.fn().mockImplementation(() => ({
-    start: jest.fn(),
-    pause: jest.fn(),
-    stop: jest.fn(),
-    addStream: jest.fn(async () => {}),
-    processFile: jest.fn(async () => ({ message: 'Processed file successfully.' })),
+    setVideoStream: jest.fn(async () => {}),
+    startVideoStream: jest.fn(),
+    pauseVideoStream: jest.fn(),
+    stopVideoStream: jest.fn(),
+    processVideoFile: jest.fn(async () => ({ message: 'Processed file successfully.' })),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn()
   })),
@@ -26,34 +26,34 @@ describe('VitalLens (Browser)', () => {
     expect(result).toEqual({ message: 'Processed file successfully.' });
   });
 
-  test('should call addStream on the controller with MediaStream and HTMLVideoElement', async () => {
+  test('should call setVideoStream on the controller with MediaStream and HTMLVideoElement', async () => {
     const mockStream = {} as MediaStream;
     const mockVideoElement = document.createElement('video');
 
-    await vitalLens.addVideoStream(mockStream, mockVideoElement);
+    await vitalLens.setVideoStream(mockStream, mockVideoElement);
 
-    expect(vitalLens['controller'].addStream).toHaveBeenCalledWith(mockStream, mockVideoElement);
+    expect(vitalLens['controller'].setVideoStream).toHaveBeenCalledWith(mockStream, mockVideoElement);
   });
 
-  test('should throw an error when addVideoStream is called without arguments', async () => {
-    await expect(vitalLens.addVideoStream()).rejects.toThrow(
+  test('should throw an error when setVideoStream is called without arguments', async () => {
+    await expect(vitalLens.setVideoStream()).rejects.toThrow(
       'You must provide either a MediaStream, an HTMLVideoElement, or both.'
     );
   });
 
-  test('should call start on the controller', () => {
+  test('should call startVideoStream on the controller', () => {
     vitalLens.startVideoStream();
-    expect(vitalLens['controller'].start).toHaveBeenCalled();
+    expect(vitalLens['controller'].startVideoStream).toHaveBeenCalled();
   });
 
-  test('should call pause on the controller', () => {
+  test('should call pauseVideoStream on the controller', () => {
     vitalLens.pauseVideoStream();
-    expect(vitalLens['controller'].pause).toHaveBeenCalled();
+    expect(vitalLens['controller'].pauseVideoStream).toHaveBeenCalled();
   });
 
-  test('should call stop on the controller', () => {
+  test('should call stopVideoStream on the controller', () => {
     vitalLens.stopVideoStream();
-    expect(vitalLens['controller'].stop).toHaveBeenCalled();
+    expect(vitalLens['controller'].stopVideoStream).toHaveBeenCalled();
   });
 
   test('should call addEventListener on the controller', () => {
@@ -61,7 +61,7 @@ describe('VitalLens (Browser)', () => {
     expect(vitalLens['controller'].addEventListener).toHaveBeenCalled();
   });
 
-  test('should call stop on the controller', () => {
+  test('should call removeEventListener on the controller', () => {
     vitalLens.removeEventListener('vitals');
     expect(vitalLens['controller'].removeEventListener).toHaveBeenCalled();
   });

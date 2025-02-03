@@ -33,6 +33,15 @@ describe('FFmpegWrapper (Browser)', () => {
     const video = await wrapper.readVideo('test.mp4', {
       scale: { width: 100, height: 100 },
       pixelFormat: 'rgb24',
+    }, {
+      fps: 30,
+      totalFrames: 100,
+      width: 300,
+      height: 200,
+      codec: 'h264',
+      bitrate: 10000,
+      rotation: 0,
+      issues: false
     });
     expect(video).toBeDefined();
     expect(video).toBeInstanceOf(Uint8Array);

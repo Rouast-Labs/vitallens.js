@@ -22,36 +22,36 @@ export abstract class VitalLensBase {
   protected abstract createController(options: VitalLensOptions): IVitalLensController;
 
   /**
-   * Adds a MediaStream, an HTMLVideoElement, or both for live stream processing.
+   * Set a MediaStream, an HTMLVideoElement, or both for live stream processing.
    * @param stream - The MediaStream to process (optional).
    * @param videoElement - The HTMLVideoElement to use for processing (optional).
    */
-  async addVideoStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
+  async setVideoStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
     if (!stream && !videoElement) {
       throw new Error('You must provide either a MediaStream, an HTMLVideoElement, or both.');
     }
-    await this.controller.addStream(stream, videoElement);
+    await this.controller.setVideoStream(stream, videoElement);
   }
 
   /**
    * Starts processing for live streams or resumes if paused.
    */
   startVideoStream(): void {
-    this.controller.start();
+    this.controller.startVideoStream();
   }
 
   /**
    * Pauses processing for live streams, including frame capture and predictions.
    */
   pauseVideoStream(): void {
-    this.controller.pause();
+    this.controller.pauseVideoStream();
   }
 
   /**
    * Stops all ongoing processing and clears resources.
    */
   stopVideoStream(): void {
-    this.controller.stop();
+    this.controller.stopVideoStream();
   }
 
   /**
@@ -60,7 +60,7 @@ export abstract class VitalLensBase {
    * @returns The results after processing the video.
    */
   async processVideoFile(videoInput: VideoInput): Promise<VitalLensResult> {
-    return this.controller.processFile(videoInput);
+    return this.controller.processVideoFile(videoInput);
   }
 
   /**

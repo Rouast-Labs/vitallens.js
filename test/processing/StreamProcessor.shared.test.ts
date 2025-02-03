@@ -19,6 +19,7 @@ describe('StreamProcessor', () => {
   let mockFaceDetector: jest.Mocked<IFaceDetector>;
   let mockFrameIterator: jest.Mocked<IFrameIterator>;
   let onPredictMock: jest.Mock;
+  let onNoFaceMock: jest.Mock;
   
   beforeEach(() => {
     mockBufferManager = {
@@ -56,6 +57,7 @@ describe('StreamProcessor', () => {
     } as unknown as jest.Mocked<IFrameIterator>;
   
     onPredictMock = jest.fn();
+    onNoFaceMock = jest.fn();
   });  
 
   test('should initialize with the correct ROI and buffer', () => {
@@ -66,7 +68,8 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       mockFaceDetector,
       mockMethodHandler,
-      onPredictMock
+      onPredictMock,
+      onNoFaceMock
     );
 
     streamProcessor.init();
@@ -84,7 +87,8 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       mockFaceDetector,
       mockMethodHandler,
-      onPredictMock
+      onPredictMock,
+      onNoFaceMock
     );
 
     await streamProcessor.start();
@@ -104,7 +108,8 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       mockFaceDetector,
       mockMethodHandler,
-      onPredictMock
+      onPredictMock,
+      onNoFaceMock
     );
 
     await streamProcessor['handleFaceDetection'](mockFrame3D as any, 0);
@@ -121,7 +126,8 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       mockFaceDetector,
       mockMethodHandler,
-      onPredictMock
+      onPredictMock,
+      onNoFaceMock
     );
 
     streamProcessor.stop();

@@ -23,15 +23,15 @@ describe('VitalLensController (Node)', () => {
     expect(FaceDetectorAsync).toHaveBeenCalled();
   });
 
-  test('should throw an error if addStream is called in Node environment', async () => {
+  test('should throw an error if setVideoStream is called in Node environment', async () => {
     const mockStream = {} as MediaStream;
     const mockVideoElement = {} as HTMLVideoElement;
-    await expect(controller.addStream(mockStream, mockVideoElement)).rejects.toThrowError(
-      'addStream is not supported yet in the Node environment.'
+    await expect(controller.setVideoStream(mockStream, mockVideoElement)).rejects.toThrowError(
+      'setVideoStream is not supported yet in the Node environment.'
     );
   });
   
-  test('should call createFileFrameIterator and processFile correctly', async () => {
+  test('should call createFileFrameIterator and processVideoFile correctly', async () => {
     const mockFileInput = 'path/to/video/file.mp4';
 
     // Mock frame iterator
@@ -60,7 +60,7 @@ describe('VitalLensController (Node)', () => {
     controller['vitalsEstimateManager'].getResult = jest.fn().mockResolvedValue(mockFinalResult);
 
     // Run processFile
-    const result = await controller.processFile(mockFileInput);
+    const result = await controller.processVideoFile(mockFileInput);
 
     // Verify createFileFrameIterator was called
     expect(controller['frameIteratorFactory']!.createFileFrameIterator).toHaveBeenCalledWith(

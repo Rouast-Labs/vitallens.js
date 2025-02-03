@@ -203,7 +203,7 @@ async function setupCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user' } });
     video.srcObject = stream;
-    await vitallens.addVideoStream(stream, video);
+    await vitallens.setVideoStream(stream, video);
 
     video.onloadeddata = () => {
       setCanvasDimensions(canvas);

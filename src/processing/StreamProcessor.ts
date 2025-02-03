@@ -30,6 +30,7 @@ export class StreamProcessor {
    * @param faceDetector - Face detection interface (optional if global ROI is given).
    * @param methodHandler - Handles actual vital sign algorithm processing.
    * @param onPredict - Callback invoked with each new VitalLensResult.
+   * @param onNoFace - Callback invoked when face is lost.
    */
   constructor(
     private options: VitalLensOptions,
@@ -38,7 +39,8 @@ export class StreamProcessor {
     private bufferManager: BufferManager,
     private faceDetector: IFaceDetector,
     methodHandler: MethodHandler,
-    private onPredict: (result: VitalLensResult) => Promise<void>
+    private onPredict: (result: VitalLensResult) => Promise<void>,
+    private onNoFace: () => Promise<void>
   ) {
     this.methodHandler = methodHandler;
     // Derive target fps
@@ -149,7 +151,13 @@ export class StreamProcessor {
    */
   private async handleFaceDetection(frame: Frame, currentTime: number): Promise<void> {
     this.faceDetector.run(frame, async (dets) => {
-      if (!dets || dets.length < 1) return;
+      if (!dets || dets.length < 1) {
+        // No face detected - clean up
+        this.roi = null;
+        this.bufferManager.cleanup();
+        this.onNoFace();
+        return;
+      }
 
       if (frame.getShape().length === 3) {
         const absoluteDet = {
