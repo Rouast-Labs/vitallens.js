@@ -7,10 +7,12 @@
 
 Estimate vital signs such as heart rate and respiratory rate from video in JavaScript.
 
-`vitallens.js` is a JavaScript client for the [**VitalLens API**](https://www.rouast.com/vitallens/), which leverages the same inference engine as our [free iOS app VitalLens](https://apps.apple.com/us/app/vitallens/id6472757649).
+`vitallens.js` is a JavaScript client for the [**VitalLens API**](https://www.rouast.com/api/), which leverages the same inference engine as our [free iOS app VitalLens](https://apps.apple.com/us/app/vitallens/id6472757649).
 Furthermore, it includes fast implementations of several other heart rate estimation methods from video such as `G`, `CHROM`, and `POS`.
 
 This library works both in browser environments and in Node.js, and comes with a set of examples for file-based processing and real-time webcam streaming.
+
+Using a different language or platform? We also have a [Python client](https://github.com/Rouast-Labs/vitallens-python).
 
 ## Features
 
@@ -46,13 +48,13 @@ Please review our [Terms of Service](https://www.rouast.com/api/terms) and [Priv
 Install vitallens.js via npm:
 
 ```bash
-npm install vitallens.js
+npm install vitallens
 ```
 
 Or using yarn:
 
 ```bash
-yarn add vitallens.js
+yarn add vitallens
 ```
 
 ## Usage
