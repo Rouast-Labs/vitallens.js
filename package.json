@@ -46,7 +46,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Rouast-Labs/vitallens.js.git"
+    "url": "git+https://github.com/Rouast-Labs/vitallens.js.git"
   },
   "bugs": {
     "url": "https://github.com/Rouast-Labs/vitallens.js/issues"

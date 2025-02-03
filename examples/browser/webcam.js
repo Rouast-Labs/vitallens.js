@@ -3,7 +3,7 @@ import { VitalLens } from '../vitallens.browser.js';
 
 const options = {
   method: 'vitallens',
-  apiKey: "YOUR_API_KEY",
+  apiKey: "YOUR_API_KEY", // Replace with actual API key
 };
 
 const vitallens = new VitalLens(options);
