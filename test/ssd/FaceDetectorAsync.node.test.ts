@@ -19,10 +19,23 @@ jest.mock('@tensorflow/tfjs', () => {
   return {
     ...actualTf,
     loadGraphModel: jest.fn(),
+    io: {
+      ...actualTf.io,
+      fromMemory: jest.fn(),
+    },
   };
 });
 
-describe('FaceDetector', () => {
+// Mock the base64-encoded model files
+jest.mock('../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json', () => {
+  return 'data:application/json;base64,eyJtb2RlbFRvcG9sb2d5Ijp7InNvbWVWYWx1ZSI6MH0sIndlaWdodHNNYW5pZmVzdCI6W3sid2VpZ2h0cyI6W119XX0=';
+});
+
+jest.mock('../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1.bin', () => {
+  return 'data:application/octet-stream;base64,AAAAAA==';
+});
+
+describe('FaceDetectorAsync.node', () => {
   let faceDetector: FaceDetectorAsync;
 
   beforeAll(async () => {
@@ -41,6 +54,7 @@ describe('FaceDetector', () => {
       ),
     } as unknown as tf.GraphModel;
 
+    jest.spyOn(tf.io, 'fromMemory').mockReturnValue('mockedModelSource' as any);
     jest.spyOn(tf, 'loadGraphModel').mockResolvedValue(mockGraphModel);
 
     // Initialize the FaceDetector
@@ -53,11 +67,14 @@ describe('FaceDetector', () => {
     jest.restoreAllMocks();
   });
 
-  it('should initialize with the correct parameters', async () => {
-    expect(tf.loadGraphModel).toHaveBeenCalledWith(
-      expect.stringContaining('models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json')
-    );
-  });
+  it('should initialize the model from memory', async () => {
+      expect(tf.io.fromMemory).toHaveBeenCalledWith(expect.objectContaining({
+        modelTopology: expect.any(Object),
+        weightSpecs: expect.any(Array),
+        weightData: expect.any(ArrayBuffer),
+      }));
+      expect(tf.loadGraphModel).toHaveBeenCalledWith('mockedModelSource');
+    });
 
   it('should detect faces and return ROIs', async () => {
     const mockData = new Float32Array(224 * 224 * 3).fill(0);

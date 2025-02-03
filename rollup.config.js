@@ -32,8 +32,15 @@ const nodeEsmConfig = {
   },
   onwarn,
   plugins: [
+    url({
+      include: ['models/**/*'],
+      limit: Infinity,
+      emitFiles: false,
+    }),
     typescript(),
-    json(),
+    json({
+      exclude: ['models/**/*'],
+    }),
     nodeResolve({ browser: false, preferBuiltins: true }),
     commonjs({ transformMixedEsModules: true, requireReturnsDefault: "auto" }),
     replace({
@@ -55,8 +62,15 @@ const nodeCjsConfig = {
   },
   onwarn,
   plugins: [
+    url({
+      include: ['models/**/*'],
+      limit: Infinity,
+      emitFiles: false,
+    }),
     typescript(),
-    json(),
+    json({
+      exclude: ['models/**/*'],
+    }),
     nodeResolve({ browser: false, preferBuiltins: true }),
     commonjs(),
     terser(),
@@ -126,7 +140,8 @@ const ffmpegWrapperBrowserConfig = {
       tsconfig: './tsconfig.json',
       compilerOptions: {
         declaration: false,
-        declarationMap: false
+        declarationMap: false,
+        declarationDir: undefined
       },
     }),
     json(),

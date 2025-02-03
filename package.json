@@ -23,7 +23,7 @@
     "build": "tsc && rollup -c",
     "prepare": "npm run build",
     "build:integration": "rollup -c --environment BUILD_INTEGRATION",
-    "test": "jest --coverage",
+    "test": "jest --selectProjects node browser",
     "test:browser": "jest --selectProjects browser",
     "test:node": "jest --selectProjects node",
     "test:integration": "npm run build:integration && jest --selectProjects integration-browser",
@@ -40,7 +40,14 @@
     "rPPG",
     "video analysis",
     "healthcare",
-    "remote sensing"
+    "remote sensing",
+    "video processing",
+    "face",
+    "pulse",
+    "photoplethysmography",
+    "ppg",
+    "vitals",
+    "remote photoplethysmography"
   ],
   "author": "Rouast Labs",
   "license": "MIT",
@@ -53,8 +60,11 @@
   },
   "homepage": "https://www.rouast.com/",
   "files": [
-    "dist",
-    "models",
+    "dist/vitallens.browser.js",
+    "dist/vitallens.cjs.js",
+    "dist/vitallens.esm.js",
+    "dist/types/index.node.d.ts",
+    "dist/types/index.browser.d.ts",
     "LICENSE",
     "README.md"
   ],

@@ -8,7 +8,12 @@ module.exports = {
       transform: {
         '^.+\\.tsx?$': 'ts-jest',
       },
-      moduleNameMapper: {},
+      moduleNameMapper: {
+        'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model\\.json$':
+          '<rootDir>/__mocks__/modelJsonMock.js',
+        'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1\\.bin$':
+          '<rootDir>/__mocks__/modelBinMock.js',
+      },
       setupFilesAfterEnv: ['./jest.setup.ts'],
     },
     // jsdom tests (lightweight browser-like unit tests)
