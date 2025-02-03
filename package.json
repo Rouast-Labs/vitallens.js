@@ -2,20 +2,26 @@
   "name": "vitallens",
   "version": "0.0.1",
   "description": "VitalLens: Estimate vital signs such as heart rate and respiratory rate from video.",
-  "main": "dist/vitallens.cjs.js",
-  "module": "dist/vitallens.esm.js",
-  "browser": "dist/vitallens.browser.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/vitallens.cjs.js",
+  "module": "./dist/vitallens.esm.js",
+  "browser": "./dist/vitallens.browser.js",
   "exports": {
     ".": {
-      "browser": "./dist/vitallens.browser.js",
-      "import": "./dist/vitallens.esm.js",
-      "require": "./dist/vitallens.cjs.js"
+      "browser": {
+        "import": "./dist/vitallens.browser.js",
+        "types": "./dist/types/index.browser.d.ts"
+      },
+      "node": {
+        "import": "./dist/vitallens.esm.js",
+        "require": "./dist/vitallens.cjs.js",
+        "types": "./dist/types/index.node.d.ts"
+      }
     }
   },
   "type": "module",
   "scripts": {
     "build": "tsc && rollup -c",
+    "prepare": "npm run build",
     "build:integration": "rollup -c --environment BUILD_INTEGRATION",
     "test": "jest --coverage",
     "test:browser": "jest --selectProjects browser",
@@ -46,6 +52,12 @@
     "url": "https://github.com/Rouast-Labs/vitallens.js/issues"
   },
   "homepage": "https://www.rouast.com/",
+  "files": [
+    "dist",
+    "models",
+    "LICENSE",
+    "README.md"
+  ],
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
@@ -92,6 +104,6 @@
     "typescript": "^5.5.3"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=14.0.0"
   }
 }

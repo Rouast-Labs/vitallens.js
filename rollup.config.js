@@ -14,19 +14,16 @@ const __dirname = path.dirname(__filename);
 const bundleDir = path.resolve(__dirname, 'dist');
 
 function onwarn(warning, defaultHandler) {
-  // Ignore "`this` has been rewritten to `undefined`" warnings.
-  // It's common in older TS-compiled code and doesn't break anything.
   if (warning.code === 'THIS_IS_UNDEFINED') return;
-  
-  // Suppress circular dependency warnings.
   if (warning.code === 'CIRCULAR_DEPENDENCY') return;
-  
-  // Otherwise, use Rollup's default warning handler.
   defaultHandler(warning);
 }
 
+const nodeExternals = ['@tensorflow/tfjs-node'];
+
 const nodeEsmConfig = {
   input: 'src/index.node.ts',
+  external: nodeExternals,
   output: {
     file: 'dist/vitallens.esm.js',
     format: 'esm',
@@ -45,10 +42,11 @@ const nodeEsmConfig = {
     }),
     terser(),
   ],
-}
+};
 
 const nodeCjsConfig = {
   input: 'src/index.node.ts',
+  external: nodeExternals,
   output: {
     file: 'dist/vitallens.cjs.js',
     format: 'cjs',
@@ -63,7 +61,7 @@ const nodeCjsConfig = {
     commonjs(),
     terser(),
   ],
-}
+};
 
 const browserConfig = {
   input: 'src/index.browser.ts',
@@ -85,20 +83,19 @@ const browserConfig = {
     commonjs(),
     terser(),
   ],
-}
+};
 
 const workerBundleConfig = {
   input: 'src/ffmpeg-worker-entry.js',
   output: {
     file: 'dist/ffmpeg-worker.bundle.js',
-    format: 'esm', // using esm for a module worker
+    format: 'esm',
     sourcemap: false,
   },
   plugins: [
     alias({
       entries: [
         {
-          // Force resolution of the internal worker file:
           find: '@ffmpeg/ffmpeg/dist/esm/worker.js',
           replacement: path.resolve(__dirname, 'node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js'),
         },
@@ -110,7 +107,6 @@ const workerBundleConfig = {
   ],
 };
 
-// UMD Build for FFmpegWrapper.browser (for integration test)
 const ffmpegWrapperBrowserConfig = {
   input: 'src/utils/FFmpegWrapper.browser.ts',
   output: {
@@ -130,8 +126,7 @@ const ffmpegWrapperBrowserConfig = {
       tsconfig: './tsconfig.json',
       compilerOptions: {
         declaration: false,
-        declarationMap: false,
-        declarationDir: null,
+        declarationMap: false
       },
     }),
     json(),
@@ -139,7 +134,7 @@ const ffmpegWrapperBrowserConfig = {
     commonjs(),
     terser(),
   ],
-}
+};
 
 const config = process.env.BUILD_INTEGRATION
   ? [workerBundleConfig, ffmpegWrapperBrowserConfig]

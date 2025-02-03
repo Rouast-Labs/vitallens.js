@@ -1,7 +1,7 @@
 import { VitalLens } from '../../dist/vitallens.esm.js';
 
 const options = {
-  method: 'g',
+  method: 'vitallens',
   apiKey: 'YOUR_API_KEY',
 };
 

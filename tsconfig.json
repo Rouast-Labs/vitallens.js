@@ -17,10 +17,10 @@
     "declaration": true,
     "declarationDir": "./dist/types",
     "declarationMap": true,
-    "typeRoots": ["./node_modules/@types", "./typings"],
+    "typeRoots": ["./node_modules/@types"],
     "types": ["jest"],
-    "sourceMap": true,
+    "sourceMap": true
   },
-  "include": ["src/**/*.ts", "typings/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test", "**/*.test.ts", "**/*.spec.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test", "scripts", "examples"]
 }
