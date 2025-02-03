@@ -1,200 +1,215 @@
 # VitalLens.js
 
-**VitalLens.js** is a modern JavaScript/TypeScript library for estimating vital signs, such as heart rate and respiratory rate, from video data. It supports live webcam streams, video files, and media streams, and integrates seamlessly with both browser and Node.js environments.
+[![NPM Version](https://badge.fury.io/js/vitallens.js.svg)](https://www.npmjs.com/package/vitallens.js)
+[![Website](https://img.shields.io/badge/Website-rouast.com/api-blue.svg)](https://www.rouast.com/)
+[![Documentation](https://img.shields.io/badge/Docs-docs.rouast.com-blue.svg)](https://docs.rouast.com/)
+
+Estimate vital signs such as heart rate and respiratory rate from video in JavaScript.
+
+`vitallens.js` is a JavaScript client for the [**VitalLens API**](https://www.rouast.com/vitallens/), which leverages the same inference engine as our [free iOS app VitalLens](https://apps.apple.com/us/app/vitallens/id6472757649).
+Furthermore, it includes fast implementations of several other heart rate estimation methods from video such as `G`, `CHROM`, and `POS`.
+
+This library works both in browser environments and in Node.js, and comes with a set of examples for file-based processing and real-time webcam streaming.
 
 ## Features
 
-- **Estimate Vital Signs**: Supports methods like `VitalLens` (neural network-based) and `POS` (handcrafted rPPG).
-- **WebSocket and REST API Integration**: Use the VitalLens API for advanced neural network estimation.
-- **Cross-Platform**: Works in both browser and Node.js environments.
-- **Flexible Input Options**:
-  - Live webcam streams
-  - Pre-recorded video files
-  - Media streams
-- **ROI (Region of Interest) Support**: Process only the desired part of the video for efficient computation.
-- **Lightweight and Modern**: Built with TypeScript, optimized for modern JavaScript ecosystems.
+- **Cross-Platform Compatibility:**  
+  Use vitallens.js in the browser or Node.js.
+  
+- **Multiple Estimation Methods:**
+  Choose the method that fits your needs:
+  - **`vitallens`** (requires an API key) – provides robust vital sign and waveform estimates.
+  - **`g`**, **`chrom`**, **`pos`** – faster alternatives for less accurate heart rate estimation without an API key.
+  
+- **Flexible Input Support:**  
+  Process video files or live streams from a webcam or any MediaStream.
+  
+- **Event-Driven API:**  
+  Register event listeners to receive real-time updates on estimated vitals.
+  
+- **TypeScript-Ready:**  
+  Written in TypeScript with complete type definitions for enhanced developer experience.
+  
+- **Well-Tested and Documented:**  
+  Includes extensive tests (both Node and browser) and example applications to get you started quickly.
 
----
+### Disclaimer
+
+**Important:** vitallens.js provides vital sign estimates for general wellness purposes only. It is **not intended for medical use**. Always consult a healthcare professional for any medical concerns or precise clinical measurements.
+
+Please review our [Terms of Service](https://www.rouast.com/api/terms) and [Privacy Policy](https://www.rouast.com/privacy) for more details.
 
 ## Installation
 
+Install vitallens.js via npm:
+
 ```bash
-npm install vitallens
+npm install vitallens.js
 ```
 
----
+Or using yarn:
+
+```bash
+yarn add vitallens.js
+```
 
 ## Usage
 
-### 1. Live Webcam Stream in the Browser
+### Importing the Library
+
+#### In Browser (ES Modules)
+
+Include vitallens.js in your HTML as follows:
+
+```html
+<script type="module">
+  import { VitalLens } from 'vitallens.browser.js';
+  // Your code here
+</script>
+```
+
+#### In Node.js (ESM)
+
+```js
+import { VitalLens } from 'vitallens.esm.js';
+// Your code here
+```
+
+### Processing a Video File (Node.js Example)
+
+```js
+import { VitalLens } from 'vitallens.esm.js';
+
+const options = {
+  method: 'vitallens',      // Choose from 'vitallens', 'g', 'chrom', or 'pos'
+  apiKey: 'YOUR_API_KEY',   // Required when using the 'vitallens' method
+};
+
+const vitallens = new VitalLens(options);
+
+async function processVideoFile(filePath) {
+  try {
+    const result = await vitallens.processFile(filePath);
+    console.log('Processing complete!', result);
+  } catch (error) {
+    console.error('Error processing video:', error);
+  }
+}
+
+processVideoFile('./examples/sample_video_1.mp4');
+```
+
+### Real-Time Vital Estimation (Browser Example)
+
+Below is a minimal example that uses a webcam stream:
 
 ```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VitalLens Webcam Example</title>
+  <title>vitallens.js Webcam Example</title>
+</head>
+<body>
+  <video id="video" autoplay muted playsinline style="width:100%; max-width:600px;"></video>
   <script type="module">
-    import { VitalLens } from 'vitallens';
+    import { VitalLens } from 'vitallens.browser.js';
 
     const options = {
-      method: 'vitallens',
-      globalRoi: { x0: 50, y0: 50, x1: 250, y1: 250 },
+      method: 'vitallens',  // 'vitallens' requires an API key
+      apiKey: 'YOUR_API_KEY',
     };
 
     const vitallens = new VitalLens(options);
 
-    async function startWebcam() {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      vitallens.addStream(stream);
+    async function startVitals() {
+      try {
+        const video = document.getElementById('video');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: false
+        });
+        video.srcObject = stream;
 
-      vitallens.addEventListener('vitals', (result) => {
-        console.log('Vitals:', result.vitals);
-      });
+        // Add the stream to vitallens.js
+        await vitallens.addStream(stream, video);
 
-      vitallens.start();
+        // Listen for vitals events
+        vitallens.addEventListener('vitals', (data) => {
+          console.log('Detected vitals:', data);
+        });
+
+        // Start processing
+        vitallens.start();
+      } catch (error) {
+        console.error('Error initializing webcam:', error);
+      }
     }
 
-    startWebcam();
+    startVitals();
   </script>
-</head>
-<body>
-  <h1>VitalLens Webcam Example</h1>
 </body>
 </html>
 ```
 
----
+### Configuration Options
 
-### 2. MediaStream Integration
+When creating a new `VitalLens` instance, you can configure various options:
 
-If you already have a `MediaStream` (e.g., from a WebRTC connection), you can process it directly.
+| Parameter     | Description                                                                                      | Default       |
+| ------------- | ------------------------------------------------------------------------------------------------ | ------------- |
+| `method`      | Inference method: `'vitallens'`, `'G'`, `'CHROM'`, or `'POS'`.                                  | `'vitallens'` |
+| `apiKey`      | API key for the VitalLens API (required for method `'vitallens'`).                               | `null`        |
+| `requestMode` | Request mode for `'vitallens'`: either `'rest'` or `'websocket'` (when applicable).              | `'rest'`      |
+| `globalRoi`   | Optional region of interest for face detection (object with `{ x0, y0, x1, y1 }`).              | `undefined`   |
+| *Others*      | Additional options (e.g., face detection settings, buffering) are available. See [docs](https://docs.rouast.com/) for details. |               |
 
-```javascript
-import { VitalLens } from 'vitallens';
+## Examples
 
-const options = {
-  method: 'pos',
-  globalRoi: { x0: 50, y0: 50, x1: 250, y1: 250 },
-};
+The repository contains several ready-to-run examples:
 
-const vitallens = new VitalLens(options);
+- **Browser File Input:** [examples/browser/file.html](examples/browser/file.html)
+- **Minimal Webcam Example:** [examples/browser/webcam_minimal.html](examples/browser/webcam_minimal.html)
+- **Advanced Webcam with Visualizations:** [examples/browser/webcam.html](examples/browser/webcam.html)
+- **Node File Processing:** [examples/node/file.js](examples/node/file.js)
 
-async function processMediaStream(mediaStream) {
-  vitallens.addStream(mediaStream);
-
-  vitallens.addEventListener('vitals', (result) => {
-    console.log('Vitals:', result.vitals);
-  });
-
-  vitallens.start();
-}
-
-// Example: Get a MediaStream from getUserMedia
-navigator.mediaDevices
-  .getUserMedia({ video: true })
-  .then(processMediaStream)
-  .catch(console.error);
-```
-
----
-
-### 3. Video File Processing in Node.js
-
-```javascript
-import { VitalLens } from 'vitallens';
-
-const options = {
-  method: 'vitallens',
-  globalRoi: { x0: 50, y0: 50, x1: 250, y1: 250 },
-};
-
-const vitallens = new VitalLens(options);
-
-(async () => {
-  const results = await vitallens.processFile('./path/to/video.mp4');
-  console.log('Vitals Results:', results);
-})();
-```
-
----
-
-## API Reference
-
-### VitalLens Constructor
-
-```typescript
-new VitalLens(options: VitalLensOptions);
-```
-
-#### `VitalLensOptions`
-| Option     | Type                         | Description                                    |
-|------------|------------------------------|------------------------------------------------|
-| `method`   | `'vitallens' | 'pos'`         | Estimation method to use.                     |
-| `overrideFpsTarget`      | `number`                     | Frames per second to process.                 |
-| `globalRoi` | `{ x0: number; y0: number; x1: number; y1: number }` | Region of interest for processing. |
-
----
-
-### Methods
-
-#### `addStream(stream: MediaStream): Promise<void>`
-Adds a `MediaStream` for processing.
-
-#### `processFile(filePath: string): Promise<VitalLensResult[]>`
-Processes a video file and returns the results.
-
-#### `addEventListener(event: string, callback: (data: any) => void): void`
-Registers an event listener for specific events like `'vitals'`.
-
-#### `start(): void`
-Starts the processing loop for live streams.
-
-#### `stop(): void`
-Stops all ongoing processing.
-
----
+Try opening the HTML examples in your browser or running the Node script to see vitallens.js in action.
 
 ## Development
 
-### Build the Library
+### Building the Library
+
+To build the project from source, run:
+
 ```bash
 npm run build
 ```
 
-### Run Examples
-- **Browser Example**:
-  ```bash
-  npm run serve
-  ```
-  Then open `http://127.0.0.1:8080/examples/webcam.html` in your browser.
+This compiles the TypeScript source and bundles the output for Node (both ESM and CommonJS), and the browser.
 
-- **Node.js Example**:
-  ```bash
-  npm start
-  ```
+### Running Tests
 
-### Run Tests
+Execute the test suite with:
+
 ```bash
 npm test
 ```
 
----
+For environment-specific tests, you can use:
 
-## Contributing
+```bash
+npm run test:browser
+npm run test:node
+```
 
-Contributions are welcome! If you encounter any issues or have feature requests, feel free to open a GitHub issue or submit a pull request.
+### Linting
 
----
+Lint the code using:
+
+```bash
+npm run lint
+```
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-## Acknowledgements
-
-- Powered by [@ffmpeg/ffmpeg](https://github.com/ffmpegwasm/ffmpeg.wasm) and [TensorFlow.js](https://github.com/tensorflow/tfjs).
-- Developed by **Rouast Labs**.
+This project is licensed under the [MIT License](LICENSE).
