@@ -31,7 +31,7 @@ describe('VitalsEstimateManager', () => {
     options = {
       method: 'g',
       overrideFpsTarget: 1,
-      waveformDataMode: 'aggregated'
+      waveformMode: 'windowed'
     };
     manager = new VitalsEstimateManager(methodConfig, options);
   });
@@ -84,8 +84,8 @@ describe('VitalsEstimateManager', () => {
     
       expect(manager['timestamps'].has('source1')).toBe(true);
       expect(manager['waveforms'].has('source1')).toBe(true);
-      expect(manager['updateTimestamps']).toHaveBeenCalledWith('source1', incrementalResult.time, 'aggregated', 0);
-      expect(manager['updateWaveforms']).toHaveBeenCalledWith('source1', incrementalResult.vital_signs, 'aggregated', 0);
+      expect(manager['updateTimestamps']).toHaveBeenCalledWith('source1', incrementalResult.time, 'windowed', 0);
+      expect(manager['updateWaveforms']).toHaveBeenCalledWith('source1', incrementalResult.vital_signs, 'windowed', 0);
     });
     
     it('should update timestamps and waveforms', async () => {
@@ -135,9 +135,9 @@ describe('VitalsEstimateManager', () => {
   
       const result = await manager.processIncrementalResult(incrementalResult, 'source1', 'complete');
   
-      expect(manager['updateTimestamps']).toHaveBeenCalledWith('source1', incrementalResult.time, options.waveformDataMode!, 5);
-      expect(manager['updateFaces']).toHaveBeenCalledWith('source1', incrementalResult.face, options.waveformDataMode!, 5);
-      expect(manager['updateWaveforms']).toHaveBeenCalledWith('source1', incrementalResult.vital_signs, options.waveformDataMode!, 5);
+      expect(manager['updateTimestamps']).toHaveBeenCalledWith('source1', incrementalResult.time, options.waveformMode!, 5);
+      expect(manager['updateFaces']).toHaveBeenCalledWith('source1', incrementalResult.face, options.waveformMode!, 5);
+      expect(manager['updateWaveforms']).toHaveBeenCalledWith('source1', incrementalResult.vital_signs, options.waveformMode!, 5);
     });
   });
 
@@ -161,7 +161,7 @@ describe('VitalsEstimateManager', () => {
       const newValues = [6, 7, 8, 9, 10];
       manager['bufferSizePpg'] = 8;
       manager['bufferSizeResp'] = 8;
-      const result = manager['getUpdatedValues'](currentValues, newValues, 'aggregated', 0);
+      const result = manager['getUpdatedValues'](currentValues, newValues, 'windowed', 0);
       expect(result).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
     });
 
@@ -195,7 +195,7 @@ describe('VitalsEstimateManager', () => {
     it('should trim sum and count arrays to the maximum buffer size in non-complete mode', () => {
       const currentBuffer = { sum: [1, 2, 3, 4, 5], count: [1, 1, 1, 1, 1] };
       const incremental = [6, 7, 8, 9, 10];
-      const result = manager['getUpdatedSumCount'](currentBuffer, incremental, 'aggregated', 8, 0);
+      const result = manager['getUpdatedSumCount'](currentBuffer, incremental, 'windowed', 8, 0);
       expect(result.sum).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
       expect(result.count).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
     });
@@ -447,7 +447,7 @@ describe('VitalsEstimateManager', () => {
       jest.spyOn(manager as any, 'estimateHeartRate').mockReturnValue(75);
       jest.spyOn(manager as any, 'estimateRespiratoryRate').mockReturnValue(18);
   
-      const result = await manager['assembleResult']('source1', 'aggregated');
+      const result = await manager['assembleResult']('source1', 'windowed');
   
       expect(result).toEqual({
         time: [1002, 1003, 1004, 1005],

@@ -101,7 +101,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.faceDetector,
       this.methodHandler,
       async (incrementalResult) => {
-        const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "aggregated");
+        const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "windowed");
         this.dispatchEvent('vitals', result);
       }
     );

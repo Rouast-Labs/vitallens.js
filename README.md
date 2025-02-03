@@ -160,12 +160,112 @@ Below is a minimal example that uses a webcam stream:
 
 When creating a new `VitalLens` instance, you can configure various options:
 
-| Parameter     | Description                                                                                      | Default       |
-| ------------- | ------------------------------------------------------------------------------------------------ | ------------- |
-| `method`      | Inference method: `'vitallens'`, `'G'`, `'CHROM'`, or `'POS'`.                                  | `'vitallens'` |
-| `apiKey`      | API key for the VitalLens API (required for method `'vitallens'`).                               | `null`        |
-| `globalRoi`   | Optional region of interest for face detection (object with `{ x0, y0, x1, y1 }`).              | `undefined`   |
-| *Others*      | Additional options (e.g., face detection settings, buffering) are available. See [docs](https://docs.rouast.com/) for details. |               |
+| Parameter      | Description                                                                                | Default        |
+| -------------- | ------------------------------------------------------------------------------------------ | -------------- |
+| `method`       | Inference method: `'vitallens'`, `'g'`, `'chrom'`, or `'pos'`.                             | `'vitallens'`  |
+| `apiKey`       | API key for the VitalLens API (required for method `'vitallens'`).                         | `null`         |
+| `globalRoi`    | Optional region of interest for face detection (object with `{ x0, y0, x1, y1 }`).         | `undefined`    |
+| `waveformMode` | Optional setting how waveform is returned: `'incremental'`, `'windowed'`, or `'complete'`. | *(see below)*  |
+
+The default value for `waveformMode` is `windowed` if a stream is being analyzed, and `complete` if a file is being processed.
+There are also additional options (e.g., face detection settings, buffering) available. See [docs](https://docs.rouast.com/) for details.
+
+### Understanding the Estimation Results
+
+When you process a video or a MediaStream with `vitallens.js`, the library returns the vital signs estimates in a structured object. **vitallens.js is designed to process only a single face** — so you always receive a single result object with the following structure:
+
+```typescript
+export interface VitalLensResult {
+  face: {
+    // Detected face coordinates for each frame, formatted as [x0, y0, x1, y1].
+    coordinates: Array<[number, number, number, number]>;
+    // Confidence values for the face per frame.
+    confidence: number[];
+    // An explanatory note regarding the face detection.
+    note: string;
+  };
+  vital_signs: {
+    // Estimated global heart rate.
+    heart_rate: {
+      // Estimated heart rate value.
+      value: number;
+      // Unit of the heart rate value.
+      unit: string;
+      // Overall confidence of the heart rate estimation.
+      confidence: number;
+      // An explanatory note regarding the estimation.
+      note: string;
+    };
+    // Estimated global respiratory rate.
+    respiratory_rate?: {
+      // Estimated respiratory rate value (in breaths per minute).
+      value: number;
+      // Unit of the respiratory rate value.
+      unit: string;
+      // Overall confidence of the respiratory rate estimation.
+      confidence: number;
+      // An explanatory note regarding the estimation.
+      note: string;
+    };
+    // Photoplethysmogram (PPG) waveform estimation.
+    ppg_waveform: {
+      // Estimated PPG waveform data (one value per processed frame).
+      data: number[];
+      // Unit of the waveform data.
+      unit: string;
+      // Confidence values for the waveform estimation per frame.
+      confidence: number[];
+      // An explanatory note regarding the waveform estimation.
+      note: string;
+    };
+    // Respiratory waveform estimation.
+    respiratory_waveform?: {
+      // Estimated respiratory waveform data (one value per processed frame).
+      data: number[];
+      // Unit of the waveform data.
+      unit: string;
+      // Confidence values for the waveform estimation per frame.
+      confidence: number[];
+      // An explanatory note regarding the waveform estimation.
+      note: string;
+    };
+  };
+  // A list of timestamps (one per processed frame).
+  time: number[];
+  // The frames per second (fps) of the input video.
+  fps: number;
+  // The effective fps used for inference.
+  estFps: number;
+  // A message providing additional information about the estimation.
+  message: string;
+}
+```
+
+### Key Points
+
+- **Single Face Processing:**  
+  Unlike the Python client—which may return an array with separate results per face—`vitallens.js` always processes and returns data for only one face.
+
+- **Face Detection Data:**  
+  The `face` object contains optional per-frame detection information such as face coordinates and detection confidence.
+
+- **Global Vital Estimates:**  
+  Vital signs like `heart_rate` and `respiratory_rate` are provided as global scalar values along with an overall confidence and a note.
+
+- **Waveform Data:**  
+  For modalities such as `ppg_waveform` and `respiratory_waveform`, the data is returned as an array with one measurement per frame, accompanied by per-frame confidence values.
+
+- **Timing Information:**  
+  The `time` array contains timestamps corresponding to each processed frame, which can be used to relate waveform data to actual time.
+
+- **Additional Metadata:**  
+  The optional `state` object and the `fps`/`estFps` fields offer insights into the internal processing and input video characteristics.
+
+- **Estimation Message:**  
+  The `message` field contains human-readable information regarding the estimation process, which can help in debugging or providing user feedback.
+
+By understanding this structure, you can easily extract and visualize the estimated vital signs from your video inputs. For example, you might use the `heart_rate.value` for displaying a global heart rate, or plot the `ppg_waveform.data` over time using the `time` array for more detailed analysis.
+
 
 ## Examples
 
