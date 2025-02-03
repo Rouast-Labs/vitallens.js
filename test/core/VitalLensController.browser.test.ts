@@ -42,12 +42,12 @@ describe('VitalLensController (Browser)', () => {
     expect(FaceDetectorAsync).toHaveBeenCalled();
   });
 
-  test('should throw an error if setVideoStream() is called without initializing frameIteratorFactory', async () => {
+  test('should throw an error if setVideoStream is called without initializing frameIteratorFactory', async () => {
     controller['frameIteratorFactory'] = null;
     await expect(controller.setVideoStream()).rejects.toThrow('FrameIteratorFactory is not initialized.');
   });
 
-  test('should call createStreamFrameIterator and create a StreamProcessor in setVideoStream()', async () => {
+  test('should call createStreamFrameIterator and create a StreamProcessor in setVideoStream', async () => {
     const mockStream = {} as MediaStream;
     const mockVideoElement = document.createElement('video');
     const mockFrameIterator = {
@@ -67,6 +67,4 @@ describe('VitalLensController (Browser)', () => {
     );
     expect(StreamProcessor).toHaveBeenCalled();
   });
-
-  // TODO: Test for Browser with processFile
 });
