@@ -59,9 +59,7 @@ yarn add vitallens
 
 ## Usage
 
-### Importing the Library
-
-#### In Browser (ES Modules)
+### In Browser (ES Modules)
 
 Include vitallens.js in your HTML as follows:
 
@@ -72,88 +70,11 @@ Include vitallens.js in your HTML as follows:
 </script>
 ```
 
-#### In Node.js (ESM)
+### In Node.js (ESM)
 
 ```js
-import { VitalLens } from 'vitallens.esm.js';
+import { VitalLens } from 'vitallens';
 // Your code here
-```
-
-### Processing a Video File (Node.js Example)
-
-```js
-import { VitalLens } from 'vitallens.esm.js';
-
-const options = {
-  method: 'vitallens',      // Choose from 'vitallens', 'g', 'chrom', or 'pos'
-  apiKey: 'YOUR_API_KEY',   // Required when using the 'vitallens' method
-};
-
-const vitallens = new VitalLens(options);
-
-async function processVideoFile(filePath) {
-  try {
-    const result = await vitallens.processFile(filePath);
-    console.log('Processing complete!', result);
-  } catch (error) {
-    console.error('Error processing video:', error);
-  }
-}
-
-processVideoFile('./examples/sample_video_1.mp4');
-```
-
-### Real-Time Vital Estimation (Browser Example)
-
-Below is a minimal example that uses a webcam stream:
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>vitallens.js Webcam Example</title>
-</head>
-<body>
-  <video id="video" autoplay muted playsinline style="width:100%; max-width:600px;"></video>
-  <script type="module">
-    import { VitalLens } from 'vitallens.browser.js';
-
-    const options = {
-      method: 'vitallens',  // 'vitallens' requires an API key
-      apiKey: 'YOUR_API_KEY',
-    };
-
-    const vitallens = new VitalLens(options);
-
-    async function startVitals() {
-      try {
-        const video = document.getElementById('video');
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user' },
-          audio: false
-        });
-        video.srcObject = stream;
-
-        // Add the stream to vitallens.js
-        await vitallens.addStream(stream, video);
-
-        // Listen for vitals events
-        vitallens.addEventListener('vitals', (data) => {
-          console.log('Detected vitals:', data);
-        });
-
-        // Start processing
-        vitallens.start();
-      } catch (error) {
-        console.error('Error initializing webcam:', error);
-      }
-    }
-
-    startVitals();
-  </script>
-</body>
-</html>
 ```
 
 ### Configuration Options
@@ -240,32 +161,6 @@ export interface VitalLensResult {
   message: string;
 }
 ```
-
-### Key Points
-
-- **Single Face Processing:**  
-  Unlike the Python client—which may return an array with separate results per face—`vitallens.js` always processes and returns data for only one face.
-
-- **Face Detection Data:**  
-  The `face` object contains optional per-frame detection information such as face coordinates and detection confidence.
-
-- **Global Vital Estimates:**  
-  Vital signs like `heart_rate` and `respiratory_rate` are provided as global scalar values along with an overall confidence and a note.
-
-- **Waveform Data:**  
-  For modalities such as `ppg_waveform` and `respiratory_waveform`, the data is returned as an array with one measurement per frame, accompanied by per-frame confidence values.
-
-- **Timing Information:**  
-  The `time` array contains timestamps corresponding to each processed frame, which can be used to relate waveform data to actual time.
-
-- **Additional Metadata:**  
-  The optional `state` object and the `fps`/`estFps` fields offer insights into the internal processing and input video characteristics.
-
-- **Estimation Message:**  
-  The `message` field contains human-readable information regarding the estimation process, which can help in debugging or providing user feedback.
-
-By understanding this structure, you can easily extract and visualize the estimated vital signs from your video inputs. For example, you might use the `heart_rate.value` for displaying a global heart rate, or plot the `ppg_waveform.data` over time using the `time` array for more detailed analysis.
-
 
 ## Examples
 
