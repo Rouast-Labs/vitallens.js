@@ -8,6 +8,7 @@ jest.mock('../../src/core/VitalLensController.node', () => ({
     addStream: jest.fn(async () => {}),
     processFile: jest.fn(async () => ({ message: 'Processed file successfully.' })),
     addEventListener: jest.fn(),
+    removeEventListener: jest.fn()
   })),
 }));
 
@@ -20,24 +21,39 @@ describe('VitalLens (Node)', () => {
 
   test('should process a file successfully', async () => {
     const mockFile = new Blob();
-    const result = await vitalLens.processFile(mockFile);
+    const result = await vitalLens.processVideoFile(mockFile);
 
     expect(result).toEqual({ message: 'Processed file successfully.' });
   });
 
-  test('should throw an error when calling addStream (not supported in Node)', async () => {
-    await expect(vitalLens.addStream()).rejects.toThrow(
+  test('should throw an error when addVideoStream is called without arguments', async () => {
+    await expect(vitalLens.addVideoStream()).rejects.toThrow(
       'You must provide either a MediaStream, an HTMLVideoElement, or both.'
     );
   });
 
   test('should call start on the controller', () => {
-    vitalLens.start();
+    vitalLens.startVideoStream();
     expect(vitalLens['controller'].start).toHaveBeenCalled();
   });
 
+  test('should call pause on the controller', () => {
+    vitalLens.pauseVideoStream();
+    expect(vitalLens['controller'].pause).toHaveBeenCalled();
+  });
+
   test('should call stop on the controller', () => {
-    vitalLens.stop();
+    vitalLens.stopVideoStream();
     expect(vitalLens['controller'].stop).toHaveBeenCalled();
+  });
+
+  test('should call addEventListener on the controller', () => {
+    vitalLens.addEventListener('vitals', jest.fn());
+    expect(vitalLens['controller'].addEventListener).toHaveBeenCalled();
+  });
+
+  test('should call stop on the controller', () => {
+    vitalLens.removeEventListener('vitals');
+    expect(vitalLens['controller'].removeEventListener).toHaveBeenCalled();
   });
 });

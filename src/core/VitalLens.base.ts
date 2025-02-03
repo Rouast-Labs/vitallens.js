@@ -22,32 +22,11 @@ export abstract class VitalLensBase {
   protected abstract createController(options: VitalLensOptions): IVitalLensController;
 
   /**
-   * Starts processing for live streams or resumes if paused.
-   */
-  start(): void {
-    this.controller.start();
-  }
-
-  /**
-   * Pauses processing for live streams, including frame capture and predictions.
-   */
-  pause(): void {
-    this.controller.pause();
-  }
-
-  /**
-   * Stops all ongoing processing and clears resources.
-   */
-  stop(): void {
-    this.controller.stop();
-  }
-
-  /**
    * Adds a MediaStream, an HTMLVideoElement, or both for live stream processing.
    * @param stream - The MediaStream to process (optional).
    * @param videoElement - The HTMLVideoElement to use for processing (optional).
    */
-  async addStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
+  async addVideoStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
     if (!stream && !videoElement) {
       throw new Error('You must provide either a MediaStream, an HTMLVideoElement, or both.');
     }
@@ -55,11 +34,32 @@ export abstract class VitalLensBase {
   }
 
   /**
+   * Starts processing for live streams or resumes if paused.
+   */
+  startVideoStream(): void {
+    this.controller.start();
+  }
+
+  /**
+   * Pauses processing for live streams, including frame capture and predictions.
+   */
+  pauseVideoStream(): void {
+    this.controller.pause();
+  }
+
+  /**
+   * Stops all ongoing processing and clears resources.
+   */
+  stopVideoStream(): void {
+    this.controller.stop();
+  }
+
+  /**
    * Processes a video file or input.
    * @param videoInput - The video input to process (string, File, or Blob).
    * @returns The results after processing the video.
    */
-  async processFile(videoInput: VideoInput): Promise<VitalLensResult> {
+  async processVideoFile(videoInput: VideoInput): Promise<VitalLensResult> {
     return this.controller.processFile(videoInput);
   }
 
@@ -70,5 +70,13 @@ export abstract class VitalLensBase {
    */
   addEventListener(event: string, callback: (data: any) => void): void {
     this.controller.addEventListener(event, callback);
+  }
+
+  /**
+   * Removes an event listener for a specific event.
+   * @param event - The event for which to remove the listener (e.g., 'vitals').
+   */
+  removeEventListener(event: string): void {
+    this.controller.removeEventListener(event);
   }
 }
