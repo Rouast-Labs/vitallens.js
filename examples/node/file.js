@@ -9,7 +9,7 @@ const vitallens = new VitalLens(options);
 
 async function processFile(filePath) {
   try {
-    const results = await vitallens.processFile(filePath);
+    const results = await vitallens.processVideoFile(filePath);
     console.log('Processing Results:', results);
   } catch (error) {
     console.error('Error processing file:', error);

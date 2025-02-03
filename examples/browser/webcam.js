@@ -53,7 +53,7 @@ function createChart(elementId, label, color) {
 }
 
 function updateChart(chart, newData) {
-  let dataToDisplay = newData;
+  let dataToDisplay = newData?.length ? newData : new Array(MAX_DATA_POINTS).fill(0);
 
   if (dataToDisplay.length > MAX_DATA_POINTS) {
     dataToDisplay = dataToDisplay.slice(-MAX_DATA_POINTS);
@@ -130,14 +130,17 @@ function handleVitalLensResults(result) {
   const canvas = document.getElementById('canvas');
   const video = document.getElementById('video');
 
-  if (face?.coordinates?.length) {
+  if (!face?.coordinates) {
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  } else if (face?.coordinates?.length) {
     drawFaceBox(canvas, video, face.coordinates);
   }
 
   const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } = vital_signs;
 
-  if (ppg_waveform?.data) updateChart(charts.ppgChart, ppg_waveform.data);
-  if (respiratory_waveform?.data) updateChart(charts.respChart, respiratory_waveform.data);
+  updateChart(charts.ppgChart, ppg_waveform?.data || []);
+  updateChart(charts.respChart, respiratory_waveform?.data || []);
 
   updateStats('ppgStats', 'HR   bpm', heart_rate?.value);
   updateStats('respStats', 'RR   bpm', respiratory_rate?.value);
@@ -149,7 +152,7 @@ function updateStats(elementId, label, value) {
   const color = elementId === 'ppgStats' ? 'red' : 'blue';
   element.innerHTML = `
     <p style="font-size: 16px; margin: 10px 0 0; font-weight: bold; color: ${color};">${label}</p>
-    <p style="font-size: 48px; margin: 16px 0 0; font-weight: bold; color: ${color};">${value?.toFixed(0) || 'N/A'}</p>
+    <p style="font-size: 48px; margin: 16px 0 0; font-weight: bold; color: ${color};">${value !== undefined ? value.toFixed(0) : 'N/A'}</p>
   `;
 }
 
@@ -166,10 +169,11 @@ function handleResize() {
 function toggleVitalLens() {
   if (isProcessing) {
     clearTimeout(stopTimeout);
-    vitallens.pause();
+    vitallens.pauseVideoStream();
+    handleVitalLensResults({ face: {}, vital_signs: {} });
     console.log('VitalLens paused.');
   } else {
-    vitallens.start();
+    vitallens.startVideoStream();
     console.log('VitalLens started.');
     stopTimeout = setTimeout(toggleVitalLens, 30000);
   }
@@ -179,10 +183,10 @@ function toggleVitalLens() {
 async function startVitalLens() {
   if (!isProcessing) {
     vitallens.addEventListener('vitals', handleVitalLensResults);
-    vitallens.start();
+    vitallens.startVideoStream();
     console.log('VitalLens started.');
     isProcessing = true;
-    stopTimeout = setTimeout(toggleVitalLens, 60000);
+    stopTimeout = setTimeout(toggleVitalLens, 30000);
   }
 }
 
@@ -199,7 +203,7 @@ async function setupCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user' } });
     video.srcObject = stream;
-    await vitallens.addStream(stream, video);
+    await vitallens.addVideoStream(stream, video);
 
     video.onloadeddata = () => {
       setCanvasDimensions(canvas);
