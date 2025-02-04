@@ -1,4 +1,3 @@
-import { WEBSOCKET_ENDPOINT } from "../config/constants";
 import { VitalLensAPIResponse } from "../types";
 import { IWebSocketClient } from "../types/IWebSocketClient";
 import { uint8ArrayToBase64 } from "./arrayOps";
@@ -23,13 +22,20 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
   protected isConnected: boolean = false;
 
   constructor(apiKey: string) {
-    this.url = `${WEBSOCKET_ENDPOINT}?x-api-key=${encodeURIComponent(apiKey)}`;
+    this.url = this.getUrl(apiKey);
   }
 
   /**
    * Connects to the WebSocket server.
    */
   abstract connect(): Promise<void>;
+
+  /**
+   * Abstract method to get the url.
+   * @param apiKey - The api key.
+   * @returns The url.
+   */
+  protected abstract getUrl(apiKey: string): string;
 
   /**
    * Sends a payload split into chunks and a final chunk of metadata.

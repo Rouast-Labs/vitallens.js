@@ -1,6 +1,10 @@
 import { RestClientBase } from "../../src/utils/RestClient.base";
+import { VITALLENS_REST_ENDPOINT } from "../../src/config/constants";
 
 class MockRestClient extends RestClientBase {
+  protected getRestEndpoint(): string {
+    return VITALLENS_REST_ENDPOINT;
+  }
   async postRequest(payload: Record<string, any>): Promise<any> {
     if (payload.bad === false) {
       // Simulate a successful response

@@ -1,4 +1,3 @@
-import { REST_ENDPOINT } from "../config/constants";
 import { VitalLensAPIResponse } from "../types";
 import { IRestClient } from "../types/IRestClient";
 import { float32ArrayToBase64, uint8ArrayToBase64 } from "./arrayOps";
@@ -7,17 +6,24 @@ import { float32ArrayToBase64, uint8ArrayToBase64 } from "./arrayOps";
  * Utility class for managing REST communication.
  */
 export abstract class RestClientBase implements IRestClient {
-  protected url: string = REST_ENDPOINT;
+  protected url: string;
   private apiKey: string;
   protected headers: Record<string, string>;
 
   constructor(apiKey: string) {
+    this.url = this.getRestEndpoint();
     this.apiKey = apiKey;
     this.headers = {
       'Content-Type': 'application/json',
       'x-api-key': this.apiKey,
     };
   }
+
+  /**
+   * Abstract method to get the REST endpoint.
+   * @returns The REST endpoint.
+   */
+  protected abstract getRestEndpoint(): string;
 
   /**
    * Abstract method for sending HTTP requests.

@@ -7,10 +7,21 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+function getTestDevApiKey(): string {
+  const apiKey = process.env.VITALLENS_DEV_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "VITALLENS_DEV_API_KEY environment variable is not set. " +
+      "Please set this variable to a valid VitalLens API Key to run the tests."
+    );
+  }
+  return apiKey;
+}
+
 describe('VitalLensController Integration (Node)', () => {
   let controller: VitalLensController;
   const SAMPLE_VIDEO = path.resolve(__dirname, '../../examples/sample_video_1.mp4');
-  const API_KEY = process.env.VITALLENS_DEV_API_KEY;
+  const API_KEY = getTestDevApiKey();
 
   beforeAll(async () => {
     if (!fs.existsSync(SAMPLE_VIDEO)) {
@@ -28,7 +39,6 @@ describe('VitalLensController Integration (Node)', () => {
 
   it('should process a real video file and return structured vital sign results', async () => {
     const result: VitalLensResult = await controller.processVideoFile(SAMPLE_VIDEO);
-
     // Ensure result structure
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');

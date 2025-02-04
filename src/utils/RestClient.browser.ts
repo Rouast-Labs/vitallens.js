@@ -1,6 +1,16 @@
 import { RestClientBase } from "./RestClient.base";
+import { VITALLENS_REST_ENDPOINT } from "../config/constants";
 
 export class RestClient extends RestClientBase {
+  /**
+   * Get the REST endpoint.
+   * We can't read environment variables in browser, so always the constant.
+   * @returns The REST endpoint.
+   */
+  protected getRestEndpoint(): string {
+    return VITALLENS_REST_ENDPOINT;
+  }
+  
   /**
    * Sends an HTTP POST request using the browser's fetch API.
    * @param payload - The data to send in the request body.

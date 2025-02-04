@@ -1,7 +1,12 @@
 import WebSocket from "ws";
 import { WebSocketClientBase } from "./WebSocketClient.base";
+import { VITALLENS_WEBSOCKET_ENDPOINT } from "../config/constants";
 
 export class WebSocketClient extends WebSocketClientBase<WebSocket> {
+  protected getUrl(apiKey: string): string {
+    const websocketEndpoint = process.env.VITALLENS_WEBSOCKET_ENDPOINT || VITALLENS_WEBSOCKET_ENDPOINT;
+    return `${websocketEndpoint}?x-api-key=${encodeURIComponent(apiKey)}`;
+  }
   async connect(): Promise<void> {
     if (this.isConnected) return;
 

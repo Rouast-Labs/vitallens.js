@@ -1,0 +1,87 @@
+name: Tests
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['main']
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["14", "16", "20"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install ffmpeg
+        uses: Iamshankhadeep/setup-ffmpeg@v1.2
+        with:
+          version: "4.4"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Set development VITALLENS_REST_ENDPOINT for non-main branches
+        if: github.ref != 'refs/heads/main'
+        run: echo "VITALLENS_REST_ENDPOINT=https://api.example.com/vitallens-dev" >> $GITHUB_ENV
+
+      - name: Set development VITALLENS_WEBSOCKET_ENDPOINT for non-main branches
+        if: github.ref != 'refs/heads/main'
+        run: echo "VITALLENS_WEBSOCKET_ENDPOINT=wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/" >> $GITHUB_ENV    
+
+      - name: Lint code
+        run: npm run lint
+
+      - name: Test with Jest
+        env:
+          VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
+        run: npm test
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - name: Install ffmpeg
+        uses: Iamshankhadeep/setup-ffmpeg@v1.2
+        with:
+          version: "4.4"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Set development VITALLENS_REST_ENDPOINT for non-main branches
+        if: github.ref != 'refs/heads/main'
+        run: echo "VITALLENS_REST_ENDPOINT=https://api.example.com/vitallens-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Set development VITALLENS_WEBSOCKET_ENDPOINT for non-main branches
+        if: github.ref != 'refs/heads/main'
+        run: echo "VITALLENS_WEBSOCKET_ENDPOINT=wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Lint code
+        run: npm run lint
+
+      - name: Test with Jest
+        env:
+          VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
+        run: npm test

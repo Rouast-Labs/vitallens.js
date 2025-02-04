@@ -38,6 +38,9 @@ class MockWebSocket implements BaseWebSocket {
 }
 
 class TestWebSocketClient extends WebSocketClientBase<MockWebSocket> {
+  getUrl(apiKey: string): string {
+    return "test-url";
+  }
   async connect(): Promise<void> {
     if (this.isConnected) return;
 
