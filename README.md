@@ -8,7 +8,7 @@
 Estimate vital signs such as heart rate and respiratory rate from video in JavaScript.
 
 `vitallens.js` is a JavaScript client for the [**VitalLens API**](https://www.rouast.com/api/), which leverages the same inference engine as our [free iOS app VitalLens](https://apps.apple.com/us/app/vitallens/id6472757649).
-Furthermore, it includes fast implementations of several other heart rate estimation methods from video such as `G`, `CHROM`, and `POS`.
+Furthermore, it includes fast implementations of several other heart rate estimation methods from video such as `g`, `chrom`, and `pos`.
 
 This library works both in browser environments and in Node.js, and comes with a set of examples for file-based processing and real-time webcam streaming.
 
@@ -45,39 +45,64 @@ Please review our [Terms of Service](https://www.rouast.com/api/terms) and [Priv
 
 ## Installation
 
-Install vitallens.js via npm:
+### Node.js
+
+Install vitallens.js via npm or yarn:
 
 ```bash
 npm install vitallens
-```
-
-Or using yarn:
-
-```bash
+# or
 yarn add vitallens
 ```
 
-## Usage
-
-### In Browser (ES Modules)
-
-Include vitallens.js in your HTML as follows:
-
-```html
-<script type="module">
-  import { VitalLens } from 'vitallens.browser.js';
-  // Your code here
-</script>
-```
-
-### In Node.js (ESM)
+Then use it as follows:
 
 ```js
 import { VitalLens } from 'vitallens';
-// Your code here
+const vl = new VitalLens({ method: 'vitallens', apiKey: 'YOUR_API_KEY' });
+const result = await vl.processVideoFile(myVideoFile);
+console.log(result);
 ```
 
-### Configuration Options
+### Browser
+
+For browser usage, you can either bundle vitallens.js with your project or load it directly from a CDN.
+
+For example, using **jsDelivr**:
+
+```html
+<!-- Latest version -->
+<script src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
+
+<!-- Or pin a specific version -->
+<script src="https://cdn.jsdelivr.net/npm/vitallens@0.0.1/dist/vitallens.browser.js"></script>
+<script>
+  // vitallens.js is exposed as a global, for example as window.VitalLens.
+  const vl = new VitalLens({ method: 'vitallens', apiKey: 'YOUR_API_KEY' });
+  // Suppose myMediaStream and myVideoElement are defined:
+  vl.addVideoStream(myMediaStream, myVideoElement);
+  vl.addEventListener('vitals', (data) => console.log(data));
+  vl.startVideoStream();
+</script>
+```
+
+Alternatively, you can use **unpkg**:
+
+```html
+<script src="https://unpkg.com/vitallens/dist/vitallens.browser.js"></script>
+```
+
+Or **Skypack** if you prefer ES modules:
+
+```html
+<script type="module">
+  import { VitalLens } from 'https://cdn.skypack.dev/vitallens';
+  const vl = new VitalLens({ method: 'vitallens', apiKey: 'YOUR_API_KEY' });
+  // Continue as above…
+</script>
+```
+
+## Configuration Options
 
 When creating a new `VitalLens` instance, you can configure various options:
 
@@ -88,12 +113,11 @@ When creating a new `VitalLens` instance, you can configure various options:
 | `globalRoi`    | Optional region of interest for face detection (object with `{ x0, y0, x1, y1 }`).         | `undefined`    |
 | `waveformMode` | Optional setting how waveform is returned: `'incremental'`, `'windowed'`, or `'complete'`. | *(see below)*  |
 
-The default value for `waveformMode` is `windowed` if a stream is being analyzed, and `complete` if a file is being processed.
-There are also additional options (e.g., face detection settings, buffering) available. See [docs](https://docs.rouast.com/) for details.
+The default value for `waveformMode` is `windowed` if a stream is being analyzed, and `complete` if a file is being processed. Additional options (e.g., face detection settings, buffering) are available. See [docs](https://docs.rouast.com/) for details.
 
-### Understanding the Estimation Results
+## Understanding the Estimation Results
 
-When you process a video or a MediaStream with `vitallens.js`, the library returns the vital signs estimates in a structured object. **vitallens.js is designed to process only a single face** — so you always receive a single result object with the following structure:
+When you process a video or a MediaStream with `vitallens.js`, the library returns vital sign estimates in a structured object. **vitallens.js is designed to process only a single face** — so you always receive a single result object with the following structure:
 
 ```typescript
 export interface VitalLensResult {
