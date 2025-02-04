@@ -39,7 +39,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     this.frameIteratorFactory = this.createFrameIteratorFactory(this.options);
     this.vitalsEstimateManager = new VitalsEstimateManager(
       this.methodConfig,
-      this.options
+      this.options,
+      this.methodHandler.postprocess.bind(this.methodHandler)
     );
     this.faceDetector = this.createFaceDetector();
   }

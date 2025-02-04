@@ -21,6 +21,14 @@ jest.mock('../../src/config/constants', () => ({
   CALC_RR_WINDOW_SIZE: 30,
 }));
 
+const dummyPostprocessFn = (
+  signalType: 'ppg' | 'resp',
+  data: number[],
+  fps: number
+): number[] => {
+  return data;
+};
+
 describe('VitalsEstimateManager', () => {
   let methodConfig: MethodConfig;
   let options: VitalLensOptions;
@@ -40,7 +48,12 @@ describe('VitalsEstimateManager', () => {
       overrideFpsTarget: 1,
       waveformMode: 'windowed',
     };
-    manager = new VitalsEstimateManager(methodConfig, options);
+    // Note the new third parameter (postprocessFn)
+    manager = new VitalsEstimateManager(
+      methodConfig,
+      options,
+      dummyPostprocessFn
+    );
   });
 
   afterEach(() => {
@@ -50,11 +63,11 @@ describe('VitalsEstimateManager', () => {
   describe('constructor', () => {
     it('should initialize with the correct buffer sizes based on fpsTarget and constants', () => {
       expect(manager).toHaveProperty('fpsTarget', 1);
-      expect(manager).toHaveProperty('bufferSizeAgg', 1 * 4); // Assuming AGG_WINDOW_SIZE = 10
-      expect(manager).toHaveProperty('bufferSizePpg', 1 * 10); // Assuming CALC_HR_WINDOW_SIZE = 10
-      expect(manager).toHaveProperty('bufferSizeResp', 1 * 30); // Assuming CALC_RR_WINDOW_SIZE = 30
-      expect(manager).toHaveProperty('minBufferSizePpg', 1 * 2); // Assuming CALC_HR_MIN_WINDOW_SIZE = 2
-      expect(manager).toHaveProperty('minBufferSizeResp', 1 * 4); // Assuming CALC_RR_MIN_WINDOW_SIZE = 4
+      expect(manager).toHaveProperty('bufferSizeAgg', 1 * 4); // AGG_WINDOW_SIZE = 4 (per mock)
+      expect(manager).toHaveProperty('bufferSizePpg', 1 * 10); // CALC_HR_WINDOW_SIZE = 10
+      expect(manager).toHaveProperty('bufferSizeResp', 1 * 30); // CALC_RR_WINDOW_SIZE = 30
+      expect(manager).toHaveProperty('minBufferSizePpg', 1 * 2); // CALC_HR_MIN_WINDOW_SIZE = 2
+      expect(manager).toHaveProperty('minBufferSizeResp', 1 * 4); // CALC_RR_MIN_WINDOW_SIZE = 4
     });
   });
 

@@ -30,6 +30,18 @@ export abstract class MethodHandler {
   abstract getReady(): boolean;
 
   /**
+   * Postprocess the estimated signal. Subclasses must implement this.
+   * @param signalType The signal type.
+   * @param data The raw estimated signal.
+   * @param fps The sampling frequency of the estimated signal.
+   */
+  abstract postprocess(
+    signalType: 'ppg' | 'resp',
+    data: number[],
+    fps: number
+  ): number[];
+
+  /**
    * Get the method name. Subclasses must implement this.
    * @returns The method name.
    */

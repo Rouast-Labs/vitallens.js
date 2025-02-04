@@ -12,6 +12,11 @@ import {
 } from '../utils/errors';
 import { IRestClient, isRestClient } from '../types/IRestClient';
 import { isWebSocketClient, IWebSocketClient } from '../types/IWebSocketClient';
+import {
+  applyMovingAverage,
+  movingAverageSizeForResponse,
+} from '../utils/arrayOps';
+import { CALC_HR_MAX, CALC_RR_MAX } from '../config/constants';
 
 /**
  * Handler for processing frames using the VitalLens API via WebSocket or REST.
@@ -182,5 +187,26 @@ export class VitalLensAPIHandler extends MethodHandler {
         error instanceof Error ? error.message : 'Unknown error'
       );
     }
+  }
+
+  /**
+   * Postprocess the estimated signal.
+   * @param signalType The signal type.
+   * @param data The raw estimated signal.
+   * @param fps The sampling frequency of the estimated signal.
+   */
+  postprocess(
+    signalType: 'ppg' | 'resp',
+    data: number[],
+    fps: number
+  ): number[] {
+    // For example, use a moving average with window size based on fps.
+    let windowSize: number;
+    if (signalType === 'ppg') {
+      windowSize = movingAverageSizeForResponse(fps, CALC_HR_MAX / 60);
+    } else {
+      windowSize = movingAverageSizeForResponse(fps, CALC_RR_MAX / 60);
+    }
+    return applyMovingAverage(data, windowSize);
   }
 }

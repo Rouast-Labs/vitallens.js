@@ -12,10 +12,6 @@ import {
   CALC_RR_WINDOW_SIZE,
 } from '../config/constants';
 import FFT from 'fft.js';
-import {
-  applyMovingAverage,
-  movingAverageSizeForResponse,
-} from '../utils/arrayOps';
 
 export class VitalsEstimateManager implements IVitalsEstimateManager {
   private waveforms: Map<
@@ -42,6 +38,11 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   private bufferSizeResp: number;
   private minBufferSizePpg: number;
   private minBufferSizeResp: number;
+  private postprocessFn: (
+    signalType: 'ppg' | 'resp',
+    data: number[],
+    fps: number
+  ) => number[];
 
   /**
    * Initializes the manager with the provided method configuration.
@@ -49,7 +50,12 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    */
   constructor(
     private methodConfig: MethodConfig,
-    private options: VitalLensOptions
+    private options: VitalLensOptions,
+    postprocessFn: (
+      signalType: 'ppg' | 'resp',
+      data: number[],
+      fps: number
+    ) => number[]
   ) {
     this.fpsTarget =
       this.options.overrideFpsTarget ?? this.methodConfig.fpsTarget;
@@ -58,6 +64,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     this.bufferSizeResp = this.fpsTarget * CALC_RR_WINDOW_SIZE;
     this.minBufferSizePpg = this.fpsTarget * CALC_HR_MIN_WINDOW_SIZE;
     this.minBufferSizeResp = this.fpsTarget * CALC_RR_MIN_WINDOW_SIZE;
+    this.postprocessFn = postprocessFn;
   }
 
   /**
@@ -515,12 +522,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         // Result ppg data long enough to apply moving average
         const fpsPpg = this.getCurrentFps(sourceId, resultPpgSize);
         if (fpsPpg) {
-          // TODO: Think about method-specific post-processing incl. detrend
-          const windowSize = movingAverageSizeForResponse(
-            fpsPpg,
-            CALC_HR_MAX / 60
-          );
-          resultPpgData = applyMovingAverage(resultPpgData, windowSize);
+          resultPpgData = this.postprocessFn('ppg', resultPpgData, fpsPpg);
         }
       }
       if (resultPpgData.length > 0) {
@@ -536,14 +538,10 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         // Ppg data long enough for hr estimation
         const fpsHr = this.getCurrentFps(sourceId, hrPpgSize);
         if (fpsHr) {
-          // TODO: Think about method-specific post-processing incl. detrend
-          const windowSize = movingAverageSizeForResponse(
-            fpsHr,
-            CALC_HR_MAX / 60
-          );
-          const hrPpgData = applyMovingAverage(
+          const hrPpgData = this.postprocessFn(
+            'ppg',
             averagedPpgData.slice(-hrPpgSize),
-            windowSize
+            fpsHr
           );
           const hrPpgConf = averagedPpgConf.slice(-hrPpgSize);
           result.vital_signs.heart_rate = {
@@ -601,12 +599,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         // Result resp data long enough to apply moving average
         const fpsResp = this.getCurrentFps(sourceId, resultRespSize);
         if (fpsResp) {
-          // TODO: Think about method-specific post-processing incl. detrend
-          const windowSize = movingAverageSizeForResponse(
-            fpsResp,
-            CALC_RR_MAX / 60
-          );
-          resultRespData = applyMovingAverage(resultRespData, windowSize);
+          resultRespData = this.postprocessFn('resp', resultRespData, fpsResp);
         }
       }
       if (resultRespData.length > 0) {
@@ -622,14 +615,10 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         // Resp data long enough for rr estimation
         const fpsRr = this.getCurrentFps(sourceId, rrRespSize);
         if (fpsRr) {
-          // TODO: Think about method-specific post-processing incl. detrend
-          const windowSize = movingAverageSizeForResponse(
-            fpsRr,
-            CALC_RR_MAX / 60
-          );
-          const rrRespData = applyMovingAverage(
+          const rrRespData = this.postprocessFn(
+            'resp',
             averagedRespData.slice(-rrRespSize),
-            windowSize
+            fpsRr
           );
           const rrRespConf = averagedRespConf.slice(-rrRespSize);
           result.vital_signs.respiratory_rate = {

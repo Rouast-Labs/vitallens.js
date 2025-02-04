@@ -6,13 +6,24 @@ import { VitalLensOptions, VitalLensResult } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
 
 describe('SimpleMethodHandler', () => {
-  // Mock subclass to implement the abstract method
+  // Create a mock subclass that implements the abstract methods.
   class MockSimpleMethodHandler extends SimpleMethodHandler {
     protected getMethodName(): string {
       return 'Mock';
     }
+
     protected algorithm(rgb: Frame): number[] {
       return [1, 2, 3];
+    }
+
+    // New: implement the postprocess method.
+    public postprocess(
+      signalType: 'ppg' | 'resp',
+      data: number[],
+      fps: number
+    ): number[] {
+      // For testing we simply return the data unchanged.
+      return data;
     }
   }
 

@@ -55,6 +55,7 @@ describe('VitalLensControllerBase', () => {
       cleanup: jest.fn(),
       getReady: jest.fn().mockReturnValue(true),
       process: jest.fn(),
+      postprocess: jest.fn(),
     });
     // Instantiate a new controller
     controller = new TestVitalLensController(mockOptions);
@@ -66,7 +67,8 @@ describe('VitalLensControllerBase', () => {
     expect(BufferManager).toHaveBeenCalled();
     expect(VitalsEstimateManager).toHaveBeenCalledWith(
       expect.any(Object),
-      mockOptions
+      mockOptions,
+      expect.any(Function)
     );
     expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
       mockOptions,

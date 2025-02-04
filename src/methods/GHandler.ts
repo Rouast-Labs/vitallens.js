@@ -27,4 +27,19 @@ export class GHandler extends SimpleMethodHandler {
 
     return result;
   }
+
+  /**
+   * Postprocess the estimated signal.
+   * @param signalType The signal type.
+   * @param data The raw estimated signal.
+   * @param fps The sampling frequency of the estimated signal.
+   */
+  postprocess(
+    signalType: 'ppg' | 'resp',
+    data: number[],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    fps: number
+  ): number[] {
+    return data;
+  }
 }
