@@ -19,7 +19,7 @@ function onwarn(warning, defaultHandler) {
   defaultHandler(warning);
 }
 
-const nodeExternals = ['@tensorflow/tfjs-node'];
+const nodeExternals = ['@tensorflow/tfjs-node', 'fetch-blob'];
 
 const nodeEsmConfig = {
   input: 'src/index.node.ts',
@@ -42,7 +42,7 @@ const nodeEsmConfig = {
       exclude: ['models/**/*'],
     }),
     nodeResolve({ browser: false, preferBuiltins: true }),
-    commonjs({ transformMixedEsModules: true, requireReturnsDefault: "auto" }),
+    commonjs({ transformMixedEsModules: true, requireReturnsDefault: 'auto' }),
     replace({
       __dirname: JSON.stringify(bundleDir),
       preventAssignment: true,
@@ -111,7 +111,10 @@ const workerBundleConfig = {
       entries: [
         {
           find: '@ffmpeg/ffmpeg/dist/esm/worker.js',
-          replacement: path.resolve(__dirname, 'node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js'),
+          replacement: path.resolve(
+            __dirname,
+            'node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js'
+          ),
         },
       ],
     }),
@@ -141,7 +144,7 @@ const ffmpegWrapperBrowserConfig = {
       compilerOptions: {
         declaration: false,
         declarationMap: false,
-        declarationDir: undefined
+        declarationDir: undefined,
       },
     }),
     json(),
