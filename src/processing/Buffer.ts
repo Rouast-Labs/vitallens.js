@@ -10,8 +10,8 @@ export abstract class Buffer {
 
   constructor(
     protected roi: ROI,
-    protected methodConfig: MethodConfig) {
-  }
+    protected methodConfig: MethodConfig
+  ) {}
 
   /**
    * Adds a frame to the buffer.
@@ -51,7 +51,7 @@ export abstract class Buffer {
       return this.isReady();
     }
   }
-  
+
   /**
    * Consumes frames from the buffer but retains the last `minFrames`, returning a single merged Frame.
    * @returns A single merged Frame or null if no frames are available.
@@ -61,18 +61,24 @@ export abstract class Buffer {
     if (keys.length === 0) {
       return null;
     }
-  
+
     const minWindowLength = this.methodConfig.minWindowLengthState
-      ? Math.min(this.methodConfig.minWindowLengthState, this.methodConfig.minWindowLength)
+      ? Math.min(
+          this.methodConfig.minWindowLengthState,
+          this.methodConfig.minWindowLength
+        )
       : this.methodConfig.minWindowLength;
     const retainCount = Math.min(minWindowLength - 1, this.buffer.size);
     const retainKeys = keys.slice(-retainCount);
-  
+
     // Extract frames to be consumed
     const consumedFrames = keys.map((key) => this.buffer.get(key)!);
-  
+
     // Merge frames asynchronously
-    return mergeFrames(consumedFrames, this.methodConfig.method !== 'vitallens').then((mergedFrame) => {
+    return mergeFrames(
+      consumedFrames,
+      this.methodConfig.method !== 'vitallens'
+    ).then((mergedFrame) => {
       // Release tensors of frames that are not retained
       for (const key of keys) {
         if (!retainKeys.includes(key)) {
@@ -81,10 +87,12 @@ export abstract class Buffer {
           this.buffer.delete(key);
         }
       }
-  
+
       // Keep only the retained frames
-      this.buffer = new Map(retainKeys.map((key) => [key, this.buffer.get(key)!]));
-  
+      this.buffer = new Map(
+        retainKeys.map((key) => [key, this.buffer.get(key)!])
+      );
+
       return mergedFrame;
     });
   }
@@ -107,5 +115,9 @@ export abstract class Buffer {
    * @param overrideRoi - Use this ROI instead of buffer ROI (optional).
    * @returns The processed frame.
    */
-  protected abstract preprocess(frame: Frame, keepTensor: boolean, overrideRoi?: ROI): Promise<Frame>;
+  protected abstract preprocess(
+    frame: Frame,
+    keepTensor: boolean,
+    overrideRoi?: ROI
+  ): Promise<Frame>;
 }

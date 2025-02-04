@@ -1,22 +1,38 @@
-import { MethodConfig, VitalLensOptions, VitalLensResult } from "../types/core";
+import { MethodConfig, VitalLensOptions, VitalLensResult } from '../types/core';
 import { IVitalsEstimateManager } from '../types/IVitalsEstimateManager';
-import { 
-  AGG_WINDOW_SIZE, CALC_HR_MAX, CALC_HR_MIN, CALC_HR_MIN_WINDOW_SIZE, CALC_HR_WINDOW_SIZE, 
-  CALC_RR_MAX, CALC_RR_MIN, CALC_RR_MIN_WINDOW_SIZE, CALC_RR_WINDOW_SIZE 
+import {
+  AGG_WINDOW_SIZE,
+  CALC_HR_MAX,
+  CALC_HR_MIN,
+  CALC_HR_MIN_WINDOW_SIZE,
+  CALC_HR_WINDOW_SIZE,
+  CALC_RR_MAX,
+  CALC_RR_MIN,
+  CALC_RR_MIN_WINDOW_SIZE,
+  CALC_RR_WINDOW_SIZE,
 } from '../config/constants';
-import FFT from "fft.js";
-import { applyMovingAverage, movingAverageSizeForResponse } from "../utils/arrayOps";
+import FFT from 'fft.js';
+import {
+  applyMovingAverage,
+  movingAverageSizeForResponse,
+} from '../utils/arrayOps';
 
 export class VitalsEstimateManager implements IVitalsEstimateManager {
-  private waveforms: Map<string, { 
-    ppgData: { sum: number[]; count: number[] },
-    ppgConf: { sum: number[]; count: number[] },
-    respData: { sum: number[]; count: number[] },
-    respConf: { sum: number[]; count: number[] }
-  }> = new Map();
-  private waveformNotes: Map<string, { ppg: string, resp: string }> = new Map();
+  private waveforms: Map<
+    string,
+    {
+      ppgData: { sum: number[]; count: number[] };
+      ppgConf: { sum: number[]; count: number[] };
+      respData: { sum: number[]; count: number[] };
+      respConf: { sum: number[]; count: number[] };
+    }
+  > = new Map();
+  private waveformNotes: Map<string, { ppg: string; resp: string }> = new Map();
   private timestamps: Map<string, number[]> = new Map();
-  private faces: Map<string, { coordinates: [number, number, number, number][], confidence: number[] }> = new Map();
+  private faces: Map<
+    string,
+    { coordinates: [number, number, number, number][]; confidence: number[] }
+  > = new Map();
   private faceNote: Map<string, string> = new Map();
   private message: Map<string, string> = new Map();
   private lastEstimateTimestamps: Map<string, number> = new Map();
@@ -31,8 +47,12 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * Initializes the manager with the provided method configuration.
    * @param methodConfig - The method configuration.
    */
-  constructor(private methodConfig: MethodConfig, private options: VitalLensOptions) {
-    this.fpsTarget = this.options.overrideFpsTarget ?? this.methodConfig.fpsTarget;
+  constructor(
+    private methodConfig: MethodConfig,
+    private options: VitalLensOptions
+  ) {
+    this.fpsTarget =
+      this.options.overrideFpsTarget ?? this.methodConfig.fpsTarget;
     this.bufferSizeAgg = this.fpsTarget * AGG_WINDOW_SIZE;
     this.bufferSizePpg = this.fpsTarget * CALC_HR_WINDOW_SIZE;
     this.bufferSizeResp = this.fpsTarget * CALC_RR_WINDOW_SIZE;
@@ -54,54 +74,87 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   ): Promise<VitalLensResult> {
     const currentTime = performance.now();
     const ppgWaveformData = incrementalResult.vital_signs?.ppg_waveform?.data;
-    const ppgWaveformConf = incrementalResult.vital_signs?.ppg_waveform?.confidence;
-    const respiratoryWaveformData = incrementalResult.vital_signs?.respiratory_waveform?.data;
-    const respiratoryWaveformConf = incrementalResult.vital_signs?.respiratory_waveform?.confidence;
+    const ppgWaveformConf =
+      incrementalResult.vital_signs?.ppg_waveform?.confidence;
+    const respiratoryWaveformData =
+      incrementalResult.vital_signs?.respiratory_waveform?.data;
+    const respiratoryWaveformConf =
+      incrementalResult.vital_signs?.respiratory_waveform?.confidence;
     const waveformMode = this.options.waveformMode || defaultWaveformMode;
 
-    if ((!ppgWaveformData || !ppgWaveformConf) && (!respiratoryWaveformData || !respiratoryWaveformConf)) {
-      throw new Error("No waveform data found in incremental result.");
+    if (
+      (!ppgWaveformData || !ppgWaveformConf) &&
+      (!respiratoryWaveformData || !respiratoryWaveformConf)
+    ) {
+      throw new Error('No waveform data found in incremental result.');
     }
 
     // Initialize buffers, timestamps, and faces for the source ID
     if (!this.timestamps.has(sourceId)) this.timestamps.set(sourceId, []);
-    if (!this.faces.has(sourceId)) this.faces.set(sourceId, { coordinates: [], confidence: [] });
+    if (!this.faces.has(sourceId))
+      this.faces.set(sourceId, { coordinates: [], confidence: [] });
     if (!this.waveforms.has(sourceId)) {
       this.waveforms.set(sourceId, {
-        ppgData: { sum: [], count: [] }, ppgConf: { sum: [], count: [] },
-        respData: { sum: [], count: [] }, respConf: { sum: [], count: [] }
+        ppgData: { sum: [], count: [] },
+        ppgConf: { sum: [], count: [] },
+        respData: { sum: [], count: [] },
+        respConf: { sum: [], count: [] },
       });
     }
-    if (!this.waveformNotes.has(sourceId)) this.waveformNotes.set(sourceId, { ppg: "", resp: "" });
-    if (!this.faceNote.has(sourceId)) this.faceNote.set(sourceId, "");
-    if (!this.message.has(sourceId)) this.message.set(sourceId, "");
+    if (!this.waveformNotes.has(sourceId))
+      this.waveformNotes.set(sourceId, { ppg: '', resp: '' });
+    if (!this.faceNote.has(sourceId)) this.faceNote.set(sourceId, '');
+    if (!this.message.has(sourceId)) this.message.set(sourceId, '');
 
     // Determine overlap
     const currentTimestamps: number[] = this.timestamps.get(sourceId)!;
     const newTimestamps: number[] = incrementalResult.time;
     const overlap = Math.min(
       currentTimestamps.length,
-      Math.max(0, newTimestamps.findIndex(ts => !currentTimestamps.includes(ts)))
+      Math.max(
+        0,
+        newTimestamps.findIndex((ts) => !currentTimestamps.includes(ts))
+      )
     );
 
     // Update timestamps
-    this.updateTimestamps(sourceId, incrementalResult.time, waveformMode, overlap);
+    this.updateTimestamps(
+      sourceId,
+      incrementalResult.time,
+      waveformMode,
+      overlap
+    );
 
     // Update faces
-    if (incrementalResult.face) this.updateFaces(sourceId, incrementalResult.face, waveformMode, overlap);
-    
+    if (incrementalResult.face)
+      this.updateFaces(sourceId, incrementalResult.face, waveformMode, overlap);
+
     // Update waveforms
-    this.updateWaveforms(sourceId, incrementalResult.vital_signs, waveformMode, overlap);
+    this.updateWaveforms(
+      sourceId,
+      incrementalResult.vital_signs,
+      waveformMode,
+      overlap
+    );
 
     // Update message
-    if (incrementalResult.message) this.message.set(sourceId, incrementalResult.message);
+    if (incrementalResult.message)
+      this.message.set(sourceId, incrementalResult.message);
 
     // Compute estimation fps
     const lastEstimateTimestamp = this.lastEstimateTimestamps.get(sourceId);
-    const estFps = lastEstimateTimestamp ? 1000 / (currentTime - lastEstimateTimestamp) : undefined;
+    const estFps = lastEstimateTimestamp
+      ? 1000 / (currentTime - lastEstimateTimestamp)
+      : undefined;
     this.lastEstimateTimestamps.set(sourceId, currentTime);
 
-    return await this.assembleResult(sourceId, waveformMode, overlap, incrementalResult, estFps);
+    return await this.assembleResult(
+      sourceId,
+      waveformMode,
+      overlap,
+      incrementalResult,
+      estFps
+    );
   }
 
   /**
@@ -122,7 +175,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     const maxBufferSize = Math.max(this.bufferSizePpg, this.bufferSizeResp);
     const nonOverlappingValues = addValues.slice(overlap);
     const updatedValues = [...currentValues, ...nonOverlappingValues];
-    if (waveformMode === "complete") {
+    if (waveformMode === 'complete') {
       return updatedValues;
     }
     if (updatedValues.length > maxBufferSize) {
@@ -148,7 +201,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     overlap: number
   ): { sum: number[]; count: number[] } {
     // Destructure sum and count from current buffer
-    let { sum: currentSum, count: currentCount } = currentBuffer;
+    const { sum: currentSum, count: currentCount } = currentBuffer;
 
     // Initialize sum and count arrays if not already set
     if (currentSum.length === 0 || currentCount.length === 0) {
@@ -168,8 +221,12 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       const existingTailSum = currentSum.slice(-overlap);
       const incrementalHead = incremental.slice(0, overlap);
 
-      const updatedTailSum = existingTailSum.map((val, idx) => val + incrementalHead[idx]);
-      const updatedTailCount = currentCount.slice(-overlap).map((val) => val + 1);
+      const updatedTailSum = existingTailSum.map(
+        (val, idx) => val + incrementalHead[idx]
+      );
+      const updatedTailCount = currentCount
+        .slice(-overlap)
+        .map((val) => val + 1);
 
       // Handle the non-overlapping region
       const nonOverlappingSum = incremental.slice(overlap);
@@ -190,7 +247,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     }
 
     // Trim buffers to maximum size if necessary
-    if (waveformMode !== "complete" && updatedSum.length > maxBufferSize) {
+    if (waveformMode !== 'complete' && updatedSum.length > maxBufferSize) {
       updatedSum = updatedSum.slice(-maxBufferSize);
       updatedCount = updatedCount.slice(-maxBufferSize);
     }
@@ -207,12 +264,17 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    */
   private updateTimestamps(
     sourceId: string,
-    newTimestamps: VitalLensResult["time"],
+    newTimestamps: VitalLensResult['time'],
     waveformMode: string,
     overlap: number
   ): void {
     const currentTimestamps = this.timestamps.get(sourceId)!;
-    const updatedTimestamps = this.getUpdatedValues(currentTimestamps, newTimestamps, waveformMode, overlap);
+    const updatedTimestamps = this.getUpdatedValues(
+      currentTimestamps,
+      newTimestamps,
+      waveformMode,
+      overlap
+    );
     this.timestamps.set(sourceId, updatedTimestamps);
   }
 
@@ -225,15 +287,28 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    */
   private updateFaces(
     sourceId: string,
-    newFaces: VitalLensResult["face"],
+    newFaces: VitalLensResult['face'],
     waveformMode: string,
     overlap: number
   ): void {
     const currentFaces = this.faces.get(sourceId)!;
     if (newFaces.confidence && newFaces.coordinates) {
-      const updatedFaceCoordinates = this.getUpdatedValues(currentFaces.coordinates, newFaces.coordinates, waveformMode, overlap);
-      const updatedFaceConfidences = this.getUpdatedValues(currentFaces.confidence, newFaces.confidence, waveformMode, overlap);
-      this.faces.set(sourceId, { coordinates: updatedFaceCoordinates, confidence: updatedFaceConfidences }); 
+      const updatedFaceCoordinates = this.getUpdatedValues(
+        currentFaces.coordinates,
+        newFaces.coordinates,
+        waveformMode,
+        overlap
+      );
+      const updatedFaceConfidences = this.getUpdatedValues(
+        currentFaces.confidence,
+        newFaces.confidence,
+        waveformMode,
+        overlap
+      );
+      this.faces.set(sourceId, {
+        coordinates: updatedFaceCoordinates,
+        confidence: updatedFaceConfidences,
+      });
     }
     if (newFaces.note) this.faceNote.set(sourceId, newFaces.note);
   }
@@ -247,15 +322,20 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    */
   private updateWaveforms(
     sourceId: string,
-    newVitals: VitalLensResult["vital_signs"],
+    newVitals: VitalLensResult['vital_signs'],
     waveformMode: string,
     overlap: number
   ): void {
     const currentWaveforms = this.waveforms.get(sourceId) || {
-      ppgData: { sum: [], count: [] }, ppgConf: { sum: [], count: [] },
-      respData: { sum: [], count: [] }, respConf: { sum: [], count: [] }
+      ppgData: { sum: [], count: [] },
+      ppgConf: { sum: [], count: [] },
+      respData: { sum: [], count: [] },
+      respConf: { sum: [], count: [] },
     };
-    const currentWaveformNotes = this.waveformNotes.get(sourceId) || { ppg: "", resp: "" }
+    const currentWaveformNotes = this.waveformNotes.get(sourceId) || {
+      ppg: '',
+      resp: '',
+    };
 
     let updatedPpgData = currentWaveforms.ppgData;
     let updatedPpgConf = currentWaveforms.ppgConf;
@@ -264,23 +344,53 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     let ppgNote = currentWaveformNotes.ppg;
     let respNote = currentWaveformNotes.resp;
 
-    if (newVitals.ppg_waveform?.data && newVitals.ppg_waveform?.confidence){
-      updatedPpgData = this.getUpdatedSumCount(currentWaveforms.ppgData, newVitals.ppg_waveform.data, waveformMode, this.bufferSizePpg, overlap);
-      updatedPpgConf = this.getUpdatedSumCount(currentWaveforms.ppgConf, newVitals.ppg_waveform.confidence, waveformMode, this.bufferSizePpg, overlap);
+    if (newVitals.ppg_waveform?.data && newVitals.ppg_waveform?.confidence) {
+      updatedPpgData = this.getUpdatedSumCount(
+        currentWaveforms.ppgData,
+        newVitals.ppg_waveform.data,
+        waveformMode,
+        this.bufferSizePpg,
+        overlap
+      );
+      updatedPpgConf = this.getUpdatedSumCount(
+        currentWaveforms.ppgConf,
+        newVitals.ppg_waveform.confidence,
+        waveformMode,
+        this.bufferSizePpg,
+        overlap
+      );
     }
 
     if (newVitals.ppg_waveform?.note) ppgNote = newVitals.ppg_waveform.note;
 
-    if (newVitals.respiratory_waveform?.data && newVitals.respiratory_waveform?.confidence){
-      updatedRespData = this.getUpdatedSumCount(currentWaveforms.respData, newVitals.respiratory_waveform.data, waveformMode, this.bufferSizeResp, overlap);
-      updatedRespConf = this.getUpdatedSumCount(currentWaveforms.respConf, newVitals.respiratory_waveform.confidence, waveformMode, this.bufferSizeResp, overlap);
+    if (
+      newVitals.respiratory_waveform?.data &&
+      newVitals.respiratory_waveform?.confidence
+    ) {
+      updatedRespData = this.getUpdatedSumCount(
+        currentWaveforms.respData,
+        newVitals.respiratory_waveform.data,
+        waveformMode,
+        this.bufferSizeResp,
+        overlap
+      );
+      updatedRespConf = this.getUpdatedSumCount(
+        currentWaveforms.respConf,
+        newVitals.respiratory_waveform.confidence,
+        waveformMode,
+        this.bufferSizeResp,
+        overlap
+      );
     }
-    
-    if (newVitals.respiratory_waveform?.note) respNote = newVitals.respiratory_waveform.note;
-    
+
+    if (newVitals.respiratory_waveform?.note)
+      respNote = newVitals.respiratory_waveform.note;
+
     this.waveforms.set(sourceId, {
-      ppgData: updatedPpgData, ppgConf: updatedPpgConf,
-      respData: updatedRespData, respConf: updatedRespConf
+      ppgData: updatedPpgData,
+      ppgConf: updatedPpgConf,
+      respData: updatedRespData,
+      respConf: updatedRespConf,
     });
 
     this.waveformNotes.set(sourceId, { ppg: ppgNote, resp: respNote });
@@ -299,7 +409,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     sourceId: string,
     waveformMode: string,
     overlap?: number,
-    incrementalResult?: any,
+    incrementalResult?: VitalLensResult,
     estFps?: number
   ): Promise<VitalLensResult> {
     const waveforms = this.waveforms.get(sourceId)!;
@@ -307,13 +417,23 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     const timestamps = this.timestamps.get(sourceId);
     const faces = this.faces.get(sourceId);
     const message = this.message.get(sourceId);
-    const result: VitalLensResult = { face: {}, vital_signs: {}, time: [], message: "" };
-    const incrementSize: number = (incrementalResult?.time && overlap) ? incrementalResult?.time.length - overlap : 0
+    const result: VitalLensResult = {
+      face: {},
+      vital_signs: {},
+      time: [],
+      message: '',
+    };
+    const incrementSize: number =
+      incrementalResult?.time && overlap
+        ? incrementalResult?.time.length - overlap
+        : 0;
 
     if (timestamps) {
       switch (waveformMode) {
         case 'incremental':
-          result.time = incrementalResult.time ? incrementalResult.time.slice(-incrementSize) : [];
+          result.time = incrementalResult?.time
+            ? incrementalResult.time.slice(-incrementSize)
+            : [];
           break;
         case 'windowed':
           result.time = timestamps.slice(-this.bufferSizeAgg);
@@ -327,11 +447,17 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (faces) {
       switch (waveformMode) {
         case 'incremental':
-          result.face.coordinates = incrementalResult.face.coordinates ? incrementalResult.face.coordinates.slice(-incrementSize) : [];
-          result.face.confidence = incrementalResult.face.confidence ? incrementalResult.face.confidence.slice(-incrementSize) : [];
+          result.face.coordinates = incrementalResult?.face.coordinates
+            ? incrementalResult.face.coordinates.slice(-incrementSize)
+            : [];
+          result.face.confidence = incrementalResult?.face.confidence
+            ? incrementalResult.face.confidence.slice(-incrementSize)
+            : [];
           break;
         case 'windowed':
-          result.face.coordinates = faces.coordinates.slice(-this.bufferSizeAgg);
+          result.face.coordinates = faces.coordinates.slice(
+            -this.bufferSizeAgg
+          );
           result.face.confidence = faces.confidence.slice(-this.bufferSizeAgg);
           break;
         case 'complete':
@@ -339,26 +465,36 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           result.face.confidence = faces.confidence;
           break;
       }
-      result.face.note = "Face detection coordinates for this face, along with live confidence levels.";
+      result.face.note =
+        'Face detection coordinates for this face, along with live confidence levels.';
     }
-    
+
     if (waveforms) {
       // PPG
-      const averagedPpgData = waveforms.ppgData.sum.map((val, i) => val / waveforms.ppgData.count[i]);
-      const averagedPpgConf = waveforms.ppgConf.sum.map((val, i) => val / waveforms.ppgConf.count[i]);
+      const averagedPpgData = waveforms.ppgData.sum.map(
+        (val, i) => val / waveforms.ppgData.count[i]
+      );
+      const averagedPpgConf = waveforms.ppgConf.sum.map(
+        (val, i) => val / waveforms.ppgConf.count[i]
+      );
       let resultPpgData: number[] = [];
       let resultPpgConf: number[] = [];
       let resultPpgSize = 0;
       let hrPpgSize = 0;
       switch (waveformMode) {
         case 'incremental':
-        resultPpgSize = incrementSize;
-        hrPpgSize = Math.min(averagedPpgData.length, this.bufferSizePpg);
-        resultPpgData = incrementalResult.vital_signs.ppg_waveform.data
-            ? incrementalResult.vital_signs.ppg_waveform.data.slice(-incrementSize)
+          resultPpgSize = incrementSize;
+          hrPpgSize = Math.min(averagedPpgData.length, this.bufferSizePpg);
+          resultPpgData = incrementalResult?.vital_signs.ppg_waveform?.data
+            ? incrementalResult.vital_signs.ppg_waveform.data.slice(
+                -incrementSize
+              )
             : [];
-          resultPpgConf = incrementalResult.vital_signs.ppg_waveform.confidence
-            ? incrementalResult.vital_signs.ppg_waveform.confidence.slice(-incrementSize)
+          resultPpgConf = incrementalResult?.vital_signs.ppg_waveform
+            ?.confidence
+            ? incrementalResult.vital_signs.ppg_waveform.confidence.slice(
+                -incrementSize
+              )
             : [];
           break;
         case 'windowed':
@@ -380,7 +516,10 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         const fpsPpg = this.getCurrentFps(sourceId, resultPpgSize);
         if (fpsPpg) {
           // TODO: Think about method-specific post-processing incl. detrend
-          const windowSize = movingAverageSizeForResponse(fpsPpg, CALC_HR_MAX / 60);
+          const windowSize = movingAverageSizeForResponse(
+            fpsPpg,
+            CALC_HR_MAX / 60
+          );
           resultPpgData = applyMovingAverage(resultPpgData, windowSize);
         }
       }
@@ -390,7 +529,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           confidence: resultPpgConf,
           unit: 'unitless',
           note: waveformNotes.ppg,
-        }
+        };
       }
       // Prepare hr for result
       if (hrPpgSize >= this.minBufferSizePpg) {
@@ -398,34 +537,50 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         const fpsHr = this.getCurrentFps(sourceId, hrPpgSize);
         if (fpsHr) {
           // TODO: Think about method-specific post-processing incl. detrend
-          const windowSize = movingAverageSizeForResponse(fpsHr, CALC_HR_MAX / 60);
-          const hrPpgData = applyMovingAverage(averagedPpgData.slice(-hrPpgSize), windowSize);
+          const windowSize = movingAverageSizeForResponse(
+            fpsHr,
+            CALC_HR_MAX / 60
+          );
+          const hrPpgData = applyMovingAverage(
+            averagedPpgData.slice(-hrPpgSize),
+            windowSize
+          );
           const hrPpgConf = averagedPpgConf.slice(-hrPpgSize);
           result.vital_signs.heart_rate = {
             value: this.estimateHeartRate(hrPpgData, fpsHr),
             confidence: hrPpgConf.reduce((a, b) => a + b, 0) / hrPpgConf.length,
-            unit: "bpm",
-            note: "Estimate of the heart rate.",
+            unit: 'bpm',
+            note: 'Estimate of the heart rate.',
           };
         }
       }
 
       // RESP
-      const averagedRespData = waveforms.respData.sum.map((val, i) => val / waveforms.respData.count[i]);
-      const averagedRespConf = waveforms.respConf.sum.map((val, i) => val / waveforms.respConf.count[i]);
+      const averagedRespData = waveforms.respData.sum.map(
+        (val, i) => val / waveforms.respData.count[i]
+      );
+      const averagedRespConf = waveforms.respConf.sum.map(
+        (val, i) => val / waveforms.respConf.count[i]
+      );
       let resultRespData: number[] = [];
       let resultRespConf: number[] = [];
       let resultRespSize = 0;
       let rrRespSize = 0;
       switch (waveformMode) {
         case 'incremental':
-        resultRespSize = incrementSize;
-        rrRespSize = Math.min(averagedRespData.length, this.bufferSizeResp);
-        resultRespData = incrementalResult.vital_signs.respiratory_waveform.data
-            ? incrementalResult.vital_signs.respiratory_waveform.data.slice(-incrementSize)
+          resultRespSize = incrementSize;
+          rrRespSize = Math.min(averagedRespData.length, this.bufferSizeResp);
+          resultRespData = incrementalResult?.vital_signs.respiratory_waveform
+            ?.data
+            ? incrementalResult.vital_signs.respiratory_waveform.data.slice(
+                -incrementSize
+              )
             : [];
-          resultRespConf = incrementalResult.vital_signs.respiratory_waveform.confidence
-            ? incrementalResult.vital_signs.respiratory_waveform.confidence.slice(-incrementSize)
+          resultRespConf = incrementalResult?.vital_signs.respiratory_waveform
+            ?.confidence
+            ? incrementalResult.vital_signs.respiratory_waveform.confidence.slice(
+                -incrementSize
+              )
             : [];
           break;
         case 'windowed':
@@ -447,7 +602,10 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         const fpsResp = this.getCurrentFps(sourceId, resultRespSize);
         if (fpsResp) {
           // TODO: Think about method-specific post-processing incl. detrend
-          const windowSize = movingAverageSizeForResponse(fpsResp, CALC_RR_MAX / 60);
+          const windowSize = movingAverageSizeForResponse(
+            fpsResp,
+            CALC_RR_MAX / 60
+          );
           resultRespData = applyMovingAverage(resultRespData, windowSize);
         }
       }
@@ -457,7 +615,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           confidence: resultRespConf,
           unit: 'unitless',
           note: waveformNotes.resp,
-        }
+        };
       }
       // Prepare rr for result
       if (rrRespSize >= this.minBufferSizeResp) {
@@ -465,14 +623,21 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         const fpsRr = this.getCurrentFps(sourceId, rrRespSize);
         if (fpsRr) {
           // TODO: Think about method-specific post-processing incl. detrend
-          const windowSize = movingAverageSizeForResponse(fpsRr, CALC_RR_MAX / 60);
-          const rrRespData = applyMovingAverage(averagedRespData.slice(-rrRespSize), windowSize);
+          const windowSize = movingAverageSizeForResponse(
+            fpsRr,
+            CALC_RR_MAX / 60
+          );
+          const rrRespData = applyMovingAverage(
+            averagedRespData.slice(-rrRespSize),
+            windowSize
+          );
           const rrRespConf = averagedRespConf.slice(-rrRespSize);
           result.vital_signs.respiratory_rate = {
             value: this.estimateRespiratoryRate(rrRespData, fpsRr),
-            confidence: rrRespConf.reduce((a, b) => a + b, 0) / rrRespConf.length,
-            unit: "bpm",
-            note: "Estimate of the respiratory rate.",
+            confidence:
+              rrRespConf.reduce((a, b) => a + b, 0) / rrRespConf.length,
+            unit: 'bpm',
+            note: 'Estimate of the respiratory rate.',
           };
         }
       }
@@ -484,7 +649,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     }
 
     if (estFps) {
-      result.estFps = estFps;  
+      result.estFps = estFps;
     }
 
     if (message) {
@@ -506,10 +671,11 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       return null;
     }
     const timeDiffs = timestamps.slice(1).map((t, i) => t - timestamps[i]);
-    const avgTimeDiff = timeDiffs.reduce((acc, val) => acc + val, 0) / timeDiffs.length;
+    const avgTimeDiff =
+      timeDiffs.reduce((acc, val) => acc + val, 0) / timeDiffs.length;
     return avgTimeDiff > 0 ? 1 / avgTimeDiff : null;
   }
-  
+
   /**
    * Estimates heart rate from the PPG waveform using FFT.
    * @param ppgWaveform - The PPG waveform tensor.
@@ -517,8 +683,13 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @returns The estimated heart rate in beats per minute.
    */
   private estimateHeartRate(ppgWaveform: number[], fs: number): number {
-    const heartRate = this.estimateRateFromFFT(ppgWaveform, fs, CALC_HR_MIN / 60, CALC_HR_MAX / 60);
-    if (heartRate === null) throw new Error("Failed to estimate heart rate.");
+    const heartRate = this.estimateRateFromFFT(
+      ppgWaveform,
+      fs,
+      CALC_HR_MIN / 60,
+      CALC_HR_MAX / 60
+    );
+    if (heartRate === null) throw new Error('Failed to estimate heart rate.');
     return heartRate;
   }
 
@@ -528,9 +699,18 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param fs - The sampling rate of the waveform tensor (cycles per second)
    * @returns The estimated respiratory rate in breaths per minute.
    */
-  private estimateRespiratoryRate(respiratoryWaveform: number[], fs: number): number {
-    const respiratoryRate = this.estimateRateFromFFT(respiratoryWaveform, fs, CALC_RR_MIN / 60, CALC_RR_MAX / 60);
-    if (respiratoryRate === null) throw new Error("Failed to estimate respiratory rate.");
+  private estimateRespiratoryRate(
+    respiratoryWaveform: number[],
+    fs: number
+  ): number {
+    const respiratoryRate = this.estimateRateFromFFT(
+      respiratoryWaveform,
+      fs,
+      CALC_RR_MIN / 60,
+      CALC_RR_MAX / 60
+    );
+    if (respiratoryRate === null)
+      throw new Error('Failed to estimate respiratory rate.');
     return respiratoryRate;
   }
 
@@ -552,48 +732,63 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     maxFrequency: number,
     desiredResolutionHz?: number
   ): number | null {
-    if (waveform.length === 0 || samplingFrequency <= 0 || minFrequency >= maxFrequency) {
-      throw new Error("Invalid waveform data, sampling frequency, or frequency range.");
+    if (
+      waveform.length === 0 ||
+      samplingFrequency <= 0 ||
+      minFrequency >= maxFrequency
+    ) {
+      throw new Error(
+        'Invalid waveform data, sampling frequency, or frequency range.'
+      );
     }
 
     // Calculate the required FFT size to achieve the desired resolution
     let fftSize: number = Math.pow(2, Math.ceil(Math.log2(waveform.length)));
     if (desiredResolutionHz) {
       const desiredFftSize = Math.ceil(samplingFrequency / desiredResolutionHz);
-      fftSize = Math.max(fftSize, Math.pow(2, Math.ceil(Math.log2(desiredFftSize))));
+      fftSize = Math.max(
+        fftSize,
+        Math.pow(2, Math.ceil(Math.log2(desiredFftSize)))
+      );
     }
-  
-    const paddedSignal: number[] = [...waveform, ...Array(fftSize - waveform.length).fill(0)];
+
+    const paddedSignal: number[] = [
+      ...waveform,
+      ...Array(fftSize - waveform.length).fill(0),
+    ];
     const fft = new FFT(fftSize);
-  
-    const complexArray: any[] = fft.createComplexArray();
-    const outputArray: any[] = fft.createComplexArray();
+
+    const complexArray: number[] = fft.createComplexArray();
+    const outputArray: number[] = fft.createComplexArray();
     fft.toComplexArray(paddedSignal, complexArray);
-  
+
     fft.realTransform(outputArray, paddedSignal);
-  
+
     const magnitudes: number[] = [];
     for (let i = 0; i < fftSize / 2; i++) {
       const real = outputArray[2 * i];
       const imag = outputArray[2 * i + 1];
       magnitudes.push(Math.sqrt(real ** 2 + imag ** 2));
     }
-  
+
     const nyquist: number = samplingFrequency / 2;
-    const frequencies: number[] = Array.from({ length: magnitudes.length }, (_, i) => (i / magnitudes.length) * nyquist);
+    const frequencies: number[] = Array.from(
+      { length: magnitudes.length },
+      (_, i) => (i / magnitudes.length) * nyquist
+    );
 
     const filtered = frequencies
       .map((freq, index) => ({ freq, magnitude: magnitudes[index] }))
       .filter(({ freq }) => freq >= minFrequency && freq <= maxFrequency);
-  
+
     if (filtered.length === 0) {
       return null;
     }
-  
+
     const { freq: dominantFrequency } = filtered.reduce((max, current) =>
       current.magnitude > max.magnitude ? current : max
     );
-  
+
     return dominantFrequency * 60;
   }
 
@@ -603,7 +798,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @returns The aggregated VitalLensResult.
    */
   async getResult(sourceId: string): Promise<VitalLensResult> {
-    return await this.assembleResult(sourceId, "complete");
+    return await this.assembleResult(sourceId, 'complete');
   }
 
   /**
@@ -615,8 +810,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       face: {},
       vital_signs: {},
       time: [],
-      message: "Prediction is empty because no face was detected."
-    }
+      message: 'Prediction is empty because no face was detected.',
+    };
   }
 
   /**

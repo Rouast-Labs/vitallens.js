@@ -1,4 +1,4 @@
-import { MethodConfig, ROI } from "../types/core";
+import { MethodConfig, ROI } from '../types/core';
 
 /**
  * Utility function to clip a value to specified dimensions.
@@ -67,7 +67,12 @@ export function getFaceROI(
   clipDims: { width: number; height: number },
   forceEvenDims: boolean = false
 ): ROI {
-  return getROIFromDetection(det, [-0.2, -0.1, -0.2, -0.1], clipDims, forceEvenDims);
+  return getROIFromDetection(
+    det,
+    [-0.2, -0.1, -0.2, -0.1],
+    clipDims,
+    forceEvenDims
+  );
 }
 
 /**
@@ -82,7 +87,12 @@ export function getForeheadROI(
   clipDims: { width: number; height: number },
   forceEvenDims: boolean = false
 ): ROI {
-  return getROIFromDetection(det, [-0.35, -0.15, -0.35, -0.75], clipDims, forceEvenDims);
+  return getROIFromDetection(
+    det,
+    [-0.35, -0.15, -0.35, -0.75],
+    clipDims,
+    forceEvenDims
+  );
 }
 
 /**
@@ -99,8 +109,9 @@ export function getUpperBodyROI(
   cropped: boolean = true,
   forceEvenDims: boolean = false
 ): ROI {
-  let relChange: [number, number, number, number];
-  relChange = cropped ? [0.175, 0.15, 0.175, 0.3] : [0.25, 0.2, 0.25, 0.4];
+  const relChange: [number, number, number, number] = cropped
+    ? [0.175, 0.15, 0.175, 0.3]
+    : [0.25, 0.2, 0.25, 0.4];
   return getROIFromDetection(det, relChange, clipDims, forceEvenDims);
 }
 
@@ -125,7 +136,9 @@ export function getROIForMethod(
       return getForeheadROI(det, clipDims, forceEvenDims);
     case 'upper_body':
       if (!clipDims) {
-        throw new Error("clipDims must be provided for 'upper_body' ROI method.");
+        throw new Error(
+          "clipDims must be provided for 'upper_body' ROI method."
+        );
       }
       return getUpperBodyROI(det, clipDims, true, forceEvenDims);
     default:
@@ -155,22 +168,31 @@ export function getRepresentativeROI(rois: ROI[]): ROI {
   );
 
   // Find and return the ROI closest to the mean ROI
-  const closestROI = rois.reduce((closest, roi) => {
-    const dist = Math.hypot(
-      roi.x0 - meanROI.x0,
-      roi.y0 - meanROI.y0,
-      roi.x1 - meanROI.x1,
-      roi.y1 - meanROI.y1
-    );
-    return dist < closest.distance ? { roi, distance: dist } : closest;
-  }, { roi: rois[0], distance: Infinity }).roi;
+  const closestROI = rois.reduce(
+    (closest, roi) => {
+      const dist = Math.hypot(
+        roi.x0 - meanROI.x0,
+        roi.y0 - meanROI.y0,
+        roi.x1 - meanROI.x1,
+        roi.y1 - meanROI.y1
+      );
+      return dist < closest.distance ? { roi, distance: dist } : closest;
+    },
+    { roi: rois[0], distance: Infinity }
+  ).roi;
 
   // Ensure width and height are even
   return {
     x0: closestROI.x0,
     y0: closestROI.y0,
-    x1: (closestROI.x1 - closestROI.x0) % 2 != 0 ? closestROI.x1 - 1 : closestROI.x1,
-    y1: (closestROI.y1 - closestROI.y0) % 2 != 0 ? closestROI.y1 - 1 : closestROI.y1,
+    x1:
+      (closestROI.x1 - closestROI.x0) % 2 != 0
+        ? closestROI.x1 - 1
+        : closestROI.x1,
+    y1:
+      (closestROI.y1 - closestROI.y0) % 2 != 0
+        ? closestROI.y1 - 1
+        : closestROI.y1,
   };
 }
 
@@ -185,10 +207,10 @@ export function getUnionROI(rois: ROI[]): ROI {
   }
 
   // Compute the smallest x and y (top-left corner) and the largest x and y (bottom-right corner)
-  const xMin = Math.min(...rois.map(roi => roi.x0));
-  const yMin = Math.min(...rois.map(roi => roi.y0));
-  const xMax = Math.max(...rois.map(roi => roi.x1));
-  const yMax = Math.max(...rois.map(roi => roi.y1));
+  const xMin = Math.min(...rois.map((roi) => roi.x0));
+  const yMin = Math.min(...rois.map((roi) => roi.y0));
+  const xMax = Math.max(...rois.map((roi) => roi.x1));
+  const yMax = Math.max(...rois.map((roi) => roi.y1));
 
   // Create the union ROI
   const unionROI = {
@@ -229,10 +251,11 @@ export function checkFaceInROI(
   const requiredHeight = percentageRequiredInsideROI[1] * (face.y1 - face.y0);
 
   const isWidthInsideROI =
-    (faceRight - roi.x0 >= requiredWidth) && (roiRight - face.x0 >= requiredWidth);
+    faceRight - roi.x0 >= requiredWidth && roiRight - face.x0 >= requiredWidth;
 
   const isHeightInsideROI =
-    (faceBottom - roi.y0 >= requiredHeight) && (roiBottom - face.y0 >= requiredHeight);
+    faceBottom - roi.y0 >= requiredHeight &&
+    roiBottom - face.y0 >= requiredHeight;
 
   return isWidthInsideROI && isHeightInsideROI;
 }
@@ -259,10 +282,11 @@ export function checkROIInFace(
   const requiredHeight = percentageRequiredInsideFace[1] * (roi.y1 - roi.y0);
 
   const isWidthInsideFace =
-    (roiRight - face.x0 >= requiredWidth) && (faceRight - roi.x0 >= requiredWidth);
+    roiRight - face.x0 >= requiredWidth && faceRight - roi.x0 >= requiredWidth;
 
   const isHeightInsideFace =
-    (roiBottom - face.y0 >= requiredHeight) && (faceBottom - roi.y0 >= requiredHeight);
+    roiBottom - face.y0 >= requiredHeight &&
+    faceBottom - roi.y0 >= requiredHeight;
 
   return isWidthInsideFace && isHeightInsideFace;
 }

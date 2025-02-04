@@ -2,7 +2,12 @@ import path from 'path';
 import fs from 'fs';
 import { VitalLensController } from '../../src/core/VitalLensController.node';
 import { VitalLensOptions, VitalLensResult } from '../../src/types/core';
-import { CALC_HR_MAX, CALC_HR_MIN, CALC_RR_MAX, CALC_RR_MIN } from '../../src/config/constants';
+import {
+  CALC_HR_MAX,
+  CALC_HR_MIN,
+  CALC_RR_MAX,
+  CALC_RR_MIN,
+} from '../../src/config/constants';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -11,8 +16,8 @@ function getTestDevApiKey(): string {
   const apiKey = process.env.VITALLENS_DEV_API_KEY;
   if (!apiKey) {
     throw new Error(
-      "VITALLENS_DEV_API_KEY environment variable is not set. " +
-      "Please set this variable to a valid VitalLens API Key to run the tests."
+      'VITALLENS_DEV_API_KEY environment variable is not set. ' +
+        'Please set this variable to a valid VitalLens API Key to run the tests.'
     );
   }
   return apiKey;
@@ -20,7 +25,10 @@ function getTestDevApiKey(): string {
 
 describe('VitalLensController Integration (Node)', () => {
   let controller: VitalLensController;
-  const SAMPLE_VIDEO = path.resolve(__dirname, '../../examples/sample_video_1.mp4');
+  const SAMPLE_VIDEO = path.resolve(
+    __dirname,
+    '../../examples/sample_video_1.mp4'
+  );
   const API_KEY = getTestDevApiKey();
 
   beforeAll(async () => {
@@ -38,7 +46,8 @@ describe('VitalLensController Integration (Node)', () => {
   });
 
   it('should process a real video file and return structured vital sign results', async () => {
-    const result: VitalLensResult = await controller.processVideoFile(SAMPLE_VIDEO);
+    const result: VitalLensResult =
+      await controller.processVideoFile(SAMPLE_VIDEO);
     // Ensure result structure
     expect(result).toBeDefined();
     expect(typeof result).toBe('object');
@@ -68,18 +77,30 @@ describe('VitalLensController Integration (Node)', () => {
     expect(result.vital_signs.respiratory_rate).toHaveProperty('value');
     expect(result.vital_signs.respiratory_rate).toHaveProperty('confidence');
     expect(typeof result.vital_signs.respiratory_rate!.value).toBe('number');
-    expect(result.vital_signs.respiratory_rate!.value).toBeGreaterThan(CALC_RR_MIN);
-    expect(result.vital_signs.respiratory_rate!.value).toBeLessThan(CALC_RR_MAX);
-    expect(result.vital_signs.respiratory_rate!.confidence).toBeGreaterThanOrEqual(0);
-    expect(result.vital_signs.respiratory_rate!.confidence).toBeLessThanOrEqual(1);
+    expect(result.vital_signs.respiratory_rate!.value).toBeGreaterThan(
+      CALC_RR_MIN
+    );
+    expect(result.vital_signs.respiratory_rate!.value).toBeLessThan(
+      CALC_RR_MAX
+    );
+    expect(
+      result.vital_signs.respiratory_rate!.confidence
+    ).toBeGreaterThanOrEqual(0);
+    expect(result.vital_signs.respiratory_rate!.confidence).toBeLessThanOrEqual(
+      1
+    );
 
     // Ensure `ppg_waveform` and `respiratory_waveform` have data arrays
     expect(result.vital_signs).toHaveProperty('ppg_waveform');
     expect(result.vital_signs).toHaveProperty('respiratory_waveform');
     expect(Array.isArray(result.vital_signs.ppg_waveform!.data)).toBe(true);
-    expect(Array.isArray(result.vital_signs.respiratory_waveform!.data)).toBe(true);
+    expect(Array.isArray(result.vital_signs.respiratory_waveform!.data)).toBe(
+      true
+    );
     expect(result.vital_signs.ppg_waveform!.data.length).toBeGreaterThan(0);
-    expect(result.vital_signs.respiratory_waveform!.data.length).toBeGreaterThan(0);
+    expect(
+      result.vital_signs.respiratory_waveform!.data.length
+    ).toBeGreaterThan(0);
 
     // Ensure `time` array is valid
     expect(result).toHaveProperty('time');

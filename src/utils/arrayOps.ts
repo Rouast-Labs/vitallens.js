@@ -8,7 +8,10 @@ import { ROI } from '../types/core';
  * @param keepTensor - Whether to keep the tensor in the resulting frame.
  * @returns A Promise resolving to a single Frame with concatenated data and concatenated timestamps.
  */
-export async function mergeFrames(frames: Frame[], keepTensor: boolean = false): Promise<Frame> {
+export async function mergeFrames(
+  frames: Frame[],
+  keepTensor: boolean = false
+): Promise<Frame> {
   if (frames.length === 0) {
     throw new Error('Cannot merge an empty array of frames.');
   }
@@ -20,14 +23,21 @@ export async function mergeFrames(frames: Frame[], keepTensor: boolean = false):
   });
 
   // Concatenate all timestamps
-  const concatenatedTimestamps = frames.flatMap((frame) => frame.getTimestamp());
+  const concatenatedTimestamps = frames.flatMap((frame) =>
+    frame.getTimestamp()
+  );
 
   // Concatenate all ROIs into a single array
   const concatenatedROIs: ROI[] = frames.flatMap((frame) => frame.getROI());
 
   // Wrap in a Frame
-  const mergedFrame = await Frame.fromTensor(concatenatedTensor, keepTensor, concatenatedTimestamps, concatenatedROIs);
-  
+  const mergedFrame = await Frame.fromTensor(
+    concatenatedTensor,
+    keepTensor,
+    concatenatedTimestamps,
+    concatenatedROIs
+  );
+
   if (keepTensor) {
     mergedFrame.retain();
   } else {
@@ -43,7 +53,7 @@ export async function mergeFrames(frames: Frame[], keepTensor: boolean = false):
  * @returns The resulting base64 string
  */
 export function uint8ArrayToBase64(uint8Array: Uint8Array): string {
-  let binary = "";
+  let binary = '';
   const chunkSize = 65536; // Process in 64 KB chunks
   for (let i = 0; i < uint8Array.length; i += chunkSize) {
     const chunk = uint8Array.subarray(i, i + chunkSize);
@@ -57,9 +67,9 @@ export function uint8ArrayToBase64(uint8Array: Uint8Array): string {
  * @param arr The array to be converted
  * @returns The resulting base64 string
  */
-export function float32ArrayToBase64(arr: Float32Array): string {   
+export function float32ArrayToBase64(arr: Float32Array): string {
   const uint8 = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
-  let binaryString = "";
+  let binaryString = '';
   for (let i = 0; i < uint8.length; i++) {
     binaryString += String.fromCharCode(uint8[i]);
   }
@@ -72,9 +82,12 @@ export function float32ArrayToBase64(arr: Float32Array): string {
  * @param cutoffFreq - The desired cutoff frequency [Hz].
  * @returns The estimated moving average size.
  */
-export function movingAverageSizeForResponse(samplingFreq: number, cutoffFreq: number): number {
+export function movingAverageSizeForResponse(
+  samplingFreq: number,
+  cutoffFreq: number
+): number {
   if (cutoffFreq <= 0) {
-    throw new Error("Cutoff frequency must be greater than zero.");
+    throw new Error('Cutoff frequency must be greater than zero.');
   }
   // Adapted from https://dsp.stackexchange.com/a/14648
   const F = cutoffFreq / samplingFreq;
@@ -88,11 +101,14 @@ export function movingAverageSizeForResponse(samplingFreq: number, cutoffFreq: n
  * @param windowSize - The size of the moving average window.
  * @returns The smoothed waveform data.
  */
-export function applyMovingAverage(data: number[], windowSize: number): number[] {
+export function applyMovingAverage(
+  data: number[],
+  windowSize: number
+): number[] {
   if (windowSize <= 1) {
     return data;
   }
-  
+
   const result = new Array(data.length).fill(0);
   let sum = 0;
   for (let i = 0; i < data.length; i++) {

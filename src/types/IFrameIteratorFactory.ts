@@ -4,12 +4,12 @@ import { IFrameIterator } from './IFrameIterator';
 
 export interface IFrameIteratorFactory {
   createStreamFrameIterator(
-    stream?: MediaStream, 
+    stream?: MediaStream,
     videoElement?: HTMLVideoElement
   ): IFrameIterator;
   createFileFrameIterator(
     videoInput: VideoInput,
     methodConfig: MethodConfig,
-    faceDetector: IFaceDetector,
+    faceDetector: IFaceDetector
   ): IFrameIterator;
 }

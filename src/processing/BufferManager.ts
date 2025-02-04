@@ -10,7 +10,7 @@ import { RGBBuffer } from './RGBBuffer';
 export class BufferManager {
   private buffers: Map<string, { buffer: Buffer; createdAt: number }>; // Map of buffer ID to buffer and creation timestamp
   private state: Float32Array | null = null;
-  
+
   constructor() {
     this.buffers = new Map();
   }
@@ -58,14 +58,14 @@ export class BufferManager {
   private getReadyBuffer(): Buffer | null {
     let readyBuffer: Buffer | null = null;
     let timestamp = 0;
-    let hasState = this.state !== null;
+    const hasState = this.state !== null;
 
     for (const { buffer, createdAt } of this.buffers.values()) {
       if (hasState) {
         if (buffer.isReadyState() && createdAt > timestamp) {
           readyBuffer = buffer;
           timestamp = createdAt;
-        }  
+        }
       } else {
         if (buffer.isReady() && createdAt > timestamp) {
           readyBuffer = buffer;

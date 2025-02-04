@@ -17,9 +17,16 @@ jest.mock('@ffmpeg/ffmpeg', () => {
 });
 
 jest.mock('../../src/utils/FFmpegWrapper.browser', () => {
-  const OriginalFFmpegWrapper = jest.requireActual('../../src/utils/FFmpegWrapper.browser').default;
-  class MockFFmpegWrapper { processVideo = jest.fn(); }
-  Object.setPrototypeOf(MockFFmpegWrapper.prototype, OriginalFFmpegWrapper.prototype);
+  const OriginalFFmpegWrapper = jest.requireActual(
+    '../../src/utils/FFmpegWrapper.browser'
+  ).default;
+  class MockFFmpegWrapper {
+    processVideo = jest.fn();
+  }
+  Object.setPrototypeOf(
+    MockFFmpegWrapper.prototype,
+    OriginalFFmpegWrapper.prototype
+  );
   return MockFFmpegWrapper;
 });
 
@@ -38,8 +45,19 @@ global.MediaStream = class MediaStream {
   onremovetrack = null;
 } as unknown as typeof MediaStream;
 
-const methodConfig: MethodConfig = { method: 'vitallens', fpsTarget: 30, roiMethod: 'face', minWindowLength: 5, maxWindowLength: 10, requiresState: false };
-const mockFaceDetector: jest.Mocked<IFaceDetector> = { detect: jest.fn(), run: jest.fn(), load: jest.fn() };
+const methodConfig: MethodConfig = {
+  method: 'vitallens',
+  fpsTarget: 30,
+  roiMethod: 'face',
+  minWindowLength: 5,
+  maxWindowLength: 10,
+  requiresState: false,
+};
+const mockFaceDetector: jest.Mocked<IFaceDetector> = {
+  detect: jest.fn(),
+  run: jest.fn(),
+  load: jest.fn(),
+};
 
 describe('FrameIteratorFactory (Browser)', () => {
   let factory: FrameIteratorFactory;
@@ -60,32 +78,40 @@ describe('FrameIteratorFactory (Browser)', () => {
   it('should create a StreamFrameIterator with HTMLVideoElement', () => {
     factory = new FrameIteratorFactory({ method: 'vitallens' });
     const videoElement = document.createElement('video') as HTMLVideoElement;
-  
+
     // Mock the `srcObject` property to accept a MediaStream
     Object.defineProperty(videoElement, 'srcObject', {
       value: new MediaStream(),
       writable: true,
     });
-  
+
     const iterator = factory.createStreamFrameIterator(undefined, videoElement);
     expect(iterator).toBeInstanceOf(StreamFrameIterator);
   });
 
   it('should throw an error if neither MediaStream nor HTMLVideoElement is provided', () => {
     expect(() => factory.createStreamFrameIterator()).toThrowError(
-      'Either a MediaStream or an HTMLVideoElement must be provided.',
+      'Either a MediaStream or an HTMLVideoElement must be provided.'
     );
   });
 
   it('should create a FileFrameIterator for "vitallens" method', () => {
     factory = new FrameIteratorFactory({ method: 'vitallens' });
-    const iterator = factory.createFileFrameIterator('test.mp4', methodConfig, mockFaceDetector);
+    const iterator = factory.createFileFrameIterator(
+      'test.mp4',
+      methodConfig,
+      mockFaceDetector
+    );
     expect(iterator).toBeInstanceOf(FileFrameIterator);
   });
 
   it('should create a FileRGBIterator for non-"vitallens" method', () => {
     factory = new FrameIteratorFactory({ method: 'pos' });
-    const iterator = factory.createFileFrameIterator('test.mp4', methodConfig, mockFaceDetector);
+    const iterator = factory.createFileFrameIterator(
+      'test.mp4',
+      methodConfig,
+      mockFaceDetector
+    );
     expect(iterator).toBeInstanceOf(FileRGBIterator);
   });
 });

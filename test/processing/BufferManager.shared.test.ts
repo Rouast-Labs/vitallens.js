@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { BufferManager } from '../../src/processing/BufferManager';
 import { MethodConfig, ROI } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
@@ -61,8 +64,15 @@ describe('BufferManager', () => {
 
   describe('addBuffer', () => {
     it('should add a FrameBuffer for method vitallens', () => {
-      bufferManager.addBuffer(mockROI, mockMethodConfigVitalLens, mockTimestamp);
-      expect(FrameBuffer).toHaveBeenCalledWith(mockROI, mockMethodConfigVitalLens);
+      bufferManager.addBuffer(
+        mockROI,
+        mockMethodConfigVitalLens,
+        mockTimestamp
+      );
+      expect(FrameBuffer).toHaveBeenCalledWith(
+        mockROI,
+        mockMethodConfigVitalLens
+      );
     });
 
     it('should add an RGBBuffer for other methods', () => {
@@ -71,8 +81,16 @@ describe('BufferManager', () => {
     });
 
     it('should not add a buffer if one with the same ID already exists', () => {
-      bufferManager.addBuffer(mockROI, mockMethodConfigVitalLens, mockTimestamp);
-      bufferManager.addBuffer(mockROI, mockMethodConfigVitalLens, mockTimestamp);
+      bufferManager.addBuffer(
+        mockROI,
+        mockMethodConfigVitalLens,
+        mockTimestamp
+      );
+      bufferManager.addBuffer(
+        mockROI,
+        mockMethodConfigVitalLens,
+        mockTimestamp
+      );
       expect(FrameBuffer).toHaveBeenCalledTimes(1);
     });
   });
@@ -80,7 +98,10 @@ describe('BufferManager', () => {
   describe('isReady', () => {
     it('should return true if a buffer is ready', () => {
       const mockBuffer = { isReady: jest.fn().mockReturnValue(true) };
-      bufferManager['buffers'].set('id', { buffer: mockBuffer as any, createdAt: mockTimestamp });
+      bufferManager['buffers'].set('id', {
+        buffer: mockBuffer as any,
+        createdAt: mockTimestamp,
+      });
 
       expect(bufferManager.isReady()).toBe(true);
     });
@@ -105,8 +126,14 @@ describe('BufferManager', () => {
         clear: jest.fn(),
       };
 
-      bufferManager['buffers'].set('id1', { buffer: mockBuffer1 as any, createdAt: mockTimestamp - 1000 });
-      bufferManager['buffers'].set('id2', { buffer: mockBuffer2 as any, createdAt: mockTimestamp });
+      bufferManager['buffers'].set('id1', {
+        buffer: mockBuffer1 as any,
+        createdAt: mockTimestamp - 1000,
+      });
+      bufferManager['buffers'].set('id2', {
+        buffer: mockBuffer2 as any,
+        createdAt: mockTimestamp,
+      });
 
       const result = bufferManager['getReadyBuffer']();
       expect(result).toBe(mockBuffer1);
@@ -117,10 +144,22 @@ describe('BufferManager', () => {
     it('should add a frame to all active buffers', async () => {
       const mockBuffer = { add: jest.fn() };
       const rawData = new Int32Array([1, 2, 3]).buffer;
-      const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [1000] });
-      
-      bufferManager['buffers'].set('id1', { buffer: mockBuffer as any, createdAt: mockTimestamp });
-      bufferManager['buffers'].set('id2', { buffer: mockBuffer as any, createdAt: mockTimestamp });
+      const frame = new Frame({
+        rawData,
+        keepTensor: false,
+        shape: [1, 1, 3],
+        dtype: 'int32',
+        timestamp: [1000],
+      });
+
+      bufferManager['buffers'].set('id1', {
+        buffer: mockBuffer as any,
+        createdAt: mockTimestamp,
+      });
+      bufferManager['buffers'].set('id2', {
+        buffer: mockBuffer as any,
+        createdAt: mockTimestamp,
+      });
 
       await bufferManager.add(frame);
 
@@ -130,10 +169,22 @@ describe('BufferManager', () => {
     it('should add a frame to all active buffers with overrideRoi', async () => {
       const mockBuffer = { add: jest.fn() };
       const rawData = new Int32Array([1, 2, 3]).buffer;
-      const frame = new Frame({ rawData, keepTensor: false, shape: [1, 1, 3], dtype: 'int32', timestamp: [1000] });
-      
-      bufferManager['buffers'].set('id1', { buffer: mockBuffer as any, createdAt: mockTimestamp });
-      bufferManager['buffers'].set('id2', { buffer: mockBuffer as any, createdAt: mockTimestamp });
+      const frame = new Frame({
+        rawData,
+        keepTensor: false,
+        shape: [1, 1, 3],
+        dtype: 'int32',
+        timestamp: [1000],
+      });
+
+      bufferManager['buffers'].set('id1', {
+        buffer: mockBuffer as any,
+        createdAt: mockTimestamp,
+      });
+      bufferManager['buffers'].set('id2', {
+        buffer: mockBuffer as any,
+        createdAt: mockTimestamp,
+      });
 
       await bufferManager.add(frame, mockROI);
 
@@ -147,7 +198,10 @@ describe('BufferManager', () => {
         isReady: jest.fn().mockReturnValue(true),
         consume: jest.fn().mockReturnValue(['frame1', 'frame2']),
       };
-      bufferManager['buffers'].set('id', { buffer: mockBuffer as any, createdAt: mockTimestamp });
+      bufferManager['buffers'].set('id', {
+        buffer: mockBuffer as any,
+        createdAt: mockTimestamp,
+      });
 
       const frames = await bufferManager.consume();
       expect(frames).toEqual(['frame1', 'frame2']);
@@ -165,8 +219,14 @@ describe('BufferManager', () => {
       const mockBuffer1 = { clear: jest.fn() };
       const mockBuffer2 = { clear: jest.fn() };
 
-      bufferManager['buffers'].set('id1', { buffer: mockBuffer1 as any, createdAt: mockTimestamp - 1000 });
-      bufferManager['buffers'].set('id2', { buffer: mockBuffer2 as any, createdAt: mockTimestamp });
+      bufferManager['buffers'].set('id1', {
+        buffer: mockBuffer1 as any,
+        createdAt: mockTimestamp - 1000,
+      });
+      bufferManager['buffers'].set('id2', {
+        buffer: mockBuffer2 as any,
+        createdAt: mockTimestamp,
+      });
 
       bufferManager['cleanupBuffers'](mockTimestamp);
 
@@ -180,23 +240,34 @@ describe('BufferManager', () => {
     it('should return true when there are no buffers', () => {
       expect(bufferManager.isEmpty()).toBe(true);
     });
-  
+
     it('should return false when at least one buffer exists', () => {
-      bufferManager.addBuffer(mockROI, mockMethodConfigVitalLens, mockTimestamp);
+      bufferManager.addBuffer(
+        mockROI,
+        mockMethodConfigVitalLens,
+        mockTimestamp
+      );
       expect(bufferManager.isEmpty()).toBe(false);
     });
-  
+
     it('should return true after cleanup is called', () => {
-      bufferManager.addBuffer(mockROI, mockMethodConfigVitalLens, mockTimestamp);
+      bufferManager.addBuffer(
+        mockROI,
+        mockMethodConfigVitalLens,
+        mockTimestamp
+      );
       bufferManager.cleanup();
       expect(bufferManager.isEmpty()).toBe(true);
     });
-  });  
+  });
 
   describe('cleanup', () => {
     it('should clear all buffers and reset state', () => {
       const mockBuffer = { clear: jest.fn() };
-      bufferManager['buffers'].set('id', { buffer: mockBuffer as any, createdAt: mockTimestamp });
+      bufferManager['buffers'].set('id', {
+        buffer: mockBuffer as any,
+        createdAt: mockTimestamp,
+      });
 
       bufferManager.cleanup();
 

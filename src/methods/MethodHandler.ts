@@ -28,7 +28,7 @@ export abstract class MethodHandler {
    * @returns Whether the method is ready for prediction.
    */
   abstract getReady(): boolean;
-  
+
   /**
    * Get the method name. Subclasses must implement this.
    * @returns The method name.
@@ -41,5 +41,8 @@ export abstract class MethodHandler {
    * @param state - Optional recurrent state from previous processing.
    * @returns A promise that resolves to the processing result.
    */
-  abstract process(framesChunk: Frame, state?: any): Promise<VitalLensResult | undefined>;
+  abstract process(
+    framesChunk: Frame,
+    state?: Float32Array
+  ): Promise<VitalLensResult | undefined>;
 }

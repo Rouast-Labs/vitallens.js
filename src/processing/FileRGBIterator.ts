@@ -1,4 +1,10 @@
-import { MethodConfig, VideoInput, VitalLensOptions, VideoProbeResult, ROI } from '../types/core';
+import {
+  MethodConfig,
+  VideoInput,
+  VitalLensOptions,
+  VideoProbeResult,
+  ROI,
+} from '../types/core';
 import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
@@ -87,16 +93,23 @@ export class FileRGBIterator extends FrameIteratorBase {
     // Probe to get video information
     this.probeInfo = await this.ffmpeg.probeVideo(this.videoInput);
     if (!this.probeInfo) {
-      throw new Error('Failed to retrieve video probe information. Ensure the input is valid.');
+      throw new Error(
+        'Failed to retrieve video probe information. Ensure the input is valid.'
+      );
     }
     const totalFrames = this.probeInfo.totalFrames;
     // Derive fps target and downsampling factor
-    this.fpsTarget = this.options.overrideFpsTarget ? this.options.overrideFpsTarget : this.methodConfig.fpsTarget;
-    this.dsFactor = Math.max(Math.round(this.probeInfo.fps / this.fpsTarget), 1);
+    this.fpsTarget = this.options.overrideFpsTarget
+      ? this.options.overrideFpsTarget
+      : this.methodConfig.fpsTarget;
+    this.dsFactor = Math.max(
+      Math.round(this.probeInfo.fps / this.fpsTarget),
+      1
+    );
     if (this.options.globalRoi) {
       this.roi = Array(totalFrames).fill(this.options.globalRoi);
     } else {
-      const fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0
+      const fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0;
       const fDetDsFactor = Math.max(Math.round(this.probeInfo.fps / fDetFs), 1);
       const fDetNDsFrames = Math.ceil(totalFrames / fDetDsFactor);
       const video = await this.ffmpeg.readVideo(
@@ -108,7 +121,12 @@ export class FileRGBIterator extends FrameIteratorBase {
         this.probeInfo
       );
       // Run face detector (fDetNDsFrames, 4)
-      const videoFrames = Frame.fromUint8Array(video, [fDetNDsFrames, 240, 320, 3]);
+      const videoFrames = Frame.fromUint8Array(video, [
+        fDetNDsFrames,
+        240,
+        320,
+        3,
+      ]);
       const faces = (await this.faceDetector.detect(videoFrames)) as ROI[];
       // Convert to absolute units
       const absoluteROIs = faces.map(({ x0, y0, x1, y1 }) => ({
@@ -118,17 +136,31 @@ export class FileRGBIterator extends FrameIteratorBase {
         y1: Math.round(y1 * this.probeInfo!.height),
       }));
       // Derive roi from faces (fDetNDsFrames, 4)
-      const dsRoi = absoluteROIs.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));
-      let roiCandidates: ROI[] = dsRoi.flatMap((roi) => Array(fDetDsFactor).fill(roi));
+      const dsRoi = absoluteROIs.map((face) =>
+        getROIForMethod(
+          face,
+          this.methodConfig,
+          { height: this.probeInfo!.height, width: this.probeInfo!.width },
+          true
+        )
+      );
+      let roiCandidates: ROI[] = dsRoi.flatMap((roi) =>
+        Array(fDetDsFactor).fill(roi)
+      );
       if (roiCandidates.length > totalFrames) {
         roiCandidates = roiCandidates.slice(0, totalFrames);
       } else if (roiCandidates.length < totalFrames) {
-        roiCandidates = roiCandidates.concat(Array(totalFrames - roiCandidates.length).fill(dsRoi[dsRoi.length - 1]));
+        roiCandidates = roiCandidates.concat(
+          Array(totalFrames - roiCandidates.length).fill(
+            dsRoi[dsRoi.length - 1]
+          )
+        );
       }
-      this.roi = roiCandidates
+      this.roi = roiCandidates;
     }
     // Determine how many chunks we need to process the entire video.
-    const videoSizeBytes = totalFrames * this.probeInfo.height * this.probeInfo.width * 3;
+    const videoSizeBytes =
+      totalFrames * this.probeInfo.height * this.probeInfo.width * 3;
     const maxBytes = 1024 * 1024 * 1024 * 2; // 2GB
     const nChunks = Math.ceil(videoSizeBytes / maxBytes);
     // Equally split the total frames into chunks.
@@ -149,7 +181,7 @@ export class FileRGBIterator extends FrameIteratorBase {
         {
           trim: { startFrame: startIdx, endFrame: endIdx },
           crop: unionROI,
-          pixelFormat: 'rgb24'
+          pixelFormat: 'rgb24',
         },
         this.probeInfo
       );
@@ -168,7 +200,10 @@ export class FileRGBIterator extends FrameIteratorBase {
       // and then extract a representative RGB value (for example, the average color) from that area.
       for (let i = 0; i < chunkFrameCount; i++) {
         const frameOffset = i * totalPixelsPerFrame;
-        const frameData = chunkVideoData.subarray(frameOffset, frameOffset + totalPixelsPerFrame);
+        const frameData = chunkVideoData.subarray(
+          frameOffset,
+          frameOffset + totalPixelsPerFrame
+        );
         // Get the original ROI for this frame.
         const originalROI = this.roi[startIdx + i];
         // Adjust ROI coordinates relative to the union ROI.
@@ -179,7 +214,12 @@ export class FileRGBIterator extends FrameIteratorBase {
           y1: originalROI.y1 - unionROI.y0,
         };
         // Extract the RGB value for this frame based on the adjusted ROI.
-        const rgbValue = extractRGBForROI(frameData, unionWidth, unionHeight, adjustedROI);
+        const rgbValue = extractRGBForROI(
+          frameData,
+          unionWidth,
+          unionHeight,
+          adjustedROI
+        );
         // Store the extracted RGB values.
         const globalFrameIdx = startIdx + i;
         rgbResult[globalFrameIdx * 3 + 0] = rgbValue[0];
@@ -197,7 +237,9 @@ export class FileRGBIterator extends FrameIteratorBase {
    */
   async next(): Promise<Frame | null> {
     if (!this.probeInfo) {
-      throw new Error('Probe information is not available. Ensure `start()` has been called before `next()`.');
+      throw new Error(
+        'Probe information is not available. Ensure `start()` has been called before `next()`.'
+      );
     }
 
     if (this.isClosed || this.currentFrameIndex >= this.probeInfo.totalFrames) {
@@ -211,7 +253,9 @@ export class FileRGBIterator extends FrameIteratorBase {
     );
 
     if (!this.rgb) {
-      throw new Error('RGB data not available. Ensure `start()` has processed the video.');
+      throw new Error(
+        'RGB data not available. Ensure `start()` has processed the video.'
+      );
     }
 
     // Slice the pre-computed rgb data for the requested frames.
@@ -221,12 +265,16 @@ export class FileRGBIterator extends FrameIteratorBase {
     const rgbChunk = this.rgb.slice(startOffset, endOffset);
 
     // Generate timestamps for each frame in the batch.
-    const frameTimestamps = Array.from({ length: framesToRead }, (_, i) =>
-      (this.currentFrameIndex + i) / this.probeInfo!.fps
+    const frameTimestamps = Array.from(
+      { length: framesToRead },
+      (_, i) => (this.currentFrameIndex + i) / this.probeInfo!.fps
     );
 
     // Slice the corresponding ROIs from the original coordinates.
-    const frameROIs = this.roi.slice(this.currentFrameIndex, this.currentFrameIndex + framesToRead);
+    const frameROIs = this.roi.slice(
+      this.currentFrameIndex,
+      this.currentFrameIndex + framesToRead
+    );
 
     // Update the iterator index.
     this.currentFrameIndex += framesToRead;

@@ -10,7 +10,9 @@ import { IWebSocketClient } from '../types/IWebSocketClient';
 import { WebSocketClient } from '../utils/WebSocketClient.browser';
 
 export class VitalLensController extends VitalLensControllerBase {
-  protected createFrameIteratorFactory(options: VitalLensOptions): IFrameIteratorFactory {
+  protected createFrameIteratorFactory(
+    options: VitalLensOptions
+  ): IFrameIteratorFactory {
     return new FrameIteratorFactory(options);
   }
   protected createFaceDetector(): IFaceDetector {

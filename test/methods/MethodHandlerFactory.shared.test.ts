@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { MethodHandlerFactory } from '../../src/methods/MethodHandlerFactory';
 import { VitalLensAPIHandler } from '../../src/methods/VitalLensAPIHandler';
 import { POSHandler } from '../../src/methods/POSHandler';
@@ -64,13 +67,15 @@ describe('MethodHandlerFactory', () => {
       restClient: mockRestClient as IRestClient,
     });
     expect(handler).toBeInstanceOf(VitalLensAPIHandler);
-    expect((handler as VitalLensAPIHandler)["client"]).toBe(mockRestClient);
+    expect((handler as VitalLensAPIHandler)['client']).toBe(mockRestClient);
   });
 
   it('should throw an error if neither WebSocketClient nor RestClient is provided for VitalLensAPIHandler', () => {
     expect(() => {
       MethodHandlerFactory.createHandler(mockOptionsAPI);
-    }).toThrow('Either WebSocketClient or RestClient is required for VitalLensAPIHandler');
+    }).toThrow(
+      'Either WebSocketClient or RestClient is required for VitalLensAPIHandler'
+    );
   });
 
   it('should create a POSHandler when method is "pos"', () => {

@@ -1,4 +1,4 @@
-import { MethodConfig } from "../types";
+import { MethodConfig } from '../types';
 
 export const METHODS_CONFIG: Record<string, MethodConfig> = {
   vitallens: {
@@ -9,7 +9,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     minWindowLength: 16,
     minWindowLengthState: 4,
     maxWindowLength: 900,
-    requiresState: true
+    requiresState: true,
   },
   pos: {
     method: 'pos',
@@ -17,7 +17,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     fpsTarget: 30,
     minWindowLength: 48,
     maxWindowLength: 48,
-    requiresState: false
+    requiresState: false,
   },
   chrom: {
     method: 'chrom',
@@ -25,7 +25,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     fpsTarget: 30,
     minWindowLength: 48,
     maxWindowLength: 48,
-    requiresState: false
+    requiresState: false,
   },
   g: {
     method: 'g',
@@ -33,6 +33,6 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     fpsTarget: 30,
     minWindowLength: 64,
     maxWindowLength: 64,
-    requiresState: false
+    requiresState: false,
   },
 };

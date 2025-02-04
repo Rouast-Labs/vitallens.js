@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { VitalLensControllerBase } from '../../src/core/VitalLensController.base';
 import { BufferManager } from '../../src/processing/BufferManager';
 import { StreamProcessor } from '../../src/processing/StreamProcessor';
@@ -27,13 +30,22 @@ class TestVitalLensController extends VitalLensControllerBase {
     return { sendFrames: jest.fn() };
   }
   protected createWebSocketClient(apiKey: string): IWebSocketClient {
-    return { connect: jest.fn(), sendFrames: jest.fn(), getIsConnected: jest.fn(), close: jest.fn() };
+    return {
+      connect: jest.fn(),
+      sendFrames: jest.fn(),
+      getIsConnected: jest.fn(),
+      close: jest.fn(),
+    };
   }
 }
 
 describe('VitalLensControllerBase', () => {
   let controller: TestVitalLensController;
-  const mockOptions: VitalLensOptions = { apiKey: 'test-key', method: 'vitallens', requestMode: 'rest' };
+  const mockOptions: VitalLensOptions = {
+    apiKey: 'test-key',
+    method: 'vitallens',
+    requestMode: 'rest',
+  };
   let mockStreamProcessor: Partial<StreamProcessor>;
 
   beforeEach(() => {
@@ -52,14 +64,25 @@ describe('VitalLensControllerBase', () => {
 
   test('should initialize components in the constructor', () => {
     expect(BufferManager).toHaveBeenCalled();
-    expect(VitalsEstimateManager).toHaveBeenCalledWith(expect.any(Object), mockOptions);
-    expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(mockOptions, expect.any(Object));
+    expect(VitalsEstimateManager).toHaveBeenCalledWith(
+      expect.any(Object),
+      mockOptions
+    );
+    expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
+      mockOptions,
+      expect.any(Object)
+    );
   });
 
   test('should create a MethodHandler with correct dependencies on createMethodHandler', () => {
     // WebSocket
-    const optionsWithWebSocket: VitalLensOptions = { apiKey: 'test-key', method: 'vitallens', requestMode: 'websocket' };
-    const methodHandlerWithWebSocket = controller['createMethodHandler'](optionsWithWebSocket);
+    const optionsWithWebSocket: VitalLensOptions = {
+      apiKey: 'test-key',
+      method: 'vitallens',
+      requestMode: 'websocket',
+    };
+    const methodHandlerWithWebSocket =
+      controller['createMethodHandler'](optionsWithWebSocket);
     expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
       optionsWithWebSocket,
       {
@@ -69,8 +92,13 @@ describe('VitalLensControllerBase', () => {
     );
     expect(methodHandlerWithWebSocket).toBeDefined();
     // REST
-    const optionsWithRest: VitalLensOptions = { apiKey: 'test-key', method: 'vitallens', requestMode: 'rest' };
-    const methodHandlerWithRest = controller['createMethodHandler'](optionsWithRest);
+    const optionsWithRest: VitalLensOptions = {
+      apiKey: 'test-key',
+      method: 'vitallens',
+      requestMode: 'rest',
+    };
+    const methodHandlerWithRest =
+      controller['createMethodHandler'](optionsWithRest);
     expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
       optionsWithRest,
       {
@@ -80,17 +108,22 @@ describe('VitalLensControllerBase', () => {
     );
     expect(methodHandlerWithRest).toBeDefined();
   });
-  
+
   test('should throw an error if method is vitallens and apiKey is missing on createMethodHandler', () => {
-    const optionsWithoutApiKey: VitalLensOptions = { method: 'vitallens', requestMode: 'rest' };
-    expect(() => controller['createMethodHandler'](optionsWithoutApiKey)).toThrowError(
-      /An API key is required/
-    );
+    const optionsWithoutApiKey: VitalLensOptions = {
+      method: 'vitallens',
+      requestMode: 'rest',
+    };
+    expect(() =>
+      controller['createMethodHandler'](optionsWithoutApiKey)
+    ).toThrowError(/An API key is required/);
   });
-  
+
   test('should create a MethodHandler without requiring an apiKey for non-vitallens methods on createMethodHandler', () => {
     const optionsForOtherMethod: VitalLensOptions = { method: 'pos' };
-    const methodHandler = controller['createMethodHandler'](optionsForOtherMethod);
+    const methodHandler = controller['createMethodHandler'](
+      optionsForOtherMethod
+    );
     expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
       optionsForOtherMethod,
       {
@@ -109,7 +142,7 @@ describe('VitalLensControllerBase', () => {
         start: jest.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as StreamProcessor;
-      
+
       controller.startVideoStream();
       expect(mockStreamProcessor.start).toHaveBeenCalled();
     });
@@ -121,7 +154,7 @@ describe('VitalLensControllerBase', () => {
         start: jest.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as StreamProcessor;
-      
+
       controller.startVideoStream();
       expect(mockStreamProcessor.start).not.toHaveBeenCalled();
     });
@@ -153,7 +186,9 @@ describe('VitalLensControllerBase', () => {
 
       controller.pauseVideoStream();
       expect(mockStreamProcessor.stop).not.toHaveBeenCalled();
-      expect(controller['vitalsEstimateManager'].resetAll).not.toHaveBeenCalled();
+      expect(
+        controller['vitalsEstimateManager'].resetAll
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -189,10 +224,12 @@ describe('VitalLensControllerBase', () => {
       start: jest.fn(),
       stop: jest.fn(),
       getId: jest.fn().mockReturnValue('frameIteratorId'),
-      [Symbol.asyncIterator]: jest.fn().mockReturnValue((async function* () {
-        yield { frames: [new Uint8Array([1, 2, 3])], timestamp: 0 }; // Simulated frame chunk
-        yield { frames: [new Uint8Array([4, 5, 6])], timestamp: 1 }; // Another frame chunk
-      })()),
+      [Symbol.asyncIterator]: jest.fn().mockReturnValue(
+        (async function* () {
+          yield { frames: [new Uint8Array([1, 2, 3])], timestamp: 0 }; // Simulated frame chunk
+          yield { frames: [new Uint8Array([4, 5, 6])], timestamp: 1 }; // Another frame chunk
+        })()
+      ),
     };
 
     // Override the frame iterator factory to return our fake iterator
@@ -201,19 +238,27 @@ describe('VitalLensControllerBase', () => {
       .mockReturnValue(mockFrameIterator);
 
     const mockIncrementalResult = { some: 'incremental data' };
-    controller['methodHandler'].process = jest.fn().mockResolvedValue(mockIncrementalResult);
+    controller['methodHandler'].process = jest
+      .fn()
+      .mockResolvedValue(mockIncrementalResult);
     controller['methodHandler'].init = jest.fn();
     controller['methodHandler'].cleanup = jest.fn();
 
-    controller['vitalsEstimateManager'].processIncrementalResult = jest.fn().mockResolvedValue({});
+    controller['vitalsEstimateManager'].processIncrementalResult = jest
+      .fn()
+      .mockResolvedValue({});
     const mockFinalResult = { message: 'Processing complete' };
-    controller['vitalsEstimateManager'].getResult = jest.fn().mockResolvedValue(mockFinalResult);
+    controller['vitalsEstimateManager'].getResult = jest
+      .fn()
+      .mockResolvedValue(mockFinalResult);
 
     // Run processVideoFile
     const result = await controller.processVideoFile(mockFileInput);
 
     // Verify createFileFrameIterator was called
-    expect(controller['frameIteratorFactory']!.createFileFrameIterator).toHaveBeenCalledWith(
+    expect(
+      controller['frameIteratorFactory']!.createFileFrameIterator
+    ).toHaveBeenCalledWith(
       mockFileInput,
       controller['methodConfig'],
       controller['faceDetector']
@@ -238,8 +283,12 @@ describe('VitalLensControllerBase', () => {
     );
 
     // Ensure vitalsEstimateManager processes incremental results
-    expect(controller['vitalsEstimateManager'].processIncrementalResult).toHaveBeenCalledTimes(2);
-    expect(controller['vitalsEstimateManager'].processIncrementalResult).toHaveBeenCalledWith(
+    expect(
+      controller['vitalsEstimateManager'].processIncrementalResult
+    ).toHaveBeenCalledTimes(2);
+    expect(
+      controller['vitalsEstimateManager'].processIncrementalResult
+    ).toHaveBeenCalledWith(
       mockIncrementalResult,
       'frameIteratorId',
       'complete'
@@ -247,7 +296,9 @@ describe('VitalLensControllerBase', () => {
 
     // Ensure final cleanup is called and buffer state reset for this file ID
     expect(controller['methodHandler'].cleanup).toHaveBeenCalled();
-    expect(controller['vitalsEstimateManager'].reset).toHaveBeenCalledWith('frameIteratorId');
+    expect(controller['vitalsEstimateManager'].reset).toHaveBeenCalledWith(
+      'frameIteratorId'
+    );
 
     // Verify final result
     expect(result).toEqual(mockFinalResult);
@@ -255,14 +306,14 @@ describe('VitalLensControllerBase', () => {
 
   test('addEventListener should register a listener and trigger it on dispatchEvent', () => {
     const mockListener = jest.fn();
-    
+
     // Register the listener for the 'vitals' event.
     controller.addEventListener('vitals', mockListener);
-    
+
     // Dispatch the event with some data.
     const testData = { heartRate: 75 };
     controller['dispatchEvent']('vitals', testData);
-    
+
     // Verify that the listener was called with the correct data.
     expect(mockListener).toHaveBeenCalledWith(testData);
   });
@@ -272,30 +323,30 @@ describe('VitalLensControllerBase', () => {
     const mockListener2 = jest.fn();
     controller.addEventListener('vitals', mockListener1);
     controller.addEventListener('vitals', mockListener2);
-    
+
     // Remove all listeners for 'vitals'
     controller.removeEventListener('vitals');
-    
+
     // Dispatching the event should not call any listeners
     controller['dispatchEvent']('vitals', { heartRate: 80 });
     expect(mockListener1).not.toHaveBeenCalled();
     expect(mockListener2).not.toHaveBeenCalled();
   });
-  
+
   test('should do nothing if removeEventListener is called for an event that does not exist', () => {
     // This should not throw an error
     expect(() => controller.removeEventListener('nonexistent')).not.toThrow();
   });
-  
+
   test('should call all registered listeners on dispatchEvent', () => {
     const listener1 = jest.fn();
     const listener2 = jest.fn();
     controller.addEventListener('vitals', listener1);
     controller.addEventListener('vitals', listener2);
-    
+
     // Directly call the private dispatchEvent (or via a public API that triggers it)
     controller['dispatchEvent']('vitals', { heartRate: 88 });
-    
+
     expect(listener1).toHaveBeenCalledWith({ heartRate: 88 });
     expect(listener2).toHaveBeenCalledWith({ heartRate: 88 });
   });

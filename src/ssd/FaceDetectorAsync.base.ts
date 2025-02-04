@@ -1,11 +1,11 @@
 import * as tf from '@tensorflow/tfjs';
-import { Frame } from "../processing/Frame";
-import { ROI } from "../types/core";
-import { IFaceDetector } from "../types/IFaceDetector";
+import { Frame } from '../processing/Frame';
+import { ROI } from '../types/core';
+import { IFaceDetector } from '../types/IFaceDetector';
 
 /**
  * Custom Non-Max Suppression implementation.
- * 
+ *
  * @param boxes - An array of bounding boxes [xMin, yMin, xMax, yMax].
  * @param scores - An array of confidence scores for each box.
  * @param maxOutputSize - The maximum number of boxes to return.
@@ -41,7 +41,8 @@ export function nms(
       const interX2 = Math.min(x2, xx2);
       const interY2 = Math.min(y2, yy2);
 
-      const interArea = Math.max(0, interX2 - interX1) * Math.max(0, interY2 - interY1);
+      const interArea =
+        Math.max(0, interX2 - interX1) * Math.max(0, interY2 - interY1);
       const unionArea = areas[current] + areas[index] - interArea;
       const iou = interArea / unionArea;
 
@@ -97,12 +98,14 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
    */
   async detect(frame: Frame): Promise<ROI[]> {
     if (!this.loaded || !this.model) {
-      throw new Error("Face detection model is not loaded. Call .load() first.");
+      throw new Error(
+        'Face detection model is not loaded. Call .load() first.'
+      );
     }
-  
+
     const nFrames = frame.getShape().length === 3 ? 1 : frame.getShape()[0];
 
-    // Model inputs (N_FRAMES, 240, 320, 3) 
+    // Model inputs (N_FRAMES, 240, 320, 3)
     const inputs = tf.tidy(() => {
       const frameData = frame.getTensor();
       let x;
@@ -140,7 +143,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
     for (let i = 0; i < nFrames; i++) {
       const frameBoxes = allBoxesArray[i]; // Shape: [N_ANCHORS, 4]
       const frameScores = allScoresArray[i]; // Shape: [N_ANCHORS]
-      
+
       // Perform NMS using the arrays
       const nmsIndices = nms(
         frameBoxes,
@@ -167,7 +170,10 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
    * @param frame - The input frame for face detection.
    * @param onFinish - Callback to handle the detection results.
    */
-  async run(frame: Frame, onFinish: (detectionResults: ROI[]) => Promise<void>): Promise<void> {
+  async run(
+    frame: Frame,
+    onFinish: (detectionResults: ROI[]) => Promise<void>
+  ): Promise<void> {
     const detections: ROI[] = await this.detect(frame);
     await onFinish(detections);
   }

@@ -11,7 +11,7 @@ export class GHandler extends SimpleMethodHandler {
    * @returns The method name.
    */
   protected getMethodName(): string {
-    return "G";
+    return 'G';
   }
   /**
    * Implementation of the G algorithm.
@@ -24,7 +24,7 @@ export class GHandler extends SimpleMethodHandler {
       // Convert the tensor to a 1D array of numbers
       return data.arraySync() as number[];
     });
-    
+
     return result;
   }
 }

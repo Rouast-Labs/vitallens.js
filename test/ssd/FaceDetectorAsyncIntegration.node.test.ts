@@ -19,13 +19,16 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
 
   it('should detect faces in a single image', async () => {
     // Load the image file
-    const imagePath = path.resolve(__dirname, '../../examples/sample_image_1.png'); // Adjust as needed
+    const imagePath = path.resolve(
+      __dirname,
+      '../../examples/sample_image_1.png'
+    ); // Adjust as needed
     const imageData = await fs.readFile(imagePath); // Read image as a buffer
     const imageTensor = tf.node.decodeImage(new Uint8Array(imageData), 3); // Decode image as RGB
 
     // Resize the image to match the model's expected input size
     const resizedImage = tf.image.resizeBilinear(imageTensor, [240, 320]); // Resize to [240, 320]
-    
+
     // Create a Frame instance
     const frame = Frame.fromTensor(resizedImage, true, [0]);
 
@@ -50,7 +53,10 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
 
   it('should detect faces in a batch of two images', async () => {
     // Load the image file
-    const imagePath = path.resolve(__dirname, '../../examples/sample_image_1.png'); // Adjust as needed
+    const imagePath = path.resolve(
+      __dirname,
+      '../../examples/sample_image_1.png'
+    ); // Adjust as needed
     const imageData = await fs.readFile(imagePath); // Read image as a buffer
     const imageTensor = tf.node.decodeImage(new Uint8Array(imageData), 3); // Decode image as RGB
 

@@ -10,7 +10,9 @@ import { IFrameIterator } from '../types/IFrameIterator';
 /**
  * Creates iterators for video processing, including frame capture and preprocessing.
  */
-export abstract class FrameIteratorFactoryBase implements IFrameIteratorFactory {
+export abstract class FrameIteratorFactoryBase
+  implements IFrameIteratorFactory
+{
   constructor(private options: VitalLensOptions) {}
 
   /**
@@ -26,12 +28,14 @@ export abstract class FrameIteratorFactoryBase implements IFrameIteratorFactory 
    */
   createStreamFrameIterator(
     stream?: MediaStream,
-    videoElement?: HTMLVideoElement,
+    videoElement?: HTMLVideoElement
   ): IFrameIterator {
     if (!stream && !videoElement) {
-      throw new Error('Either a MediaStream or an HTMLVideoElement must be provided.');
+      throw new Error(
+        'Either a MediaStream or an HTMLVideoElement must be provided.'
+      );
     }
-    
+
     return new StreamFrameIterator(stream, videoElement);
   }
 
@@ -44,13 +48,25 @@ export abstract class FrameIteratorFactoryBase implements IFrameIteratorFactory 
   createFileFrameIterator(
     videoInput: VideoInput,
     methodConfig: MethodConfig,
-    faceDetector: IFaceDetector,
+    faceDetector: IFaceDetector
   ): IFrameIterator {
     const ffmpeg = this.getFFmpegWrapper();
     if (this.options.method === 'vitallens') {
-      return new FileFrameIterator(videoInput, this.options, methodConfig, faceDetector, ffmpeg);
+      return new FileFrameIterator(
+        videoInput,
+        this.options,
+        methodConfig,
+        faceDetector,
+        ffmpeg
+      );
     } else {
-      return new FileRGBIterator(videoInput, this.options, methodConfig, faceDetector, ffmpeg);
+      return new FileRGBIterator(
+        videoInput,
+        this.options,
+        methodConfig,
+        faceDetector,
+        ffmpeg
+      );
     }
   }
 }

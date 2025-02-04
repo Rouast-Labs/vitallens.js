@@ -1,5 +1,5 @@
-import { VITALLENS_WEBSOCKET_ENDPOINT } from "../config/constants";
-import { WebSocketClientBase } from "./WebSocketClient.base";
+import { VITALLENS_WEBSOCKET_ENDPOINT } from '../config/constants';
+import { WebSocketClientBase } from './WebSocketClient.base';
 
 export class WebSocketClient extends WebSocketClientBase<WebSocket> {
   protected getUrl(apiKey: string): string {
@@ -13,7 +13,7 @@ export class WebSocketClient extends WebSocketClientBase<WebSocket> {
     return new Promise((resolve, reject) => {
       this.socket!.onopen = () => {
         this.isConnected = true;
-        console.log("WebSocket connected");
+        console.log('WebSocket connected');
         resolve();
       };
 
@@ -22,7 +22,9 @@ export class WebSocketClient extends WebSocketClientBase<WebSocket> {
       };
 
       this.socket!.onclose = (event) => {
-        console.error(`WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`);
+        console.error(
+          `WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`
+        );
         this.isConnected = false;
       };
     });

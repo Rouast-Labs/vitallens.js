@@ -1,8 +1,12 @@
-import { VitalLensAPIResponse } from "./core";
+import { VitalLensAPIResponse } from './core';
 
 export interface IWebSocketClient {
   connect(): Promise<void>;
-  sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<VitalLensAPIResponse>;
+  sendFrames(
+    metadata: Record<string, unknown>,
+    frames: Uint8Array,
+    state?: Float32Array
+  ): Promise<VitalLensAPIResponse>;
   getIsConnected(): boolean;
   close(): void;
 }
@@ -12,13 +16,20 @@ export interface IWebSocketClient {
  * @param client - The object to check.
  * @returns True if the object implements IWebSocketClient.
  */
-export function isWebSocketClient(client: any): client is IWebSocketClient {
+export function isWebSocketClient(client: unknown): client is IWebSocketClient {
+  if (typeof client !== 'object' || client === null) {
+    return false;
+  }
+  const candidate = client as {
+    sendFrames?: unknown;
+    connect?: unknown;
+    getIsConnected?: unknown;
+    close?: unknown;
+  };
   return (
-    typeof client === "object" &&
-    client !== null &&
-    typeof client.sendFrames === "function" &&
-    typeof client.connect === "function" &&
-    typeof client.getIsConnected === "function" &&
-    typeof client.close === "function"
+    typeof candidate.sendFrames === 'function' &&
+    typeof candidate.connect === 'function' &&
+    typeof candidate.getIsConnected === 'function' &&
+    typeof candidate.close === 'function'
   );
 }

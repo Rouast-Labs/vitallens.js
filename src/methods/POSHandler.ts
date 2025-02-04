@@ -10,7 +10,7 @@ export class POSHandler extends SimpleMethodHandler {
    * @returns The method name.
    */
   protected getMethodName(): string {
-    return "POS";
+    return 'POS';
   }
   /**
    * Implementation of the POS algorithm.
@@ -18,6 +18,7 @@ export class POSHandler extends SimpleMethodHandler {
    */
   protected algorithm(rgb: Frame): number[] {
     // TODO: Implement algorithm
+    console.log(rgb);
     return [];
   }
 }

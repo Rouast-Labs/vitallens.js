@@ -1,6 +1,18 @@
-import { FileRGBIterator, extractRGBForROI } from '../../src/processing/FileRGBIterator';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import {
+  FileRGBIterator,
+  extractRGBForROI,
+} from '../../src/processing/FileRGBIterator';
 import { Frame } from '../../src/processing/Frame';
-import { VideoProbeResult, ROI, VitalLensOptions, MethodConfig, VideoInput } from '../../src/types/core';
+import {
+  VideoProbeResult,
+  ROI,
+  VitalLensOptions,
+  MethodConfig,
+  VideoInput,
+} from '../../src/types/core';
 import { IFFmpegWrapper } from '../../src/types/IFFmpegWrapper';
 import { IFaceDetector } from '../../src/types/IFaceDetector';
 
@@ -8,34 +20,50 @@ import { IFaceDetector } from '../../src/types/IFaceDetector';
 class DummyFFmpegWrapper implements IFFmpegWrapper {
   init = jest.fn(async () => Promise.resolve());
   loadInput = jest.fn(async (videoInput: VideoInput): Promise<string> => {
-    return "test.mp4";
+    return 'test.mp4';
   });
-  probeVideo = jest.fn(async (videoInput: VideoInput): Promise<VideoProbeResult> => {
-    return {
-      totalFrames: 20, fps: 10, width: 640, height: 480,
-      codec: 'h264', bitrate: 1000, rotation: 0, issues: false
-    };
-  });
-  readVideo = jest.fn(async (videoInput: VideoInput, options: any, probeInfo: VideoProbeResult): Promise<Uint8Array> => {
-    if (options.scale) {
-      // Called for face detection.
-      const fDetNDsFrames = Math.ceil(20 / Math.max(Math.round(10 / (options.fpsTarget || 1.0)), 1));
-      const totalBytes = fDetNDsFrames * 240 * 320 * 3;
-      return new Uint8Array(totalBytes).fill(100);
-    } else if (options.trim && options.crop) {
-      // Called for processing a chunk.
-      const startFrame: number = options.trim.startFrame;
-      const endFrame: number = options.trim.endFrame;
-      const chunkFrameCount = endFrame - startFrame;
-      const crop = options.crop as ROI;
-      const unionWidth = crop.x1 - crop.x0;
-      const unionHeight = crop.y1 - crop.y0;
-      const totalBytes = chunkFrameCount * unionWidth * unionHeight * 3;
-      return new Uint8Array(totalBytes).fill(50);
+  probeVideo = jest.fn(
+    async (videoInput: VideoInput): Promise<VideoProbeResult> => {
+      return {
+        totalFrames: 20,
+        fps: 10,
+        width: 640,
+        height: 480,
+        codec: 'h264',
+        bitrate: 1000,
+        rotation: 0,
+        issues: false,
+      };
     }
-    // Default dummy response.
-    return new Uint8Array(0);
-  });
+  );
+  readVideo = jest.fn(
+    async (
+      videoInput: VideoInput,
+      options: any,
+      probeInfo: VideoProbeResult
+    ): Promise<Uint8Array> => {
+      if (options.scale) {
+        // Called for face detection.
+        const fDetNDsFrames = Math.ceil(
+          20 / Math.max(Math.round(10 / (options.fpsTarget || 1.0)), 1)
+        );
+        const totalBytes = fDetNDsFrames * 240 * 320 * 3;
+        return new Uint8Array(totalBytes).fill(100);
+      } else if (options.trim && options.crop) {
+        // Called for processing a chunk.
+        const startFrame: number = options.trim.startFrame;
+        const endFrame: number = options.trim.endFrame;
+        const chunkFrameCount = endFrame - startFrame;
+        const crop = options.crop as ROI;
+        const unionWidth = crop.x1 - crop.x0;
+        const unionHeight = crop.y1 - crop.y0;
+        const totalBytes = chunkFrameCount * unionWidth * unionHeight * 3;
+        return new Uint8Array(totalBytes).fill(50);
+      }
+      // Default dummy response.
+      return new Uint8Array(0);
+    }
+  );
   cleanup = jest.fn(() => {});
 }
 
@@ -46,7 +74,12 @@ class DummyFaceDetector implements IFaceDetector {
   detect = jest.fn(async (videoFrames: Frame): Promise<ROI[]> => {
     const [numFrames] = videoFrames.getShape();
     // Use Array.from to create an array of ROIs so that each ROI is a separate object.
-    return Array.from({ length: numFrames }, () => ({x0: 0.1, y0: 0.1, x1: 0.4, y1: 0.4 }));
+    return Array.from({ length: numFrames }, () => ({
+      x0: 0.1,
+      y0: 0.1,
+      x1: 0.4,
+      y1: 0.4,
+    }));
   });
 }
 
@@ -62,14 +95,16 @@ const dummyMethodConfig: MethodConfig = {
   maxWindowLength: 3,
   minWindowLength: 1,
   inputSize: 224,
-  requiresState: false
+  requiresState: false,
 };
 
 const dummyVideoInput: VideoInput = 'test.mp4';
 
 jest.mock('../../src/utils/faceOps', () => ({
   ...jest.requireActual('../../src/utils/faceOps'),
-  getROIForMethod: jest.fn((face: any, methodConfig: any, dims: any, flag: boolean) => face),
+  getROIForMethod: jest.fn(
+    (face: any, methodConfig: any, dims: any, flag: boolean) => face
+  ),
 }));
 
 describe('extractRGBForROI', () => {
@@ -77,10 +112,11 @@ describe('extractRGBForROI', () => {
     // Create a 4x4 image with predictable pixel values.
     const width = 4;
     const height = 4;
-    const frameData = new Uint8Array([0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-                                      0,  0,  0, 10, 20, 30, 10, 20, 30,  0,  0,  0,
-                                      0,  0,  0, 10, 20, 30, 10, 20, 30,  0,  0,  0,
-                                      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0])
+    const frameData = new Uint8Array([
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 20, 30, 10, 20, 30, 0, 0,
+      0, 0, 0, 0, 10, 20, 30, 10, 20, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0,
+    ]);
     const roi = { x0: 1, y0: 1, x1: 3, y1: 3 }; // a 2x2 region
     const [r, g, b] = extractRGBForROI(frameData, width, height, roi);
     // All pixels in the ROI are [10,20,30], so the average is the same.
@@ -109,13 +145,23 @@ describe('FileRGBIterator', () => {
   beforeEach(() => {
     ffmpegWrapper = new DummyFFmpegWrapper();
     faceDetector = new DummyFaceDetector();
-    iterator = new FileRGBIterator(dummyVideoInput, dummyOptions, dummyMethodConfig, faceDetector, ffmpegWrapper);
+    iterator = new FileRGBIterator(
+      dummyVideoInput,
+      dummyOptions,
+      dummyMethodConfig,
+      faceDetector,
+      ffmpegWrapper
+    );
   });
 
   it('should throw if start() is called with invalid probe info', async () => {
     // Force probeVideo to return null by defining a function that accepts the VideoInput parameter.
-    ffmpegWrapper.probeVideo = jest.fn(async (videoInput: VideoInput) => null as any);
-    await expect(iterator.start()).rejects.toThrow('Failed to retrieve video probe information');
+    ffmpegWrapper.probeVideo = jest.fn(
+      async (videoInput: VideoInput) => null as any
+    );
+    await expect(iterator.start()).rejects.toThrow(
+      'Failed to retrieve video probe information'
+    );
   });
 
   it('should initialize roi and rgb data on start()', async () => {
@@ -162,6 +208,8 @@ describe('FileRGBIterator', () => {
   });
 
   it('should throw error in next() if probe information not available', async () => {
-    await expect(iterator.next()).rejects.toThrow(/Probe information is not available/);
+    await expect(iterator.next()).rejects.toThrow(
+      /Probe information is not available/
+    );
   });
 });

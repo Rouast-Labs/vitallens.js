@@ -19,16 +19,23 @@ export abstract class VitalLensBase {
   /**
    * Subclasses must return the correct environment-specific VitalLensController instance.
    */
-  protected abstract createController(options: VitalLensOptions): IVitalLensController;
+  protected abstract createController(
+    options: VitalLensOptions
+  ): IVitalLensController;
 
   /**
    * Set a MediaStream, an HTMLVideoElement, or both for live stream processing.
    * @param stream - The MediaStream to process (optional).
    * @param videoElement - The HTMLVideoElement to use for processing (optional).
    */
-  async setVideoStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
+  async setVideoStream(
+    stream?: MediaStream,
+    videoElement?: HTMLVideoElement
+  ): Promise<void> {
     if (!stream && !videoElement) {
-      throw new Error('You must provide either a MediaStream, an HTMLVideoElement, or both.');
+      throw new Error(
+        'You must provide either a MediaStream, an HTMLVideoElement, or both.'
+      );
     }
     await this.controller.setVideoStream(stream, videoElement);
   }
@@ -68,7 +75,7 @@ export abstract class VitalLensBase {
    * @param event - The event to listen to (e.g., 'vitals').
    * @param callback - The function to call when the event occurs.
    */
-  addEventListener(event: string, callback: (data: any) => void): void {
+  addEventListener(event: string, callback: (data: unknown) => void): void {
     this.controller.addEventListener(event, callback);
   }
 

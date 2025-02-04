@@ -8,7 +8,11 @@ jest.mock('../../src/ssd/FaceDetectorAsync.node');
 
 describe('VitalLensController (Node)', () => {
   let controller: VitalLensController;
-  const mockOptions: VitalLensOptions = { apiKey: 'test-key', method: 'vitallens', requestMode: 'rest' };
+  const mockOptions: VitalLensOptions = {
+    apiKey: 'test-key',
+    method: 'vitallens',
+    requestMode: 'rest',
+  };
 
   beforeEach(() => {
     // Instantiate a new controller for each test
@@ -26,7 +30,9 @@ describe('VitalLensController (Node)', () => {
   test('should throw an error if setVideoStream is called in Node environment', async () => {
     const mockStream = {} as MediaStream;
     const mockVideoElement = {} as HTMLVideoElement;
-    await expect(controller.setVideoStream(mockStream, mockVideoElement)).rejects.toThrowError(
+    await expect(
+      controller.setVideoStream(mockStream, mockVideoElement)
+    ).rejects.toThrowError(
       'setVideoStream is not supported yet in the Node environment.'
     );
   });

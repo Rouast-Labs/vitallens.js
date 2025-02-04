@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { StreamFrameIterator } from '../../src/processing/StreamFrameIterator';
 import { Frame } from '../../src/processing/Frame';
 import { browser } from '@tensorflow/tfjs-core';
@@ -34,7 +37,7 @@ describe('StreamFrameIterator', () => {
     Object.defineProperty(mockVideoElement, 'videoWidth', { get: () => 640 });
     Object.defineProperty(mockVideoElement, 'videoHeight', { get: () => 480 });
   });
-  
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -52,25 +55,27 @@ describe('StreamFrameIterator', () => {
 
   test('constructor throws if video element has no valid MediaStream assigned', () => {
     const invalidVideoElement = document.createElement('video');
-    expect(() => new StreamFrameIterator(undefined, invalidVideoElement)).toThrow(
+    expect(
+      () => new StreamFrameIterator(undefined, invalidVideoElement)
+    ).toThrow(
       'Existing video element must have a valid MediaStream assigned to srcObject.'
     );
   });
 
   test('start initializes and plays video element', async () => {
     const iterator = new StreamFrameIterator(mockStream);
-  
+
     jest.spyOn(mockVideoElement, 'play').mockResolvedValue();
-  
+
     await iterator.start();
-  
+
     const videoElement = (iterator as any).videoElement;
     expect(videoElement.srcObject).toBe(mockStream);
     expect(videoElement.muted).toBe(true);
     expect(videoElement.playsInline).toBe(true);
     expect(videoElement.play).toHaveBeenCalled();
   });
-  
+
   test('start creates a video element if not provided', async () => {
     const iterator = new StreamFrameIterator(mockStream);
 
@@ -83,17 +88,16 @@ describe('StreamFrameIterator', () => {
 
   test('next retrieves a frame from the video stream', async () => {
     const iterator = new StreamFrameIterator(mockStream, mockVideoElement);
-  
+
     await iterator.start();
-  
+
     const frame = await iterator.next();
-  
-    expect(frame).toBeInstanceOf(Frame);  
+
+    expect(frame).toBeInstanceOf(Frame);
     expect(browser.fromPixels).toHaveBeenCalledWith(mockVideoElement);
     expect(frame!.getShape()).toEqual([1, 3]);
     expect(frame!.getDType()).toBe('uint8');
   });
-  
 
   test('next returns null if iterator is closed', async () => {
     const iterator = new StreamFrameIterator(mockStream, mockVideoElement);
@@ -116,15 +120,14 @@ describe('StreamFrameIterator', () => {
 
   test('stop pauses the video element and sets isClosed to true', async () => {
     const iterator = new StreamFrameIterator(mockStream, mockVideoElement);
-  
+
     await iterator.start();
-  
+
     jest.spyOn(mockVideoElement, 'pause');
-  
+
     iterator.stop();
-  
+
     expect(mockVideoElement.pause).toHaveBeenCalled();
     expect((iterator as any).isClosed).toBe(true);
   });
-  
 });

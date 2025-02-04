@@ -29,7 +29,9 @@ export class MethodHandlerFactory {
     switch (options.method) {
       case 'vitallens': {
         if (!dependencies.webSocketClient && !dependencies.restClient) {
-          throw new Error('Either WebSocketClient or RestClient is required for VitalLensAPIHandler');
+          throw new Error(
+            'Either WebSocketClient or RestClient is required for VitalLensAPIHandler'
+          );
         }
         // Prefer REST if both clients are provided
         const client = dependencies.restClient || dependencies.webSocketClient;

@@ -67,9 +67,9 @@ export interface VitalLensResult {
   };
   time: number[];
   state?: {
-    data: Float32Array,
-    note: string
-  }
+    data: Float32Array;
+    note: string;
+  };
   fps?: number;
   estFps?: number;
   message: string;
@@ -107,7 +107,7 @@ export interface VideoProcessingOptions {
   trim?: { startFrame: number; endFrame: number };
   preserveAspectRatio?: boolean;
   pixelFormat?: 'rgb24' | 'bgr24';
-  scaleAlgorithm?: "bicubic" | "bilinear" | "area" | "lanczos";
+  scaleAlgorithm?: 'bicubic' | 'bilinear' | 'area' | 'lanczos';
 }
 
 /**

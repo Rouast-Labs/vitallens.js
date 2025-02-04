@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /// <reference types="jest-puppeteer" />
 
 describe('FFmpegWrapper (Browser)', () => {
-
   beforeAll(async () => {
     // Listeners for console logs:
     page.on('console', (msg) => {
@@ -17,7 +18,7 @@ describe('FFmpegWrapper (Browser)', () => {
   beforeEach(async () => {
     await page.setBypassCSP(true);
     await page.goto(`http://localhost:8080`);
-    
+
     // Inject FFmpegWrapper script
     await page.addScriptTag({
       url: 'http://localhost:8080/utils/FFmpegWrapper.browser.umd.js',
@@ -35,7 +36,7 @@ describe('FFmpegWrapper (Browser)', () => {
         throw new Error(`Browser code failed: ${e.message}`);
       }
     }, SAMPLE_VIDEO_URL);
-  
+
     // Now perform assertions on probeInfo.
     expect(probeInfo).toBeDefined();
     expect(probeInfo).toHaveProperty('fps');
@@ -57,14 +58,14 @@ describe('FFmpegWrapper (Browser)', () => {
     expect(probeInfo.rotation).toEqual(0);
     expect(probeInfo.issues).toBe(false);
   }, 20000);
-  
+
   it('should process a real video file in the browser', async () => {
     const options = {
       crop: { x0: 0, y0: 0, x1: 100, y1: 100 },
       scale: { width: 40, height: 40 },
       pixelFormat: 'rgb24',
     };
-  
+
     const probeInfo = {
       fps: 30.1,
       totalFrames: 354,
@@ -75,23 +76,27 @@ describe('FFmpegWrapper (Browser)', () => {
       rotation: 0,
       issues: false,
     };
-  
-    const plainBuffer = await page.evaluate(async (videoUrl, options, probeInfo) => {
-      try {
-        const wrapper = new (window as any).FFmpegWrapper();
-        const buffer = await wrapper.readVideo(videoUrl, options, probeInfo);
-        // Convert the Uint8Array into a plain array for serialization.
-        return Array.from(buffer);
-      } catch (e: any) {
-        throw new Error(`Browser code failed: ${e.message}`);
-      }
-    }, SAMPLE_VIDEO_URL, options, probeInfo);
-  
+
+    const plainBuffer = await page.evaluate(
+      async (videoUrl, options, probeInfo) => {
+        try {
+          const wrapper = new (window as any).FFmpegWrapper();
+          const buffer = await wrapper.readVideo(videoUrl, options, probeInfo);
+          // Convert the Uint8Array into a plain array for serialization.
+          return Array.from(buffer);
+        } catch (e: any) {
+          throw new Error(`Browser code failed: ${e.message}`);
+        }
+      },
+      SAMPLE_VIDEO_URL,
+      options,
+      probeInfo
+    );
+
     // Reconstruct the Uint8Array on the Node side.
     const bufferUint8 = new Uint8Array(plainBuffer as number[]);
     expect(bufferUint8).toBeDefined();
     expect(bufferUint8).toBeInstanceOf(Uint8Array);
     expect(bufferUint8.length).toEqual(354 * 40 * 40 * 3);
   }, 30000);
-  
 });

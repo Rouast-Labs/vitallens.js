@@ -10,7 +10,7 @@ export class CHROMHandler extends SimpleMethodHandler {
    * @returns The method name.
    */
   protected getMethodName(): string {
-    return "CHROM";
+    return 'CHROM';
   }
   /**
    * Implementation of the CHROM algorithm.
@@ -18,6 +18,7 @@ export class CHROMHandler extends SimpleMethodHandler {
    */
   protected algorithm(rgb: Frame): number[] {
     // TODO: Implement algorithm
+    console.log(rgb);
     return [];
   }
 }

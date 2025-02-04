@@ -1,43 +1,46 @@
-import fetch from "node-fetch";
-import { RestClient } from "../../src/utils/RestClient.node";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-jest.mock("node-fetch", () => jest.fn());
+import fetch from 'node-fetch';
+import { RestClient } from '../../src/utils/RestClient.node';
 
-const { Response } = jest.requireActual("node-fetch");
+jest.mock('node-fetch', () => jest.fn());
 
-describe("RestClient (Node)", () => {
+const { Response } = jest.requireActual('node-fetch');
+
+describe('RestClient (Node)', () => {
   let client: RestClient;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    client = new RestClient("test-api-key");
+    client = new RestClient('test-api-key');
   });
 
-  it("should send frames and return JSON response", async () => {
+  it('should send frames and return JSON response', async () => {
     // Mock a successful API response
     const mockedFetch = fetch as jest.MockedFunction<typeof fetch>;
     mockedFetch.mockResolvedValueOnce(
       new Response(JSON.stringify({ success: true }), { status: 200 })
     );
-  
-    const metadata = { test: "data" };
+
+    const metadata = { test: 'data' };
     const frames = new Uint8Array([1, 2, 3]);
-  
+
     const result = await client.sendFrames(metadata, frames);
-  
+
     // Verify fetch was called with correct arguments
     expect(mockedFetch).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        method: "POST",
+        method: 'POST',
         headers: expect.objectContaining({
-          "Content-Type": "application/json",
-          "x-api-key": "test-api-key",
+          'Content-Type': 'application/json',
+          'x-api-key': 'test-api-key',
         }),
         body: expect.any(String),
       })
     );
-  
+
     // Check that the result matches the actual structure
     expect(result).toEqual({
       statusCode: 200,
@@ -45,31 +48,33 @@ describe("RestClient (Node)", () => {
     });
   });
 
-  it("should throw an error for network failure", async () => {
+  it('should throw an error for network failure', async () => {
     const mockedFetch = fetch as jest.MockedFunction<typeof fetch>;
 
     // Mock a network failure
-    mockedFetch.mockRejectedValueOnce(new Error("Network Error"));
+    mockedFetch.mockRejectedValueOnce(new Error('Network Error'));
 
-    const metadata = { test: "data" };
+    const metadata = { test: 'data' };
     const frames = new Uint8Array([1, 2, 3]);
 
-    await expect(client.sendFrames(metadata, frames)).rejects.toThrow("Network Error");
+    await expect(client.sendFrames(metadata, frames)).rejects.toThrow(
+      'Network Error'
+    );
   });
 
-  it("should handle HTTP error responses", async () => {
+  it('should handle HTTP error responses', async () => {
     const mockedFetch = fetch as jest.MockedFunction<typeof fetch>;
 
     // Mock a 500 Internal Server Error response
     mockedFetch.mockResolvedValueOnce(
-      new Response("Server Error", { status: 500 })
+      new Response('Server Error', { status: 500 })
     );
 
-    const metadata = { test: "data" };
+    const metadata = { test: 'data' };
     const frames = new Uint8Array([1, 2, 3]);
 
     await expect(client.sendFrames(metadata, frames)).rejects.toThrow(
-      "HTTP 500: Server Error"
+      'HTTP 500: Server Error'
     );
   });
 });

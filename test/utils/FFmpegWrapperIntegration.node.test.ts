@@ -5,14 +5,17 @@ import { VideoProbeResult, VideoProcessingOptions } from '../../src/types';
 
 describe('FFmpegWrapper (Node)', () => {
   let wrapper: FFmpegWrapper;
-  const SAMPLE_VIDEO = path.resolve(__dirname, '../../examples/sample_video_1.mp4');
+  const SAMPLE_VIDEO = path.resolve(
+    __dirname,
+    '../../examples/sample_video_1.mp4'
+  );
 
   beforeAll(async () => {
     wrapper = new FFmpegWrapper();
     await wrapper.init();
   });
 
-  it('should probe a real video file', async () => {    
+  it('should probe a real video file', async () => {
     if (!fs.existsSync(SAMPLE_VIDEO)) {
       throw new Error(`Sample video not found: ${SAMPLE_VIDEO}`);
     }
@@ -41,7 +44,7 @@ describe('FFmpegWrapper (Node)', () => {
     expect(probeInfo.issues).toBe(false);
   }, 10000);
 
-  it('should process a real video file', async () => {    
+  it('should process a real video file', async () => {
     if (!fs.existsSync(SAMPLE_VIDEO)) {
       throw new Error(`Sample video not found: ${SAMPLE_VIDEO}`);
     }
@@ -60,8 +63,8 @@ describe('FFmpegWrapper (Node)', () => {
       codec: 'h264',
       bitrate: 13051,
       rotation: 0,
-      issues: false
-    }
+      issues: false,
+    };
 
     const buffer = await wrapper.readVideo(SAMPLE_VIDEO, options, probeInfo);
 

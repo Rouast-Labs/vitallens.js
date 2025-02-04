@@ -6,9 +6,11 @@ jest.mock('../../src/core/VitalLensController.browser', () => ({
     startVideoStream: jest.fn(),
     pauseVideoStream: jest.fn(),
     stopVideoStream: jest.fn(),
-    processVideoFile: jest.fn(async () => ({ message: 'Processed file successfully.' })),
+    processVideoFile: jest.fn(async () => ({
+      message: 'Processed file successfully.',
+    })),
     addEventListener: jest.fn(),
-    removeEventListener: jest.fn()
+    removeEventListener: jest.fn(),
   })),
 }));
 
@@ -32,7 +34,10 @@ describe('VitalLens (Browser)', () => {
 
     await vitalLens.setVideoStream(mockStream, mockVideoElement);
 
-    expect(vitalLens['controller'].setVideoStream).toHaveBeenCalledWith(mockStream, mockVideoElement);
+    expect(vitalLens['controller'].setVideoStream).toHaveBeenCalledWith(
+      mockStream,
+      mockVideoElement
+    );
   });
 
   test('should throw an error when setVideoStream is called without arguments', async () => {

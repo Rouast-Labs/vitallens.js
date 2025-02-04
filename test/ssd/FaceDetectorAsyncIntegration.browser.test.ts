@@ -28,7 +28,6 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
   });
 
   it('should detect faces in a batch of two images', async () => {
-
     const imageTensor = getTestImageFrame().getTensor();
     const singleImageBatch = imageTensor.expandDims(0) as tf.Tensor4D;
 

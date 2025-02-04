@@ -27,13 +27,17 @@ jest.mock('../../src/ssd/FaceDetectorAsync.browser', () => {
 
 describe('VitalLensController (Browser)', () => {
   let controller: VitalLensController;
-  const mockOptions: VitalLensOptions = { apiKey: 'test-key', method: 'vitallens', requestMode: 'rest' };
+  const mockOptions: VitalLensOptions = {
+    apiKey: 'test-key',
+    method: 'vitallens',
+    requestMode: 'rest',
+  };
 
   beforeEach(() => {
     // Instantiate a new controller
     controller = new VitalLensController(mockOptions);
   });
-  
+
   test('should create a Browser FrameIteratorFactory instance in constructor', () => {
     expect(FrameIteratorFactory).toHaveBeenCalledWith(mockOptions);
   });
@@ -44,7 +48,9 @@ describe('VitalLensController (Browser)', () => {
 
   test('should throw an error if setVideoStream is called without initializing frameIteratorFactory', async () => {
     controller['frameIteratorFactory'] = null;
-    await expect(controller.setVideoStream()).rejects.toThrow('FrameIteratorFactory is not initialized.');
+    await expect(controller.setVideoStream()).rejects.toThrow(
+      'FrameIteratorFactory is not initialized.'
+    );
   });
 
   test('should call createStreamFrameIterator and create a StreamProcessor in setVideoStream', async () => {
@@ -61,10 +67,9 @@ describe('VitalLensController (Browser)', () => {
       .fn()
       .mockReturnValue(mockFrameIterator);
     await controller.setVideoStream(mockStream, mockVideoElement);
-    expect(controller['frameIteratorFactory']!.createStreamFrameIterator).toHaveBeenCalledWith(
-      mockStream,
-      mockVideoElement
-    );
+    expect(
+      controller['frameIteratorFactory']!.createStreamFrameIterator
+    ).toHaveBeenCalledWith(mockStream, mockVideoElement);
     expect(StreamProcessor).toHaveBeenCalled();
   });
 });

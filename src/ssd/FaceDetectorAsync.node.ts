@@ -1,6 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 import '@tensorflow/tfjs-node';
-import { FaceDetectorAsyncBase } from "./FaceDetectorAsync.base";
+import { FaceDetectorAsyncBase } from './FaceDetectorAsync.base';
 
 // IMPORTANT: We import the base64-encoded files here, which Rollup will inline in the node build
 import modelJsonBase64 from '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json';
@@ -12,7 +12,7 @@ export class FaceDetectorAsync extends FaceDetectorAsyncBase {
    */
   protected async init(): Promise<void> {
     try {
-      // Decode the model.json 
+      // Decode the model.json
       const jsonBase64 = (modelJsonBase64 as unknown as string).split(',')[1];
       const jsonStr = Buffer.from(jsonBase64, 'base64').toString('utf-8');
       const jsonObj = JSON.parse(jsonStr);

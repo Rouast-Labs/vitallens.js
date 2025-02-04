@@ -1,7 +1,7 @@
 // List of substrings to filter out in console warnings.
 const filteredMessages = [
   'already registered',
-  'Platform node has already been set. Overwriting the platform with node.'
+  'Platform node has already been set. Overwriting the platform with node.',
 ];
 
 // Save a reference to the original console.warn

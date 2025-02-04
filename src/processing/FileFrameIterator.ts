@@ -1,4 +1,10 @@
-import { MethodConfig, VideoInput, VitalLensOptions, VideoProbeResult, ROI } from '../types/core';
+import {
+  MethodConfig,
+  VideoInput,
+  VitalLensOptions,
+  VideoProbeResult,
+  ROI,
+} from '../types/core';
 import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
@@ -33,20 +39,27 @@ export class FileFrameIterator extends FrameIteratorBase {
    */
   async start(): Promise<void> {
     await this.ffmpeg.init();
-    await this.ffmpeg.loadInput(this.videoInput);    
+    await this.ffmpeg.loadInput(this.videoInput);
     // Probe to get video information
     this.probeInfo = await this.ffmpeg.probeVideo(this.videoInput);
     if (!this.probeInfo) {
-      throw new Error('Failed to retrieve video probe information. Ensure the input is valid.');
+      throw new Error(
+        'Failed to retrieve video probe information. Ensure the input is valid.'
+      );
     }
     const totalFrames = this.probeInfo.totalFrames;
     // Derive fps target and downsampling factor
-    this.fpsTarget = this.options.overrideFpsTarget ? this.options.overrideFpsTarget : this.methodConfig.fpsTarget;
-    this.dsFactor = Math.max(Math.round(this.probeInfo.fps / this.fpsTarget), 1);
+    this.fpsTarget = this.options.overrideFpsTarget
+      ? this.options.overrideFpsTarget
+      : this.methodConfig.fpsTarget;
+    this.dsFactor = Math.max(
+      Math.round(this.probeInfo.fps / this.fpsTarget),
+      1
+    );
     if (this.options.globalRoi) {
       this.roi = Array(totalFrames).fill(this.options.globalRoi);
     } else {
-      const fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0
+      const fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0;
       const fDetDsFactor = Math.max(Math.round(this.probeInfo.fps / fDetFs), 1);
       const fDetNDsFrames = Math.ceil(totalFrames / fDetDsFactor);
       const video = await this.ffmpeg.readVideo(
@@ -58,8 +71,13 @@ export class FileFrameIterator extends FrameIteratorBase {
         this.probeInfo
       );
       // Run face detector (fDetNDsFrames, 4)
-      const videoFrames = Frame.fromUint8Array(video, [fDetNDsFrames, 240, 320, 3]);
-      const faces = await this.faceDetector.detect(videoFrames) as ROI[];
+      const videoFrames = Frame.fromUint8Array(video, [
+        fDetNDsFrames,
+        240,
+        320,
+        3,
+      ]);
+      const faces = (await this.faceDetector.detect(videoFrames)) as ROI[];
       // Convert to absolute units
       const absoluteROIs = faces.map(({ x0, y0, x1, y1 }) => ({
         x0: Math.round(x0 * this.probeInfo!.width),
@@ -68,14 +86,27 @@ export class FileFrameIterator extends FrameIteratorBase {
         y1: Math.round(y1 * this.probeInfo!.height),
       }));
       // Derive roi from faces (fDetNDsFrames, 4)
-      const dsRoi = absoluteROIs.map(face => getROIForMethod(face, this.methodConfig, { height: this.probeInfo!.height, width: this.probeInfo!.width }, true));
-      let roiCandidates: ROI[] = dsRoi.flatMap((roi) => Array(fDetDsFactor).fill(roi));
+      const dsRoi = absoluteROIs.map((face) =>
+        getROIForMethod(
+          face,
+          this.methodConfig,
+          { height: this.probeInfo!.height, width: this.probeInfo!.width },
+          true
+        )
+      );
+      let roiCandidates: ROI[] = dsRoi.flatMap((roi) =>
+        Array(fDetDsFactor).fill(roi)
+      );
       if (roiCandidates.length > totalFrames) {
         roiCandidates = roiCandidates.slice(0, totalFrames);
       } else if (roiCandidates.length < totalFrames) {
-        roiCandidates = roiCandidates.concat(Array(totalFrames - roiCandidates.length).fill(dsRoi[dsRoi.length - 1]));
+        roiCandidates = roiCandidates.concat(
+          Array(totalFrames - roiCandidates.length).fill(
+            dsRoi[dsRoi.length - 1]
+          )
+        );
       }
-      this.roi = roiCandidates
+      this.roi = roiCandidates;
     }
   }
 
@@ -85,21 +116,26 @@ export class FileFrameIterator extends FrameIteratorBase {
    */
   async next(): Promise<Frame | null> {
     if (!this.probeInfo) {
-      throw new Error('Probe information is not available. Ensure `start()` has been called before `next()`.');
+      throw new Error(
+        'Probe information is not available. Ensure `start()` has been called before `next()`.'
+      );
     }
 
     if (this.isClosed || this.currentFrameIndex >= this.probeInfo.totalFrames) {
       return null;
     }
 
-    const startFrameIndex = Math.max(0, this.currentFrameIndex - this.methodConfig.minWindowLength * this.dsFactor);
+    const startFrameIndex = Math.max(
+      0,
+      this.currentFrameIndex - this.methodConfig.minWindowLength * this.dsFactor
+    );
     const framesToRead = Math.min(
       this.methodConfig.maxWindowLength * this.dsFactor,
       this.probeInfo.totalFrames - startFrameIndex
     );
 
     const roi = getRepresentativeROI(
-      this.roi.slice(startFrameIndex, startFrameIndex + framesToRead),
+      this.roi.slice(startFrameIndex, startFrameIndex + framesToRead)
     );
 
     const frameData = await this.ffmpeg.readVideo(
@@ -108,9 +144,15 @@ export class FileFrameIterator extends FrameIteratorBase {
         fpsTarget: this.fpsTarget,
         crop: roi,
         scale: this.methodConfig.inputSize
-        ? { width: this.methodConfig.inputSize, height: this.methodConfig.inputSize }
-        : undefined,
-        trim: { startFrame: startFrameIndex, endFrame: startFrameIndex + framesToRead },
+          ? {
+              width: this.methodConfig.inputSize,
+              height: this.methodConfig.inputSize,
+            }
+          : undefined,
+        trim: {
+          startFrame: startFrameIndex,
+          endFrame: startFrameIndex + framesToRead,
+        },
         pixelFormat: 'rgb24',
         scaleAlgorithm: 'bicubic',
       },
@@ -124,7 +166,7 @@ export class FileFrameIterator extends FrameIteratorBase {
 
     this.currentFrameIndex += framesToRead;
 
-    const width = this.methodConfig.inputSize || roi.x1 - roi.x0; 
+    const width = this.methodConfig.inputSize || roi.x1 - roi.x0;
     const height = this.methodConfig.inputSize || roi.y1 - roi.y0;
     if (!width || !height) {
       throw new Error(
@@ -145,8 +187,9 @@ export class FileFrameIterator extends FrameIteratorBase {
     const shape = [dsFramesExpected, height, width, 3];
 
     // Generate timestamps for each frame in the batch
-    const frameTimestamps = Array.from({ length: dsFramesExpected }, (_, i) => 
-      (startFrameIndex + i) / this.probeInfo!.fps
+    const frameTimestamps = Array.from(
+      { length: dsFramesExpected },
+      (_, i) => (startFrameIndex + i) / this.probeInfo!.fps
     );
 
     // ROI for each frame in the batch

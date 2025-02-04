@@ -1,16 +1,28 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import * as tf from '@tensorflow/tfjs-node';
 import { FaceDetectorAsync } from '../../src/ssd/FaceDetectorAsync.node';
 import { Frame } from '../../src/processing/Frame';
 import { ROI } from '../../src/types/core';
 
-function areROIsClose(received: ROI[], expected: ROI[], tolerance: number = 1e-6): boolean {
-  return received.length === expected.length && received.every((r, i) => {
-    const e = expected[i];
-    return Math.abs(r.x0 - e.x0) <= tolerance &&
-           Math.abs(r.y0 - e.y0) <= tolerance &&
-           Math.abs(r.x1 - e.x1) <= tolerance &&
-           Math.abs(r.y1 - e.y1) <= tolerance;
-  });
+function areROIsClose(
+  received: ROI[],
+  expected: ROI[],
+  tolerance: number = 1e-6
+): boolean {
+  return (
+    received.length === expected.length &&
+    received.every((r, i) => {
+      const e = expected[i];
+      return (
+        Math.abs(r.x0 - e.x0) <= tolerance &&
+        Math.abs(r.y0 - e.y0) <= tolerance &&
+        Math.abs(r.x1 - e.x1) <= tolerance &&
+        Math.abs(r.y1 - e.y1) <= tolerance
+      );
+    })
+  );
 }
 
 // Mock TensorFlow.js
@@ -27,13 +39,19 @@ jest.mock('@tensorflow/tfjs', () => {
 });
 
 // Mock the base64-encoded model files
-jest.mock('../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json', () => {
-  return 'data:application/json;base64,eyJtb2RlbFRvcG9sb2d5Ijp7InNvbWVWYWx1ZSI6MH0sIndlaWdodHNNYW5pZmVzdCI6W3sid2VpZ2h0cyI6W119XX0=';
-});
+jest.mock(
+  '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json',
+  () => {
+    return 'data:application/json;base64,eyJtb2RlbFRvcG9sb2d5Ijp7InNvbWVWYWx1ZSI6MH0sIndlaWdodHNNYW5pZmVzdCI6W3sid2VpZ2h0cyI6W119XX0=';
+  }
+);
 
-jest.mock('../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1.bin', () => {
-  return 'data:application/octet-stream;base64,AAAAAA==';
-});
+jest.mock(
+  '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1.bin',
+  () => {
+    return 'data:application/octet-stream;base64,AAAAAA==';
+  }
+);
 
 describe('FaceDetectorAsync.node', () => {
   let faceDetector: FaceDetectorAsync;
@@ -68,21 +86,23 @@ describe('FaceDetectorAsync.node', () => {
   });
 
   it('should initialize the model from memory', async () => {
-      expect(tf.io.fromMemory).toHaveBeenCalledWith(expect.objectContaining({
+    expect(tf.io.fromMemory).toHaveBeenCalledWith(
+      expect.objectContaining({
         modelTopology: expect.any(Object),
         weightSpecs: expect.any(Array),
         weightData: expect.any(ArrayBuffer),
-      }));
-      expect(tf.loadGraphModel).toHaveBeenCalledWith('mockedModelSource');
-    });
+      })
+    );
+    expect(tf.loadGraphModel).toHaveBeenCalledWith('mockedModelSource');
+  });
 
   it('should detect faces and return ROIs', async () => {
     const mockData = new Float32Array(224 * 224 * 3).fill(0);
     const mockTensor = tf.tensor4d(mockData, [1, 224, 224, 3]);
-    const frame = Frame.fromTensor(mockTensor, true, [0])
+    const frame = Frame.fromTensor(mockTensor, true, [0]);
 
     const results: ROI[] = await faceDetector.detect(frame);
-    
+
     const expectedResults = [{ x0: 0.2, y0: 0.2, x1: 0.6, y1: 0.6 }];
     expect(areROIsClose(results, expectedResults)).toBe(true);
 
@@ -106,10 +126,18 @@ describe('FaceDetectorAsync.node', () => {
     // Compare each ROI with a tolerance
     const tolerance = 1e-6;
     for (let i = 0; i < expectedRois.length; i++) {
-      expect(Math.abs(actualRois[i].x0 - expectedRois[i].x0)).toBeLessThan(tolerance);
-      expect(Math.abs(actualRois[i].y0 - expectedRois[i].y0)).toBeLessThan(tolerance);
-      expect(Math.abs(actualRois[i].x1 - expectedRois[i].x1)).toBeLessThan(tolerance);
-      expect(Math.abs(actualRois[i].y1 - expectedRois[i].y1)).toBeLessThan(tolerance);
+      expect(Math.abs(actualRois[i].x0 - expectedRois[i].x0)).toBeLessThan(
+        tolerance
+      );
+      expect(Math.abs(actualRois[i].y0 - expectedRois[i].y0)).toBeLessThan(
+        tolerance
+      );
+      expect(Math.abs(actualRois[i].x1 - expectedRois[i].x1)).toBeLessThan(
+        tolerance
+      );
+      expect(Math.abs(actualRois[i].y1 - expectedRois[i].y1)).toBeLessThan(
+        tolerance
+      );
     }
 
     mockTensor.dispose();

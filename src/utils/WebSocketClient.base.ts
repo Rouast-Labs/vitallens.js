@@ -1,6 +1,8 @@
-import { VitalLensAPIResponse } from "../types";
-import { IWebSocketClient } from "../types/IWebSocketClient";
-import { uint8ArrayToBase64 } from "./arrayOps";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { VitalLensAPIResponse } from '../types';
+import { IWebSocketClient } from '../types/IWebSocketClient';
+import { uint8ArrayToBase64 } from './arrayOps';
 
 const MESSAGE_SIZE = 32 * 1024; // Max. 128 KB per message
 const MAX_OVERHEAD = 256; // Max. overhead per message
@@ -16,7 +18,9 @@ export interface BaseWebSocket {
 /**
  * Utility class for managing WebSocket communication.
  */
-export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> implements IWebSocketClient {
+export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket>
+  implements IWebSocketClient
+{
   protected socket: TWebSocket | null = null;
   protected url: string;
   protected isConnected: boolean = false;
@@ -44,7 +48,11 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
    * @param state - The state data as a Float32Array (optional).
    * @returns The server's response as a JSON-parsed object.
    */
-  async sendFrames(metadata: Record<string, any>, frames: Uint8Array, state?: Float32Array): Promise<VitalLensAPIResponse> {
+  async sendFrames(
+    metadata: Record<string, unknown>,
+    frames: Uint8Array,
+    state?: Float32Array
+  ): Promise<VitalLensAPIResponse> {
     if (!this.isConnected || !this.socket) {
       throw new Error('WebSocket is not connected');
     }
@@ -52,7 +60,9 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
     const messageId = this.generateUniqueMessageId();
     const base64Frames = uint8ArrayToBase64(frames);
     const availableSizePerMessage = MESSAGE_SIZE - MAX_OVERHEAD;
-    const totalChunks = Math.ceil(base64Frames.length / availableSizePerMessage);
+    const totalChunks = Math.ceil(
+      base64Frames.length / availableSizePerMessage
+    );
     const chunkSize = Math.ceil(base64Frames.length / totalChunks);
 
     return new Promise((resolve, reject) => {
@@ -60,7 +70,10 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
 
       this.socket!.onmessage = (event) => {
         try {
-          const response = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          const response =
+            typeof event.data === 'string'
+              ? JSON.parse(event.data)
+              : event.data;
           receivedResponse = true;
           resolve(response);
         } catch (error) {
@@ -79,7 +92,7 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
         const chunkData = base64Frames.slice(chunkStart, chunkEnd);
 
         const chunkPayload = {
-          action: "sendFrames",
+          action: 'sendFrames',
           messageId,
           chunkIndex: i,
           totalChunks,
@@ -90,11 +103,13 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
       }
 
       // Encode state to Base64 if provided
-      const base64State = state ? btoa(String.fromCharCode(...new Uint8Array(state.buffer))) : null;
+      const base64State = state
+        ? btoa(String.fromCharCode(...new Uint8Array(state.buffer)))
+        : null;
 
       // Create the final chunk with metadata and state
-      const finalChunk: Record<string, any> = {
-        action: "sendFrames",
+      const finalChunk: Record<string, unknown> = {
+        action: 'sendFrames',
         messageId,
         totalChunks,
         ...metadata,
@@ -126,7 +141,7 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket> impl
    * @returns true of WebSocket is connected, else false.
    */
   getIsConnected(): boolean {
-    return this.isConnected;  
+    return this.isConnected;
   }
 
   /**

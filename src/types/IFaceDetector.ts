@@ -1,5 +1,5 @@
-import { Frame } from "../processing/Frame";
-import { ROI } from "./core";
+import { Frame } from '../processing/Frame';
+import { ROI } from './core';
 
 export interface IFaceDetector {
   load(): Promise<void>;

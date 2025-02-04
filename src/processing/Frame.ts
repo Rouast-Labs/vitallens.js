@@ -17,7 +17,10 @@ export interface FrameOptions {
  * @param dtype The data type
  * @returns The number of elements in the raw data
  */
-export function getActualSizeFromRawData(rawData: ArrayBuffer, dtype: tf.DataType): number {
+export function getActualSizeFromRawData(
+  rawData: ArrayBuffer,
+  dtype: tf.DataType
+): number {
   switch (dtype) {
     case 'uint8':
       return new Uint8Array(rawData).length;
@@ -39,22 +42,15 @@ export class Frame {
 
   private shape: number[];
   private dtype: tf.DataType;
-  
+
   private timestamp: number[]; // In seconds
   private roi: ROI[];
 
   private refCount: number = 0;
 
   constructor(options: FrameOptions) {
-    const {
-      rawData,
-      tensor,
-      shape,
-      dtype,
-      keepTensor,
-      timestamp,
-      roi
-    } = options;
+    const { rawData, tensor, shape, dtype, keepTensor, timestamp, roi } =
+      options;
 
     this.timestamp = timestamp ?? [];
     this.roi = roi ?? [];
@@ -66,13 +62,19 @@ export class Frame {
         this.tensor = tensor;
       } else {
         // Do not keep the tensor. Convert to raw data:
-        const typedData = tensor.dataSync() as Float32Array | Int32Array | Uint8Array;
+        const typedData = tensor.dataSync() as
+          | Float32Array
+          | Int32Array
+          | Uint8Array;
         const expectedSize = tensor.shape.reduce((a, b) => a * b, 1);
         const exactBuffer = typedData.buffer.slice(
           typedData.byteOffset,
           typedData.byteOffset + typedData.byteLength
         );
-        const actualSize = getActualSizeFromRawData(exactBuffer as ArrayBuffer, tensor.dtype);
+        const actualSize = getActualSizeFromRawData(
+          exactBuffer as ArrayBuffer,
+          tensor.dtype
+        );
         if (expectedSize !== actualSize) {
           throw new Error(
             `Mismatch in tensor size: expected ${expectedSize}, but got ${actualSize}`
@@ -82,11 +84,12 @@ export class Frame {
       }
       this.shape = tensor.shape;
       this.dtype = tensor.dtype;
-    
     } else {
       // We received raw data - store it
       if (!rawData || !shape || !dtype) {
-        throw new Error(`Frame: rawData, shape, and dtype are required if 'keepTensor' is false.`);
+        throw new Error(
+          `Frame: rawData, shape, and dtype are required if 'keepTensor' is false.`
+        );
       }
       this.rawData = rawData;
       this.shape = shape;
@@ -113,8 +116,8 @@ export class Frame {
       shape: tensor.shape,
       dtype: tensor.dtype,
       timestamp,
-      roi
-    })
+      roi,
+    });
   }
 
   /**
@@ -135,16 +138,18 @@ export class Frame {
     const actualSize = getActualSizeFromRawData(rawData, 'uint8');
 
     if (expectedSize !== actualSize) {
-      throw new Error(`Mismatch in raw data size: expected ${expectedSize}, but got ${actualSize}`);
+      throw new Error(
+        `Mismatch in raw data size: expected ${expectedSize}, but got ${actualSize}`
+      );
     }
-    
+
     return new Frame({
       rawData,
       shape,
       dtype: 'uint8',
       keepTensor: false,
       timestamp,
-      roi
+      roi,
     });
   }
 
@@ -166,16 +171,18 @@ export class Frame {
     const actualSize = getActualSizeFromRawData(rawData, 'float32');
 
     if (expectedSize !== actualSize) {
-      throw new Error(`Mismatch in raw data size: expected ${expectedSize}, but got ${actualSize}`);
+      throw new Error(
+        `Mismatch in raw data size: expected ${expectedSize}, but got ${actualSize}`
+      );
     }
-    
+
     return new Frame({
       rawData,
       shape,
       dtype: 'float32',
       keepTensor: false,
       timestamp,
-      roi
+      roi,
     });
   }
 
@@ -192,9 +199,7 @@ export class Frame {
 
     // Otherwise, we must have raw data
     if (!this.rawData || !this.shape || !this.dtype) {
-      throw new Error(
-        'No tensor stored and insufficient data to create one.'
-      );
+      throw new Error('No tensor stored and insufficient data to create one.');
     }
 
     let typedArray;
@@ -260,7 +265,7 @@ export class Frame {
     } else {
       const TypedArrayClass = this.getTypedArrayClass();
       const typedArray = new TypedArrayClass(this.rawData!);
-  
+
       return new Uint8Array(typedArray);
     }
   }
@@ -276,7 +281,7 @@ export class Frame {
     } else {
       const TypedArrayClass = this.getTypedArrayClass();
       const typedArray = new TypedArrayClass(this.rawData!);
-  
+
       return new Int32Array(typedArray);
     }
   }
@@ -292,7 +297,7 @@ export class Frame {
     } else {
       const TypedArrayClass = this.getTypedArrayClass();
       const typedArray = new TypedArrayClass(this.rawData!);
-  
+
       return new Float32Array(typedArray);
     }
   }
@@ -342,7 +347,10 @@ export class Frame {
   /**
    * Utility to figure out which TypedArray we need for a given dtype
    */
-  private getTypedArrayClass(): typeof Uint8Array | typeof Float32Array | typeof Int32Array {
+  private getTypedArrayClass():
+    | typeof Uint8Array
+    | typeof Float32Array
+    | typeof Int32Array {
     switch (this.dtype) {
       case 'uint8':
         return Uint8Array;

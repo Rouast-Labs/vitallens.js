@@ -1,5 +1,6 @@
-import { RestClientBase } from "./RestClient.base";
-import { VITALLENS_REST_ENDPOINT } from "../config/constants";
+import { RestClientBase } from './RestClient.base';
+import { VITALLENS_REST_ENDPOINT } from '../config/constants';
+import { VitalLensAPIResponse } from '../types';
 
 export class RestClient extends RestClientBase {
   /**
@@ -10,13 +11,15 @@ export class RestClient extends RestClientBase {
   protected getRestEndpoint(): string {
     return VITALLENS_REST_ENDPOINT;
   }
-  
+
   /**
    * Sends an HTTP POST request using the browser's fetch API.
    * @param payload - The data to send in the request body.
    * @returns The server's response as a JSON-parsed object.
    */
-  protected async postRequest(payload: Record<string, any>): Promise<any> {
+  protected async postRequest(
+    payload: Record<string, unknown>
+  ): Promise<VitalLensAPIResponse> {
     try {
       const response = await fetch(this.url, {
         method: 'POST',

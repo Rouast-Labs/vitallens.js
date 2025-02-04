@@ -1,12 +1,11 @@
-import { FFmpegWrapperBase } from "./FFmpegWrapper.base";
-import { VideoInput, VideoProbeResult, VideoProcessingOptions } from "../types";
-import * as path from "path";
-import * as os from "os";
-import * as fs from "fs";
-import ffmpeg from "fluent-ffmpeg";
+import { FFmpegWrapperBase } from './FFmpegWrapper.base';
+import { VideoInput, VideoProbeResult, VideoProcessingOptions } from '../types';
+import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs';
+import ffmpeg from 'fluent-ffmpeg';
 
 export default class FFmpegWrapper extends FFmpegWrapperBase {
-
   /**
    * Initializes FFmpeg. For the Node.js implementation, this is a no-op.
    */
@@ -20,8 +19,10 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
    * @returns The path to the loaded file.
    */
   async loadInput(input: VideoInput): Promise<string> {
-    if (typeof input !== "string") {
-      throw new Error("Only file paths are supported for Node.js FFmpegWrapper.");
+    if (typeof input !== 'string') {
+      throw new Error(
+        'Only file paths are supported for Node.js FFmpegWrapper.'
+      );
     }
 
     if (!fs.existsSync(input)) {
@@ -54,11 +55,11 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
         }
 
         const videoStream = metadata.streams.find(
-          (stream) => stream.codec_type === "video"
+          (stream) => stream.codec_type === 'video'
         );
 
         if (!videoStream) {
-          reject(new Error("No video streams found in the file."));
+          reject(new Error('No video streams found in the file.'));
           return;
         }
 
@@ -72,15 +73,13 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
 
         const width = videoStream.width || 0;
         const height = videoStream.height || 0;
-        const codec = videoStream.codec_name || "";
+        const codec = videoStream.codec_name || '';
         const bitrate = parseFloat(videoStream.bit_rate!) / 1000 || 0;
 
         let rotation = 0;
         if (videoStream.tags?.rotate) {
           rotation = parseInt(videoStream.tags.rotate, 10);
-        } else if (
-          videoStream.side_data_list?.[0]?.rotation !== undefined
-        ) {
+        } else if (videoStream.side_data_list?.[0]?.rotation !== undefined) {
           rotation = parseInt(videoStream.side_data_list[0].rotation, 10);
         }
 
@@ -113,7 +112,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
     const filePath = await this.loadInput(input);
 
     const filters = this.assembleVideoFilters(options, probeInfo);
-    
+
     // Generate a unique temporary filename in the OS temp directory
     const tempFile = path.join(
       os.tmpdir(),
@@ -122,30 +121,33 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
 
     return new Promise<Uint8Array>((resolve, reject) => {
       ffmpeg(filePath)
-        .outputOptions("-pix_fmt", options.pixelFormat || "rgb24")
-        .outputOptions("-f", "rawvideo")
-        .outputOptions("-vsync", "passthrough")
-        .outputOptions("-frame_pts", "true")
+        .outputOptions('-pix_fmt', options.pixelFormat || 'rgb24')
+        .outputOptions('-f', 'rawvideo')
+        .outputOptions('-vsync', 'passthrough')
+        .outputOptions('-frame_pts', 'true')
         .videoFilters(filters)
         .save(tempFile)
-        .on("end", () => {
+        .on('end', () => {
           try {
             const buffer = fs.readFileSync(tempFile);
             try {
               fs.unlinkSync(tempFile);
             } catch (cleanupError) {
-              console.error("Error cleaning up temporary file:", cleanupError);
+              console.error('Error cleaning up temporary file:', cleanupError);
             }
             resolve(new Uint8Array(buffer));
           } catch (readError) {
             reject(readError);
           }
         })
-        .on("error", (err) => {
+        .on('error', (err) => {
           try {
             fs.unlinkSync(tempFile);
           } catch (cleanupError) {
-            console.error("Error cleaning up temporary file after error:", cleanupError);
+            console.error(
+              'Error cleaning up temporary file after error:',
+              cleanupError
+            );
           }
           reject(err);
         })
@@ -161,7 +163,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
   private extractFrameRate(avgFrameRate: string): number | null {
     if (!avgFrameRate) return null;
 
-    const [numerator, denominator] = avgFrameRate.split("/").map(Number);
+    const [numerator, denominator] = avgFrameRate.split('/').map(Number);
     if (denominator === 0) return null;
 
     return numerator / denominator;

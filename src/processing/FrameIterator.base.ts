@@ -1,5 +1,5 @@
-import { IFrameIterator } from "../types/IFrameIterator";
-import { Frame } from "./Frame";
+import { IFrameIterator } from '../types/IFrameIterator';
+import { Frame } from './Frame';
 import { v4 as uuidv4 } from 'uuid';
 
 /**

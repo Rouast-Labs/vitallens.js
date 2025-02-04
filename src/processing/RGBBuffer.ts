@@ -14,11 +14,17 @@ export class RGBBuffer extends Buffer {
    * @param overrideRoi - Use this ROI instead of buffer ROI (optional).
    * @returns The processed frame.
    */
-  protected async preprocess(frame: Frame, keepTensor: boolean = false, overrideRoi?: ROI): Promise<Frame> {    
+  protected async preprocess(
+    frame: Frame,
+    keepTensor: boolean = false,
+    overrideRoi?: ROI
+  ): Promise<Frame> {
     // Assert that the frame data is a 3D tensor
     const shape = frame.getShape();
     if (shape.length !== 3) {
-      throw new Error(`Frame data must be a 3D tensor. Received rank: ${shape.length}`);
+      throw new Error(
+        `Frame data must be a 3D tensor. Received rank: ${shape.length}`
+      );
     }
 
     const roi = overrideRoi ?? this.roi;
@@ -46,8 +52,13 @@ export class RGBBuffer extends Buffer {
       return averaged;
     });
 
-    const result = Frame.fromTensor(averagedFrame, keepTensor, frame.getTimestamp(), [roi]);
-    
+    const result = Frame.fromTensor(
+      averagedFrame,
+      keepTensor,
+      frame.getTimestamp(),
+      [roi]
+    );
+
     if (keepTensor) {
       // Keep processed frame tensor - need to release() appropriately!
       result.retain();

@@ -9,10 +9,7 @@ export class StreamFrameIterator extends FrameIteratorBase {
   private videoElement: HTMLVideoElement | null = null;
   private stream: MediaStream | null = null;
 
-  constructor(
-    stream?: MediaStream,
-    existingVideoElement?: HTMLVideoElement,
-  ) {
+  constructor(stream?: MediaStream, existingVideoElement?: HTMLVideoElement) {
     super();
 
     if (stream && existingVideoElement) {
@@ -24,18 +21,22 @@ export class StreamFrameIterator extends FrameIteratorBase {
     } else if (existingVideoElement) {
       this.videoElement = existingVideoElement;
       if (!existingVideoElement.srcObject) {
-        throw new Error('Existing video element must have a valid MediaStream assigned to srcObject.');
+        throw new Error(
+          'Existing video element must have a valid MediaStream assigned to srcObject.'
+        );
       }
       this.stream = existingVideoElement.srcObject as MediaStream;
     } else {
-      throw new Error('Either a MediaStream or an existing HTMLVideoElement must be provided.');
+      throw new Error(
+        'Either a MediaStream or an existing HTMLVideoElement must be provided.'
+      );
     }
   }
 
   /**
    * Starts the iterator by initializing the video element and playing the stream.
    */
-  async start(): Promise<void> { 
+  async start(): Promise<void> {
     if (!this.videoElement) {
       this.videoElement = document.createElement('video');
       this.videoElement.srcObject = this.stream;
@@ -74,9 +75,9 @@ export class StreamFrameIterator extends FrameIteratorBase {
       // TODO: Does this work with WebRTC stream?
       return browser.fromPixels(this.videoElement!);
     });
-    
+
     // Keep tensor for full frame
-    return Frame.fromTensor(tensor, true, [performance.now()/1000]);
+    return Frame.fromTensor(tensor, true, [performance.now() / 1000]);
   }
 
   /**

@@ -1,5 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
-import { FaceDetectorAsyncBase } from "./FaceDetectorAsync.base";
+import { FaceDetectorAsyncBase } from './FaceDetectorAsync.base';
 
 // IMPORTANT: We import the base64-encoded files here, which Rollup will inline in the browser build
 import modelJsonBase64 from '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json';
@@ -34,7 +34,10 @@ export class FaceDetectorAsync extends FaceDetectorAsyncBase {
 
       this.model = await tf.loadGraphModel(tf.io.fromMemory(modelArtifacts));
     } catch (error) {
-      console.error('Failed to load the face detection model (Browser):', error);
+      console.error(
+        'Failed to load the face detection model (Browser):',
+        error
+      );
     }
   }
 }

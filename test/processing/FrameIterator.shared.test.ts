@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { FrameIteratorBase } from '../../src/processing/FrameIterator.base';
 import { Frame } from '../../src/processing/Frame';
 import { v4 as uuidv4 } from 'uuid';
@@ -31,8 +34,18 @@ describe('FrameIteratorBase', () => {
 
   beforeEach(() => {
     mockFrames = [
-      new Frame({ rawData: new ArrayBuffer(8), shape: [2, 2], dtype: 'int32', timestamp: [0] }),
-      new Frame({ rawData: new ArrayBuffer(16), shape: [4, 4], dtype: 'float32', timestamp: [1] }),
+      new Frame({
+        rawData: new ArrayBuffer(8),
+        shape: [2, 2],
+        dtype: 'int32',
+        timestamp: [0],
+      }),
+      new Frame({
+        rawData: new ArrayBuffer(16),
+        shape: [4, 4],
+        dtype: 'float32',
+        timestamp: [1],
+      }),
     ];
   });
 

@@ -1,27 +1,40 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { StreamProcessor } from '../../src/processing/StreamProcessor';
 import { BufferManager } from '../../src/processing/BufferManager';
 import { MethodHandler } from '../../src/methods/MethodHandler';
 import { IFaceDetector } from '../../src/types/IFaceDetector';
 import { IFrameIterator } from '../../src/types/IFrameIterator';
 import { ROI, VitalLensOptions, MethodConfig } from '../../src/types';
-import { Frame } from '../../src/processing/Frame'; 
+import { Frame } from '../../src/processing/Frame';
 import * as tf from '@tensorflow/tfjs';
 
 const mockROI: ROI = { x0: 0, y0: 0, x1: 100, y1: 100 };
-const mockFrame3D = Frame.fromTensor(tf.tensor3d([1, 2, 3, 4], [2, 2, 1]), false, [0.1], [mockROI]);
-const mockFrame4D = Frame.fromTensor(tf.tensor4d([1, 2, 3, 4], [1, 2, 2, 1]), false, [0.1], [mockROI]);
-const options: VitalLensOptions = { 
-  method: 'vitallens', 
-  globalRoi: mockROI, 
-  overrideFpsTarget: 30 
+const mockFrame3D = Frame.fromTensor(
+  tf.tensor3d([1, 2, 3, 4], [2, 2, 1]),
+  false,
+  [0.1],
+  [mockROI]
+);
+const mockFrame4D = Frame.fromTensor(
+  tf.tensor4d([1, 2, 3, 4], [1, 2, 2, 1]),
+  false,
+  [0.1],
+  [mockROI]
+);
+const options: VitalLensOptions = {
+  method: 'vitallens',
+  globalRoi: mockROI,
+  overrideFpsTarget: 30,
 };
-const methodConfig: MethodConfig = { 
-  method: 'vitallens', 
-  fpsTarget: 30, 
-  roiMethod: 'face', 
-  minWindowLength: 5, 
-  maxWindowLength: 10, 
-  requiresState: false 
+const methodConfig: MethodConfig = {
+  method: 'vitallens',
+  fpsTarget: 30,
+  roiMethod: 'face',
+  minWindowLength: 5,
+  maxWindowLength: 10,
+  requiresState: false,
 };
 
 describe('StreamProcessor', () => {
@@ -31,7 +44,7 @@ describe('StreamProcessor', () => {
   let mockFrameIterator: jest.Mocked<IFrameIterator>;
   let onPredictMock: jest.Mock;
   let onNoFaceMock: jest.Mock;
-  
+
   beforeEach(() => {
     // Create a mock BufferManager with the necessary methods.
     mockBufferManager = {
@@ -45,7 +58,7 @@ describe('StreamProcessor', () => {
       cleanup: jest.fn(),
       isEmpty: jest.fn(() => true),
     } as unknown as jest.Mocked<BufferManager>;
-  
+
     // Create a mock MethodHandler that returns a fake state.
     mockMethodHandler = {
       process: jest.fn(async () => ({
@@ -55,7 +68,7 @@ describe('StreamProcessor', () => {
       init: jest.fn(),
       cleanup: jest.fn(),
     } as unknown as jest.Mocked<MethodHandler>;
-  
+
     // Create a mock FaceDetector. By default, it returns a detection.
     mockFaceDetector = {
       run: jest.fn(async (frame, callback) => {
@@ -64,7 +77,7 @@ describe('StreamProcessor', () => {
       }),
       load: jest.fn(),
     } as unknown as jest.Mocked<IFaceDetector>;
-  
+
     // Create a mock FrameIterator that yields frames indefinitely.
     mockFrameIterator = {
       [Symbol.asyncIterator]: jest.fn(() => {
@@ -83,10 +96,10 @@ describe('StreamProcessor', () => {
       start: jest.fn(),
       stop: jest.fn(),
     } as unknown as jest.Mocked<IFrameIterator>;
-  
+
     onPredictMock = jest.fn();
     onNoFaceMock = jest.fn();
-  });  
+  });
 
   test('should initialize with the correct ROI and buffer', () => {
     const streamProcessor = new StreamProcessor(
@@ -103,7 +116,11 @@ describe('StreamProcessor', () => {
     streamProcessor.init();
 
     // When a global ROI is provided and face detector is not used, the ROI should be set and a buffer added.
-    expect(mockBufferManager.addBuffer).toHaveBeenCalledWith(options.globalRoi, methodConfig, 1);
+    expect(mockBufferManager.addBuffer).toHaveBeenCalledWith(
+      options.globalRoi,
+      methodConfig,
+      1
+    );
   });
 
   test('should start processing frames and trigger prediction', async () => {
@@ -149,7 +166,10 @@ describe('StreamProcessor', () => {
     await streamProcessor['handleFaceDetection'](mockFrame3D as any, 0);
 
     // Expect that faceDetector.run is called with the frame.
-    expect(mockFaceDetector.run).toHaveBeenCalledWith(mockFrame3D, expect.any(Function));
+    expect(mockFaceDetector.run).toHaveBeenCalledWith(
+      mockFrame3D,
+      expect.any(Function)
+    );
     // Since our options.method is 'vitallens' and isEmpty returns true, a new buffer should be added.
     expect(mockBufferManager.addBuffer).toHaveBeenCalled();
   });
@@ -172,7 +192,7 @@ describe('StreamProcessor', () => {
     );
 
     await streamProcessor['handleFaceDetection'](mockFrame3D as any, 0);
-    
+
     // Expect that onNoFace is triggered
     expect(onNoFaceMock).toHaveBeenCalled();
     // And the bufferManager cleanup is invoked.

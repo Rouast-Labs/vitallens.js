@@ -6,9 +6,11 @@ jest.mock('../../src/core/VitalLensController.node', () => ({
     startVideoStream: jest.fn(),
     pauseVideoStream: jest.fn(),
     stopVideoStream: jest.fn(),
-    processVideoFile: jest.fn(async () => ({ message: 'Processed file successfully.' })),
+    processVideoFile: jest.fn(async () => ({
+      message: 'Processed file successfully.',
+    })),
     addEventListener: jest.fn(),
-    removeEventListener: jest.fn()
+    removeEventListener: jest.fn(),
   })),
 }));
 

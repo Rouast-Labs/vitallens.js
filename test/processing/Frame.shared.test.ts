@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import * as tf from '@tensorflow/tfjs';
 import { Frame, getActualSizeFromRawData } from '../../src/processing/Frame';
 import { ROI } from '../../src/types';
@@ -14,7 +17,14 @@ describe('Frame Class', () => {
       const shape = [2, 2, 3];
       const dtype = 'int32';
       const timestamp = [0.1, 0.2];
-      const frame = new Frame({ rawData, shape, dtype, timestamp, roi: mockROI, keepTensor: false });
+      const frame = new Frame({
+        rawData,
+        shape,
+        dtype,
+        timestamp,
+        roi: mockROI,
+        keepTensor: false,
+      });
 
       expect(frame.getRawData()).toBe(rawData);
       expect(frame.getShape()).toEqual(shape);
@@ -98,7 +108,9 @@ describe('Frame Class', () => {
     test('throws for unsupported dtypes', () => {
       const tensor = tf.tensor([1, 2, 3], [3], 'bool' as tf.DataType);
 
-      expect(() => Frame.fromTensor(tensor)).toThrowError(/Unsupported dtype: bool/);
+      expect(() => Frame.fromTensor(tensor)).toThrowError(
+        /Unsupported dtype: bool/
+      );
     });
   });
 
@@ -118,7 +130,9 @@ describe('Frame Class', () => {
     test('throws for mismatched raw data size', () => {
       const shape = [2, 1, 4]; // Expects 8 elements
       const array = new Uint8Array([1, 2, 3, 4, 5, 6]); // Only 6 elements
-      expect(() => Frame.fromUint8Array(array, shape)).toThrowError(/Mismatch in raw data size/);
+      expect(() => Frame.fromUint8Array(array, shape)).toThrowError(
+        /Mismatch in raw data size/
+      );
     });
   });
 
@@ -134,18 +148,27 @@ describe('Frame Class', () => {
 
     test('reconstructs tensor from rawData when keepTensor is false', () => {
       const rawData = new Int32Array([1, 2, 3]).buffer;
-      const frame = new Frame({ rawData, shape: [3], dtype: 'int32', keepTensor: false });
+      const frame = new Frame({
+        rawData,
+        shape: [3],
+        dtype: 'int32',
+        keepTensor: false,
+      });
 
       const outTensor = frame.getTensor();
       expect(outTensor).toBeInstanceOf(tf.Tensor);
       expect(outTensor.shape).toEqual([3]);
-      
+
       outTensor.dispose();
     });
 
     test('throws for insufficient raw data', () => {
       const rawData = new Uint8Array([1, 2, 3]).buffer; // Smaller than shape
-      const frame = new Frame({ rawData, shape: [2, 1, 3], dtype: 'uint8' as tf.DataType });
+      const frame = new Frame({
+        rawData,
+        shape: [2, 1, 3],
+        dtype: 'uint8' as tf.DataType,
+      });
 
       expect(() => frame.getTensor()).toThrowError(
         /Mismatch in tensor size: expected 6, but got 3/
@@ -166,13 +189,23 @@ describe('Frame Class', () => {
   describe('getUint8Array', () => {
     test('returns Uint8Array for uint8 dtype', () => {
       const rawData = new Uint8Array([1, 2, 3]).buffer;
-      const frame = new Frame({ rawData, shape: [3], dtype: 'uint8' as tf.DataType, keepTensor: false });
+      const frame = new Frame({
+        rawData,
+        shape: [3],
+        dtype: 'uint8' as tf.DataType,
+        keepTensor: false,
+      });
       expect(Array.from(frame.getUint8Array())).toEqual([1, 2, 3]);
     });
 
     test('converts other dtypes to Uint8Array', () => {
       const rawData = new Float32Array([1.1, 2.2, 3.3]).buffer;
-      const frame = new Frame({ rawData, shape: [3], dtype: 'float32', keepTensor: false });
+      const frame = new Frame({
+        rawData,
+        shape: [3],
+        dtype: 'float32',
+        keepTensor: false,
+      });
       expect(Array.from(frame.getUint8Array())).toEqual([1, 2, 3]);
     });
   });
@@ -184,7 +217,11 @@ describe('Frame Class', () => {
   describe('Miscellaneous', () => {
     test('getTypedArrayClass correctly maps dtypes', () => {
       const rawData = new ArrayBuffer(4);
-      const uint8Frame = new Frame({ rawData, shape: [1], dtype: 'uint8' as tf.DataType });
+      const uint8Frame = new Frame({
+        rawData,
+        shape: [1],
+        dtype: 'uint8' as tf.DataType,
+      });
       const float32Frame = new Frame({ rawData, shape: [1], dtype: 'float32' });
       const int32Frame = new Frame({ rawData, shape: [1], dtype: 'int32' });
 
@@ -195,27 +232,29 @@ describe('Frame Class', () => {
   });
 });
 
-describe("getActualSizeFromRawData", () => {
-  it("calculates size for uint8 data", () => {
+describe('getActualSizeFromRawData', () => {
+  it('calculates size for uint8 data', () => {
     const buffer = new ArrayBuffer(8);
-    const result = getActualSizeFromRawData(buffer, "uint8" as tf.DataType);
+    const result = getActualSizeFromRawData(buffer, 'uint8' as tf.DataType);
     expect(result).toBe(8);
   });
 
-  it("calculates size for int32 data", () => {
+  it('calculates size for int32 data', () => {
     const buffer = new ArrayBuffer(16);
-    const result = getActualSizeFromRawData(buffer, "int32");
+    const result = getActualSizeFromRawData(buffer, 'int32');
     expect(result).toBe(4);
   });
 
-  it("calculates size for float32 data", () => {
+  it('calculates size for float32 data', () => {
     const buffer = new ArrayBuffer(16);
-    const result = getActualSizeFromRawData(buffer, "float32");
+    const result = getActualSizeFromRawData(buffer, 'float32');
     expect(result).toBe(4);
   });
 
-  it("throws an error for unsupported dtype", () => {
+  it('throws an error for unsupported dtype', () => {
     const buffer = new ArrayBuffer(8);
-    expect(() => getActualSizeFromRawData(buffer, "unknown" as any)).toThrow("Unsupported dtype: unknown");
+    expect(() => getActualSizeFromRawData(buffer, 'unknown' as any)).toThrow(
+      'Unsupported dtype: unknown'
+    );
   });
 });
