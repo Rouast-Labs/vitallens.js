@@ -1,3 +1,4 @@
+import './polyfills/blob';
 import './utils/suppressTfLogs';
 
 export { VitalLens } from './core/VitalLens.node';
