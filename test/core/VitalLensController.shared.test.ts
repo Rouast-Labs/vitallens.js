@@ -27,16 +27,14 @@ class TestVitalLensController extends VitalLensControllerBase {
     return { sendFrames: jest.fn() };
   }
   protected createWebSocketClient(apiKey: string): IWebSocketClient {
-    return { connect: jest.fn(), sendFrames: jest.fn(), getIsConnected: jest.fn(), close: jest.fn() }
+    return { connect: jest.fn(), sendFrames: jest.fn(), getIsConnected: jest.fn(), close: jest.fn() };
   }
 }
 
 describe('VitalLensControllerBase', () => {
   let controller: TestVitalLensController;
   const mockOptions: VitalLensOptions = { apiKey: 'test-key', method: 'vitallens', requestMode: 'rest' };
-  const mockStreamProcessor = new StreamProcessor(
-    mockOptions, {} as any, {} as any, {} as any, {} as any, {} as any, jest.fn(), jest.fn()
-  );
+  let mockStreamProcessor: Partial<StreamProcessor>;
 
   beforeEach(() => {
     // Mock MethodHandlerFactory return value
@@ -48,6 +46,8 @@ describe('VitalLensControllerBase', () => {
     });
     // Instantiate a new controller
     controller = new TestVitalLensController(mockOptions);
+    // Reset streamProcessor to undefined initially
+    controller['streamProcessor'] = null;
   });
 
   test('should initialize components in the constructor', () => {
@@ -100,72 +100,85 @@ describe('VitalLensControllerBase', () => {
     );
     expect(methodHandler).toBeDefined();
   });
-  
-  test('should start on startVideoStream if streamProcessor is not null and not already processing', () => {
-    controller['streamProcessor'] = mockStreamProcessor as any;
-    controller['processing'] = false;
-    controller.startVideoStream();
-    expect(controller['methodHandler'].init).toHaveBeenCalled();
-    expect(mockStreamProcessor.start).toHaveBeenCalled();
-  });
-  
-  test('should not start on startVideoStream if streamProcessor is null or already processing', () => {
-    const mockStreamProcessor1 = new StreamProcessor(
-      mockOptions, {} as any, {} as any, {} as any, {} as any, {} as any, jest.fn(), jest.fn()
-    );
-    // Case 1: streamProcessor is null
-    controller['streamProcessor'] = null;
-    controller.startVideoStream();
-    expect(controller['methodHandler'].init).not.toHaveBeenCalled();
-    // Case 2: already processing
-    controller['streamProcessor'] = mockStreamProcessor1 as StreamProcessor;
-    controller['processing'] = true;
-    controller.startVideoStream();
-    expect(controller['methodHandler'].init).not.toHaveBeenCalled();
-    expect(mockStreamProcessor1.start).not.toHaveBeenCalled();
+
+  describe('startVideoStream', () => {
+    test('should start the video stream if not already processing', () => {
+      // Create a mock stream processor that is not processing
+      mockStreamProcessor = {
+        isProcessing: jest.fn().mockReturnValue(false),
+        start: jest.fn(),
+      };
+      controller['streamProcessor'] = mockStreamProcessor as StreamProcessor;
+      
+      controller.startVideoStream();
+      expect(mockStreamProcessor.start).toHaveBeenCalled();
+    });
+
+    test('should not start the video stream if already processing', () => {
+      // Create a mock stream processor that is already processing
+      mockStreamProcessor = {
+        isProcessing: jest.fn().mockReturnValue(true),
+        start: jest.fn(),
+      };
+      controller['streamProcessor'] = mockStreamProcessor as StreamProcessor;
+      
+      controller.startVideoStream();
+      expect(mockStreamProcessor.start).not.toHaveBeenCalled();
+    });
   });
 
-  test('should stop streamProcessor and cleanup methodHandler in pauseVideoStream', () => {
-    controller['streamProcessor'] = mockStreamProcessor as any;
-    jest.spyOn(mockStreamProcessor, 'stop').mockImplementation(() => {});
-    controller['processing'] = true;
-    controller.pauseVideoStream();
-    expect(mockStreamProcessor.stop).toHaveBeenCalled();
-    expect(controller['methodHandler'].cleanup).toHaveBeenCalled();
-    expect(controller['processing']).toBe(false);
-  });
-  
-  test('should not stop or cleanup on pauseVideoStream if processing is false', () => {
-    const mockStreamProcessor1 = new StreamProcessor(
-      mockOptions, {} as any, {} as any, {} as any, {} as any, {} as any, jest.fn(), jest.fn()
-    );
-    controller['streamProcessor'] = mockStreamProcessor1 as any;
-    jest.spyOn(mockStreamProcessor1, 'stop').mockImplementation(() => {});
-    controller['processing'] = false;
-    controller.pauseVideoStream();
-    expect(mockStreamProcessor1.stop).not.toHaveBeenCalled();
-    expect(controller['methodHandler'].cleanup).not.toHaveBeenCalled();
-    expect(controller['processing']).toBe(false);
-  });
-  
-  test('should do nothing on pauseVideoStream if streamProcessor is null', () => {
-    controller['streamProcessor'] = null;
-    controller['processing'] = true;
-    controller.pauseVideoStream();
-    expect(controller['processing']).toBe(true);
-    expect(controller['methodHandler'].cleanup).not.toHaveBeenCalled();
+  describe('pauseVideoStream', () => {
+    test('should pause the video stream if processing', () => {
+      // Create a mock stream processor that is processing
+      mockStreamProcessor = {
+        isProcessing: jest.fn().mockReturnValue(true),
+        stop: jest.fn(),
+      };
+      controller['streamProcessor'] = mockStreamProcessor as StreamProcessor;
+      controller['vitalsEstimateManager'].resetAll = jest.fn();
+
+      controller.pauseVideoStream();
+      expect(mockStreamProcessor.stop).toHaveBeenCalled();
+      expect(controller['vitalsEstimateManager'].resetAll).toHaveBeenCalled();
+    });
+
+    test('should do nothing on pauseVideoStream if not processing', () => {
+      // Create a mock stream processor that is not processing
+      mockStreamProcessor = {
+        isProcessing: jest.fn().mockReturnValue(false),
+        stop: jest.fn(),
+      };
+      controller['streamProcessor'] = mockStreamProcessor as StreamProcessor;
+      controller['vitalsEstimateManager'].resetAll = jest.fn();
+
+      controller.pauseVideoStream();
+      expect(mockStreamProcessor.stop).not.toHaveBeenCalled();
+      expect(controller['vitalsEstimateManager'].resetAll).not.toHaveBeenCalled();
+    });
   });
 
-  test('should stop the StreamProcessor and clear resources in stopVideoStream', () => {
-    const mockStreamProcessor1 = new StreamProcessor(
-      mockOptions, {} as any, {} as any, {} as any, {} as any, {} as any, jest.fn(), jest.fn()
-    );
-    controller['streamProcessor'] = mockStreamProcessor1 as any;
-    jest.spyOn(mockStreamProcessor1, 'stop').mockImplementation(() => {});
-    controller.stopVideoStream();
-    expect(mockStreamProcessor1.stop).toHaveBeenCalled();
-    expect(controller['bufferManager'].cleanup).toHaveBeenCalled();
-    expect(controller['methodHandler'].cleanup).toHaveBeenCalled();
+  describe('stopVideoStream', () => {
+    test('should stop the streamProcessor (if exists) and reset vitalsEstimateManager', () => {
+      // Create a mock stream processor that is processing
+      mockStreamProcessor = {
+        stop: jest.fn(),
+      };
+      controller['streamProcessor'] = mockStreamProcessor as StreamProcessor;
+      controller['vitalsEstimateManager'].resetAll = jest.fn();
+
+      controller.stopVideoStream();
+      expect(mockStreamProcessor.stop).toHaveBeenCalled();
+      expect(controller['streamProcessor']).toBeNull();
+      expect(controller['vitalsEstimateManager'].resetAll).toHaveBeenCalled();
+    });
+
+    test('should call vitalsEstimateManager.resetAll even if streamProcessor is null', () => {
+      controller['streamProcessor'] = null;
+      controller['vitalsEstimateManager'].resetAll = jest.fn();
+
+      controller.stopVideoStream();
+      expect(controller['vitalsEstimateManager'].resetAll).toHaveBeenCalled();
+    });
   });
 
   test('should call createFileFrameIterator and processVideoFile correctly', async () => {
@@ -182,7 +195,7 @@ describe('VitalLensControllerBase', () => {
       })()),
     };
 
-    // Mock dependencies
+    // Override the frame iterator factory to return our fake iterator
     controller['frameIteratorFactory']!.createFileFrameIterator = jest
       .fn()
       .mockReturnValue(mockFrameIterator);
@@ -196,7 +209,7 @@ describe('VitalLensControllerBase', () => {
     const mockFinalResult = { message: 'Processing complete' };
     controller['vitalsEstimateManager'].getResult = jest.fn().mockResolvedValue(mockFinalResult);
 
-    // Run processFile
+    // Run processVideoFile
     const result = await controller.processVideoFile(mockFileInput);
 
     // Verify createFileFrameIterator was called
@@ -232,8 +245,9 @@ describe('VitalLensControllerBase', () => {
       'complete'
     );
 
-    // Ensure final cleanup is called
+    // Ensure final cleanup is called and buffer state reset for this file ID
     expect(controller['methodHandler'].cleanup).toHaveBeenCalled();
+    expect(controller['vitalsEstimateManager'].reset).toHaveBeenCalledWith('frameIteratorId');
 
     // Verify final result
     expect(result).toEqual(mockFinalResult);
@@ -251,7 +265,7 @@ describe('VitalLensControllerBase', () => {
     
     // Verify that the listener was called with the correct data.
     expect(mockListener).toHaveBeenCalledWith(testData);
-  });  
+  });
 
   test('should remove all listeners for an event when removeEventListener is called', () => {
     const mockListener1 = jest.fn();

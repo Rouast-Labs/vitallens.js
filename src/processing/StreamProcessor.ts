@@ -64,6 +64,7 @@ export class StreamProcessor {
    */
   async start(): Promise<void> {
     this.init();
+    this.methodHandler.init();
     this.isPaused = false;
     const iterator = this.frameIterator[Symbol.asyncIterator]();
 
@@ -190,6 +191,14 @@ export class StreamProcessor {
       frame.release();
     });
   }
+
+  /**
+   * Returns `true` we are actively processing
+   * @returns Returns `true` we are actively processing
+   */
+  isProcessing(): boolean {
+    return !this.isPaused;
+  }
   
   /**
    * Stops the processing loop, halts frame iteration, and clears buffers.
@@ -197,6 +206,7 @@ export class StreamProcessor {
   stop(): void {
     this.isPaused = true;
     this.frameIterator.stop();
+    this.methodHandler.cleanup();
     this.bufferManager.cleanup();
   }
 }

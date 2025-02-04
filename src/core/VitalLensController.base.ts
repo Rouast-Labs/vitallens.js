@@ -24,7 +24,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   protected methodConfig: MethodConfig;
   protected vitalsEstimateManager: VitalsEstimateManager;
   protected faceDetector: IFaceDetector;
-  private processing = false;
   protected eventListeners: { [event: string]: ((data: any) => void)[] } = {};
 
   constructor(protected options: VitalLensOptions) {
@@ -88,7 +87,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   async setVideoStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
     if (!isBrowser) throw new Error('setVideoStream is not supported yet in the Node environment.');
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
-    if (this.streamProcessor) throw new Error('A video stream is already active. Only one video stream is supported at a time.');
+    if (this.streamProcessor) throw new Error('A video stream has already been set. Only one video stream is supported at a time - call stopVideoStream() to remove.');
     
     if (!this.options.globalRoi) await this.faceDetector.load();
 
@@ -101,15 +100,15 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.bufferManager,
       this.faceDetector,
       this.methodHandler,
-      // onPredict
       async (incrementalResult) => {
-        if (this.processing) {
+        // onPredict - process and dispatch incremental result unless paused
+        if (this.isProcessing()) {
           const result = await this.vitalsEstimateManager.processIncrementalResult(incrementalResult, frameIterator.getId(), "windowed");
           this.dispatchEvent('vitals', result);
         }
       },
-      // onNoFace
       async () => {
+        // onNoFace - reset the vitals estimate manager and dispatch empty result
         this.vitalsEstimateManager.reset(frameIterator.getId());
         this.dispatchEvent('vitals', this.vitalsEstimateManager.getEmptyResult());
       }
@@ -120,10 +119,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * Starts processing for live streams or resumes if paused.
    */
   startVideoStream(): void {
-    if (!this.processing && this.streamProcessor) {
-      this.methodHandler.init();
-      this.streamProcessor.start();
-      this.processing = true;
+    if (!this.isProcessing()) {
+      this.streamProcessor!.start();
     }
   }
 
@@ -131,10 +128,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * Pauses processing for live streams, including frame capture and predictions.
    */
   pauseVideoStream(): void {
-    if (this.processing && this.streamProcessor) {
-      this.streamProcessor.stop();
-      this.processing = false;
-      this.methodHandler.cleanup();
+    if (this.isProcessing()) {
+      this.streamProcessor!.stop();
       this.vitalsEstimateManager.resetAll();
     }
   }
@@ -147,9 +142,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.streamProcessor.stop();
       this.streamProcessor = null;
     }
-    this.processing = false;
-    this.bufferManager.cleanup();
-    this.methodHandler.cleanup();
     this.vitalsEstimateManager.resetAll();
   }
 
@@ -174,9 +166,12 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       }
     }
 
-    await this.methodHandler.cleanup();
+    const result = await this.vitalsEstimateManager.getResult(frameIterator.getId());
 
-    return await this.vitalsEstimateManager.getResult(frameIterator.getId());
+    await this.methodHandler.cleanup();
+    this.vitalsEstimateManager.reset(frameIterator.getId());
+
+    return result;
   }
 
   /**
@@ -208,5 +203,13 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   private dispatchEvent(event: string, data: any): void {
     this.eventListeners[event]?.forEach((listener) => listener(data));
+  }
+  
+  /**
+   * Returns `true` if streamProcessor is not null and actively processing
+   * @returns `true` if streamProcessor is not null and actively processing
+   */
+  private isProcessing() {
+    return this.streamProcessor !== null && this.streamProcessor.isProcessing();
   }
 }
