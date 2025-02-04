@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: ["18", "20"]
+        node-version: ["16", "18", "20"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -59,7 +59,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18.16.1"
+          node-version: "18"
 
       - name: Install ffmpeg
         uses: Iamshankhadeep/setup-ffmpeg@v1.2

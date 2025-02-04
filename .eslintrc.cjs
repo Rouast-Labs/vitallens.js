@@ -1,6 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-require('./src/polyfills/structuredClone.cjs');
-
 module.exports = {
   parser: '@typescript-eslint/parser',
   parserOptions: {

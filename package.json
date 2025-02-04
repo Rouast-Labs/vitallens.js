@@ -20,7 +20,7 @@
   },
   "type": "module",
   "scripts": {
-    "preinstall": "node ./scripts/check-node-version.js",
+    "preinstall": "node ./scripts/check-node-version.cjs",
     "build": "tsc && rollup -c",
     "prepare": "npm run build",
     "build:integration": "rollup -c --environment BUILD_INTEGRATION",
@@ -67,7 +67,7 @@
     "dist/vitallens.esm.js",
     "dist/types/index.node.d.ts",
     "dist/types/index.browser.d.ts",
-    "scripts/check-node-version.js",
+    "scripts/check-node-version.cjs",
     "LICENSE",
     "README.md"
   ],
@@ -77,6 +77,7 @@
     "fft.js": "^4.0.4",
     "fluent-ffmpeg": "^2.1.3",
     "node-fetch": "^2.7.0",
+    "semver": "^7.7.1",
     "uuid": "^11.0.5",
     "ws": "^8.18.0"
   },
@@ -118,7 +119,6 @@
     "puppeteer": "^23.11.1",
     "rollup": "^2.79.2",
     "rollup-plugin-terser": "^7.0.2",
-    "semver": "^7.7.1",
     "ts-jest": "^29.2.5",
     "typescript": "^5.5.3"
   },
