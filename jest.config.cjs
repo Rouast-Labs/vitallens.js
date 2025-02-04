@@ -14,7 +14,10 @@ module.exports = {
         'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1\\.bin$':
           '<rootDir>/__mocks__/modelBinMock.js',
       },
-      setupFilesAfterEnv: ['./jest.setup.ts'],
+      setupFilesAfterEnv: [
+        './jest.setup.ts',
+        '<rootDir>/src/polyfills/blob.cjs',
+      ],
     },
     // jsdom tests (lightweight browser-like unit tests)
     {
@@ -25,7 +28,8 @@ module.exports = {
         '^.+\\.tsx?$': 'ts-jest',
       },
       moduleNameMapper: {
-        '^@ffmpeg/ffmpeg$': '<rootDir>/node_modules/@ffmpeg/ffmpeg/dist/umd/ffmpeg.js',
+        '^@ffmpeg/ffmpeg$':
+          '<rootDir>/node_modules/@ffmpeg/ffmpeg/dist/umd/ffmpeg.js',
         'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model\\.json$':
           '<rootDir>/__mocks__/modelJsonMock.js',
         'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1\\.bin$':
@@ -46,7 +50,5 @@ module.exports = {
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverage: true,
-  testPathIgnorePatterns: [
-    "/node_modules/"
-  ]
+  testPathIgnorePatterns: ['/node_modules/'],
 };
