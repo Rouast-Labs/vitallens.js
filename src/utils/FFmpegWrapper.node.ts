@@ -1,6 +1,7 @@
 import { FFmpegWrapperBase } from "./FFmpegWrapper.base";
 import { VideoInput, VideoProbeResult, VideoProcessingOptions } from "../types";
 import * as path from "path";
+import * as os from "os";
 import * as fs from "fs";
 import ffmpeg from "fluent-ffmpeg";
 
@@ -112,28 +113,42 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
     const filePath = await this.loadInput(input);
 
     const filters = this.assembleVideoFilters(options, probeInfo);
-    const tempFile = path.join(process.cwd(), "output.rgb");
+    
+    // Generate a unique temporary filename in the OS temp directory
+    const tempFile = path.join(
+      os.tmpdir(),
+      `vitallens_output_${Date.now()}_${Math.random().toString(36).slice(2)}.rgb`
+    );
 
     return new Promise<Uint8Array>((resolve, reject) => {
-      let command = ffmpeg(filePath)
+      ffmpeg(filePath)
         .outputOptions("-pix_fmt", options.pixelFormat || "rgb24")
         .outputOptions("-f", "rawvideo")
         .outputOptions("-vsync", "passthrough")
-        .outputOptions("-frame_pts", "true") 
-        .videoFilters(filters);
-  
-      command
+        .outputOptions("-frame_pts", "true")
+        .videoFilters(filters)
         .save(tempFile)
-        .on("end", async () => {
+        .on("end", () => {
           try {
             const buffer = fs.readFileSync(tempFile);
-            fs.unlinkSync(tempFile);
+            try {
+              fs.unlinkSync(tempFile);
+            } catch (cleanupError) {
+              console.error("Error cleaning up temporary file:", cleanupError);
+            }
             resolve(new Uint8Array(buffer));
-          } catch (err) {
-            reject(err);
+          } catch (readError) {
+            reject(readError);
           }
         })
-        .on("error", (err) => reject(err))
+        .on("error", (err) => {
+          try {
+            fs.unlinkSync(tempFile);
+          } catch (cleanupError) {
+            console.error("Error cleaning up temporary file after error:", cleanupError);
+          }
+          reject(err);
+        })
         .run();
     });
   }

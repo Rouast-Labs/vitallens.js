@@ -154,7 +154,8 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
   
     const filters = this.assembleVideoFilters(options, probeInfo);
   
-    const outputName = "output.rgb";
+    const outputName = `output_${Date.now()}_${Math.random().toString(36).slice(2)}.rgb`;
+  
     const ret = await this.ffmpeg.exec([
       "-i", inputName,
       ...(filters.length ? ["-vf", filters.join(",")] : []),
@@ -163,11 +164,20 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
       outputName,
     ]);
   
+    if (ret === 1) {
+      throw new Error("FFmpeg execution failed with exit code 1");
+    }
+  
     const output = await this.ffmpeg.readFile(outputName);
-
-    await this.ffmpeg.deleteFile(outputName);
+  
+    try {
+      await this.ffmpeg.deleteFile(outputName);
+    } catch (cleanupError) {
+      console.error("Error cleaning up output file:", cleanupError);
+    }
+  
     return output;
-  }
+  }  
   
   /**
    * A helper function that takes ffmpeg log output and extracts metadata.
