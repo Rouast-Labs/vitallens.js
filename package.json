@@ -28,6 +28,7 @@
     "test:node": "jest --selectProjects node",
     "test:integration": "npm run build:integration && jest --selectProjects integration-browser",
     "lint": "eslint src/**/*.ts",
+    "format": "prettier --write \"src/**/*.{ts,js,json,css,md}\"",
     "start:browser-webcam-minimal": "EXAMPLE_TO_OPEN=browser/webcam_minimal nodemon scripts/server.cjs",
     "start:browser-webcam": "EXAMPLE_TO_OPEN=browser/webcam nodemon scripts/server.cjs",
     "start:browser-file": "EXAMPLE_TO_OPEN=browser/file nodemon scripts/server.cjs",
