@@ -20,6 +20,7 @@
   },
   "type": "module",
   "scripts": {
+    "preinstall": "node ./scripts/check-node-version.js",
     "build": "tsc && rollup -c",
     "prepare": "npm run build",
     "build:integration": "rollup -c --environment BUILD_INTEGRATION",
@@ -66,6 +67,7 @@
     "dist/vitallens.esm.js",
     "dist/types/index.node.d.ts",
     "dist/types/index.browser.d.ts",
+    "scripts/check-node-version.js",
     "LICENSE",
     "README.md"
   ],
@@ -116,6 +118,7 @@
     "puppeteer": "^23.11.1",
     "rollup": "^2.79.2",
     "rollup-plugin-terser": "^7.0.2",
+    "semver": "^7.7.1",
     "ts-jest": "^29.2.5",
     "typescript": "^5.5.3"
   },
