@@ -88,6 +88,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   async setVideoStream(stream?: MediaStream, videoElement?: HTMLVideoElement): Promise<void> {
     if (!isBrowser) throw new Error('setVideoStream is not supported yet in the Node environment.');
     if (!this.frameIteratorFactory) throw new Error('FrameIteratorFactory is not initialized.');
+    if (this.streamProcessor) throw new Error('A video stream is already active. Only one video stream is supported at a time.');
     
     if (!this.options.globalRoi) await this.faceDetector.load();
 
