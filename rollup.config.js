@@ -19,7 +19,7 @@ function onwarn(warning, defaultHandler) {
   defaultHandler(warning);
 }
 
-const nodeExternals = ['@tensorflow/tfjs-node', 'fetch-blob'];
+const nodeExternals = ['@tensorflow/tfjs-node'];
 
 const nodeEsmConfig = {
   input: 'src/index.node.ts',

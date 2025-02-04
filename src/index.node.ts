@@ -1,4 +1,3 @@
-import './polyfills/blob.cjs';
 import './utils/suppressTfLogs';
 
 export { VitalLens } from './core/VitalLens.node';

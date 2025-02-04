@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const express = require('express');
 const path = require('path');
 const { exec } = require('child_process');
@@ -12,20 +13,21 @@ app.use((_, res, next) => {
     'Cross-Origin-Embedder-Policy': 'require-corp',
     'Cross-Origin-Resource-Policy': 'cross-origin',
     'Origin-Agent-Cluster': '?1',
-    "Access-Control-Allow-Credentials": "true",
+    'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Range',
-    'Content-Security-Policy': 
+    'Access-Control-Allow-Headers':
+      'Origin, X-Requested-With, Content-Type, Accept, Range',
+    'Content-Security-Policy':
       "default-src 'self' blob: data:; " +
       "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/ https://cdn.jsdelivr.net; " +
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/ https://cdn.jsdelivr.net; " +
       "worker-src 'self' blob:; " +
       "connect-src 'self' blob: data: https://unpkg.com/ https://api.rouast.com; " +
-      "style-src 'self' 'unsafe-inline';"
+      "style-src 'self' 'unsafe-inline';",
   });
   next();
-})
+});
 
 // Serve static files for examples and dist
 app.use(express.static(path.join(__dirname, '../examples')));
@@ -34,7 +36,12 @@ app.use(express.static(path.join(__dirname, '../dist')));
 // Handle dynamic example selection
 app.get('/browser/:example', (req, res) => {
   const example = req.params.example;
-  const examplePath = path.join(__dirname, '../examples', 'browser', example + '.html');
+  const examplePath = path.join(
+    __dirname,
+    '../examples',
+    'browser',
+    example + '.html'
+  );
   res.sendFile(examplePath, (err) => {
     if (err) {
       res.status(404).send('Example not found');

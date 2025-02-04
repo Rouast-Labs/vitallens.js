@@ -18,7 +18,8 @@ console.warn = (message, ...args) => {
 };
 
 // Check if the environment is Node.js or browser
-const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
+const isBrowser =
+  typeof window !== 'undefined' && typeof window.document !== 'undefined';
 
 if (isBrowser) {
   Object.defineProperty(HTMLMediaElement.prototype, 'play', {
