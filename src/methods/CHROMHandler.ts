@@ -31,10 +31,10 @@ export class CHROMHandler extends SimpleMethodHandler {
       const rgbTensor = tf.tensor2d(floatArray, shape as [number, number]);
 
       // --- RGB Normalization ---
-      // Compute the mean for each row (keepdims = true -> shape: [n, 1]).
-      const rowMean = tf.mean(rgbTensor, 1, true);
-      // Normalize: (rgbTensor / rowMean) - 1.
-      const rgb_n = tf.sub(tf.div(rgbTensor, rowMean), tf.scalar(1));
+      // Compute the temporal mean; result shape: [1, 3]
+      const temporalMean = tf.mean(rgbTensor, 0, true);
+      // Normalize: (rgbTensor / temporalMean) - 1.
+      const rgb_n = tf.sub(tf.div(rgbTensor, temporalMean), tf.scalar(1));
 
       // --- CHROM Computation ---
       // Extract channels as [n, 1] tensors.

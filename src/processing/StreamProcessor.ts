@@ -1,10 +1,6 @@
 import { MethodConfig, ROI, VitalLensOptions, VitalLensResult } from '../types';
 import { BufferManager } from './BufferManager';
-import {
-  checkFaceInROI,
-  checkROIInFace,
-  getROIForMethod,
-} from '../utils/faceOps';
+import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
 import { IFaceDetector } from '../types/IFaceDetector';
 import { MethodHandler } from '../methods/MethodHandler';
 import { Frame } from './Frame';
@@ -206,8 +202,7 @@ export class StreamProcessor {
           this.roi === null ||
           (this.options.method === 'vitallens' &&
             !checkFaceInROI(absoluteDet, this.roi, [0.6, 1.0])) ||
-          (this.options.method !== 'vitallens' &&
-            !checkROIInFace(this.roi, absoluteDet, [1.0, 1.0]));
+          this.options.method !== 'vitallens';
 
         if (shouldUpdateROI) {
           this.roi = getROIForMethod(

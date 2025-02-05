@@ -49,6 +49,7 @@ export class GHandler extends SimpleMethodHandler {
     data: number[],
     fps: number
   ): number[] {
+    // TODO: Only use detrend for short snippets
     // Determine lambda for detrending from fps.
     const lambda = detrendLambdaForHRResponse(fps);
     // Detrend the signal.

@@ -39,28 +39,16 @@ class DummyFFmpegWrapper implements IFFmpegWrapper {
       options: any,
       probeInfo: VideoProbeResult
     ): Promise<Uint8Array> => {
-      if (options.scale && !options.trim && !options.crop) {
-        // Called for face detection.
-        const fDetFs = options.fpsTarget || 1.0;
-        const fDetFactor = Math.max(Math.round(probeInfo.fps / fDetFs), 1);
-        const fDetNDsFrames = Math.ceil(probeInfo.totalFrames / fDetFactor);
-        const totalBytes = fDetNDsFrames * 240 * 320 * 3;
-        return new Uint8Array(totalBytes).fill(100);
-      } else if (options.trim && options.crop && options.scale) {
-        // Called in FileFrameIterator.next()
-        const startFrame: number = options.trim.startFrame;
-        const endFrame: number = options.trim.endFrame;
-        const framesToRead = endFrame - startFrame;
-        const dsFactor = 2; // our dummy logic assumes dsFactor=2 as computed from probeInfo.fps (10) and fpsTarget (5).
-        const dsFramesExpected = Math.ceil(framesToRead / dsFactor);
-        const width = options.scale.width;
-        const height = options.scale.height;
-        const totalPixelsPerFrame = width * height * 3;
-        const expectedLength = dsFramesExpected * totalPixelsPerFrame;
-        return new Uint8Array(expectedLength).fill(60);
-      }
-      // Default dummy response.
-      return new Uint8Array(0);
+      const startFrame: number = options.trim.startFrame;
+      const endFrame: number = options.trim.endFrame;
+      const framesToRead = endFrame - startFrame;
+      const dsFactor = 2; // our dummy logic assumes dsFactor=2 as computed from probeInfo.fps (10) and fpsTarget (5).
+      const dsFramesExpected = Math.ceil(framesToRead / dsFactor);
+      const width = options.scale.width;
+      const height = options.scale.height;
+      const totalPixelsPerFrame = width * height * 3;
+      const expectedLength = dsFramesExpected * totalPixelsPerFrame;
+      return new Uint8Array(expectedLength).fill(60);
     }
   );
   cleanup = jest.fn(() => {});
@@ -70,15 +58,21 @@ class DummyFFmpegWrapper implements IFFmpegWrapper {
 class DummyFaceDetector implements IFaceDetector {
   load = jest.fn(async () => Promise.resolve());
   run = jest.fn(async () => Promise.resolve());
-  detect = jest.fn(async (videoFrames: Frame): Promise<ROI[]> => {
-    const [numFrames] = videoFrames.getShape();
-    return Array.from({ length: numFrames }, () => ({
-      x0: 0.1,
-      y0: 0.1,
-      x1: 0.4,
-      y1: 0.4,
-    }));
-  });
+  detect = jest.fn(
+    async (
+      videoFrames: Frame,
+      ffmpeg: any,
+      probeInfo: VideoProbeResult
+    ): Promise<ROI[]> => {
+      // Use Array.from to create an array of ROIs so that each ROI is a separate object.
+      return Array.from({ length: probeInfo.totalFrames }, () => ({
+        x0: 0.1,
+        y0: 0.1,
+        x1: 0.4,
+        y1: 0.4,
+      }));
+    }
+  );
 }
 
 // Dummy options and method config.

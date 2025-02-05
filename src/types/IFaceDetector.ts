@@ -1,8 +1,16 @@
-import { Frame } from '../processing/Frame';
-import { ROI } from './core';
+import { FaceDetectorInput } from '../ssd/FaceDetectorAsync.base';
+import { ROI, VideoProbeResult } from './core';
+import { IFFmpegWrapper } from './IFFmpegWrapper';
 
 export interface IFaceDetector {
   load(): Promise<void>;
-  detect(inputs: Frame): Promise<ROI[]>;
-  run(inputs: Frame, onFinish: (detectionResult: ROI[]) => Promise<void>): void;
+  detect(
+    input: FaceDetectorInput,
+    ffmpeg?: IFFmpegWrapper,
+    probeInfo?: VideoProbeResult
+  ): Promise<ROI[]>;
+  run(
+    input: FaceDetectorInput,
+    onFinish: (detectionResult: ROI[]) => Promise<void>
+  ): void;
 }

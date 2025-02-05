@@ -19,15 +19,6 @@ describe('CHROMHandler', () => {
 
   describe('algorithm', () => {
     it('should compute CHROM signal correctly for known input', () => {
-      // Use known test data:
-      // We'll use three rows: [1, 2, 3], [4, 5, 6], [7, 8, 9].
-      // For each row, the mean is computed and then the normalized value is (value/mean - 1).
-      // For row1: mean = 2, normalized = [0.5-1, 1-1, 1.5-1] = [-0.5, 0, 0.5]
-      // X1 = 3*(-0.5) - 2*(0) = -1.5; Y1 = 1.5*(-0.5) + 0 - 1.5*(0.5) = -0.75 - 0.75 = -1.5.
-      // Similarly for row2: [4,5,6] -> mean=5, normalized = [-0.2, 0, 0.2] giving X2 = -0.6, Y2 = -0.6.
-      // For row3: [7,8,9] -> mean=8, normalized = [-0.125, 0, 0.125] giving X3 = -0.375, Y3 = -0.375.
-      // Then std(Xs) = std(Ys) so alpha = 1 and chrom = Xs - Ys = [0,0,0].
-
       const rgbTensor = tf.tensor2d(
         [
           [1, 2, 3],

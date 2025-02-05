@@ -42,26 +42,14 @@ class DummyFFmpegWrapper implements IFFmpegWrapper {
       options: any,
       probeInfo: VideoProbeResult
     ): Promise<Uint8Array> => {
-      if (options.scale) {
-        // Called for face detection.
-        const fDetNDsFrames = Math.ceil(
-          20 / Math.max(Math.round(10 / (options.fpsTarget || 1.0)), 1)
-        );
-        const totalBytes = fDetNDsFrames * 240 * 320 * 3;
-        return new Uint8Array(totalBytes).fill(100);
-      } else if (options.trim && options.crop) {
-        // Called for processing a chunk.
-        const startFrame: number = options.trim.startFrame;
-        const endFrame: number = options.trim.endFrame;
-        const chunkFrameCount = endFrame - startFrame;
-        const crop = options.crop as ROI;
-        const unionWidth = crop.x1 - crop.x0;
-        const unionHeight = crop.y1 - crop.y0;
-        const totalBytes = chunkFrameCount * unionWidth * unionHeight * 3;
-        return new Uint8Array(totalBytes).fill(50);
-      }
-      // Default dummy response.
-      return new Uint8Array(0);
+      const startFrame: number = options.trim.startFrame;
+      const endFrame: number = options.trim.endFrame;
+      const chunkFrameCount = endFrame - startFrame;
+      const crop = options.crop as ROI;
+      const unionWidth = crop.x1 - crop.x0;
+      const unionHeight = crop.y1 - crop.y0;
+      const totalBytes = chunkFrameCount * unionWidth * unionHeight * 3;
+      return new Uint8Array(totalBytes).fill(50);
     }
   );
   cleanup = jest.fn(() => {});
@@ -71,16 +59,21 @@ class DummyFFmpegWrapper implements IFFmpegWrapper {
 class DummyFaceDetector implements IFaceDetector {
   load = jest.fn(async () => Promise.resolve());
   run = jest.fn(async () => Promise.resolve());
-  detect = jest.fn(async (videoFrames: Frame): Promise<ROI[]> => {
-    const [numFrames] = videoFrames.getShape();
-    // Use Array.from to create an array of ROIs so that each ROI is a separate object.
-    return Array.from({ length: numFrames }, () => ({
-      x0: 0.1,
-      y0: 0.1,
-      x1: 0.4,
-      y1: 0.4,
-    }));
-  });
+  detect = jest.fn(
+    async (
+      videoFrames: Frame,
+      ffmpeg: any,
+      probeInfo: VideoProbeResult
+    ): Promise<ROI[]> => {
+      // Use Array.from to create an array of ROIs so that each ROI is a separate object.
+      return Array.from({ length: probeInfo.totalFrames }, () => ({
+        x0: 0.1,
+        y0: 0.1,
+        x1: 0.4,
+        y1: 0.4,
+      }));
+    }
+  );
 }
 
 // Dummy options and method config.
@@ -173,14 +166,14 @@ describe('FileRGBIterator', () => {
       x1: Math.round(0.4 * 640),
       y1: Math.round(0.4 * 480),
     };
-    // After repeating and adjusting, iterator.roi should have length equal to totalFrames.
-    expect(iterator['roi'].length).toBe(20);
-    iterator['roi'].forEach((r) => {
+    // The iterator should have one ROI per frame (20 frames).
+    expect((iterator as any)['roi'].length).toBe(20);
+    (iterator as any)['roi'].forEach((r: ROI) => {
       expect(r).toEqual(expectedAbsoluteROI);
     });
     // Also, rgb should be computed.
-    expect(iterator['rgb']).not.toBeNull();
-    // Check that ffmpegWrapper.readVideo was called at least twice (one for face detection, one or more for chunks).
+    expect((iterator as any)['rgb']).not.toBeNull();
+    // Verify that readVideo was called
     expect(ffmpegWrapper.readVideo).toHaveBeenCalled();
   });
 

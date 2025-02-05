@@ -215,6 +215,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
             new Float32Array(incrementalResult.state.data)
           );
         }
+        // TODO: Tell manager not to return anything
         await this.vitalsEstimateManager.processIncrementalResult(
           incrementalResult,
           frameIterator.getId(),

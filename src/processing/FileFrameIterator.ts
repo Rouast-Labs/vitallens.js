@@ -59,34 +59,21 @@ export class FileFrameIterator extends FrameIteratorBase {
     if (this.options.globalRoi) {
       this.roi = Array(totalFrames).fill(this.options.globalRoi);
     } else {
-      const fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0;
-      const fDetDsFactor = Math.max(Math.round(this.probeInfo.fps / fDetFs), 1);
-      const fDetNDsFrames = Math.ceil(totalFrames / fDetDsFactor);
-      const video = await this.ffmpeg.readVideo(
+      // Run face detection
+      const faces = (await this.faceDetector.detect(
         this.videoInput,
-        {
-          fpsTarget: this.options.fDetFs ? this.options.fDetFs : 1.0,
-          scale: { width: 320, height: 240 },
-        },
+        this.ffmpeg,
         this.probeInfo
-      );
-      // Run face detector (fDetNDsFrames, 4)
-      const videoFrames = Frame.fromUint8Array(video, [
-        fDetNDsFrames,
-        240,
-        320,
-        3,
-      ]);
-      const faces = (await this.faceDetector.detect(videoFrames)) as ROI[];
-      // Convert to absolute units
+      )) as ROI[];
+      // Convert faces to absolute units
       const absoluteROIs = faces.map(({ x0, y0, x1, y1 }) => ({
         x0: Math.round(x0 * this.probeInfo!.width),
         y0: Math.round(y0 * this.probeInfo!.height),
         x1: Math.round(x1 * this.probeInfo!.width),
         y1: Math.round(y1 * this.probeInfo!.height),
       }));
-      // Derive roi from faces (fDetNDsFrames, 4)
-      const dsRoi = absoluteROIs.map((face) =>
+      // Derive roi from faces
+      this.roi = absoluteROIs.map((face) =>
         getROIForMethod(
           face,
           this.methodConfig,
@@ -94,19 +81,6 @@ export class FileFrameIterator extends FrameIteratorBase {
           true
         )
       );
-      let roiCandidates: ROI[] = dsRoi.flatMap((roi) =>
-        Array(fDetDsFactor).fill(roi)
-      );
-      if (roiCandidates.length > totalFrames) {
-        roiCandidates = roiCandidates.slice(0, totalFrames);
-      } else if (roiCandidates.length < totalFrames) {
-        roiCandidates = roiCandidates.concat(
-          Array(totalFrames - roiCandidates.length).fill(
-            dsRoi[dsRoi.length - 1]
-          )
-        );
-      }
-      this.roi = roiCandidates;
     }
   }
 

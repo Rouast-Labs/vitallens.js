@@ -12,7 +12,11 @@ import {
 } from '../utils/errors';
 import { IRestClient, isRestClient } from '../types/IRestClient';
 import { isWebSocketClient, IWebSocketClient } from '../types/IWebSocketClient';
-import { movingAverage, movingAverageSizeForResponse } from '../utils/arrayOps';
+import {
+  movingAverage,
+  movingAverageSizeForResponse,
+  standardize,
+} from '../utils/arrayOps';
 import { CALC_HR_MAX, CALC_RR_MAX } from '../config/constants';
 
 /**
@@ -197,6 +201,7 @@ export class VitalLensAPIHandler extends MethodHandler {
     data: number[],
     fps: number
   ): number[] {
+    // TODO: Detrending
     // For example, use a moving average with window size based on fps.
     let windowSize: number;
     if (signalType === 'ppg') {
@@ -204,6 +209,8 @@ export class VitalLensAPIHandler extends MethodHandler {
     } else {
       windowSize = movingAverageSizeForResponse(fps, CALC_RR_MAX / 60);
     }
-    return movingAverage(data, windowSize);
+    let processed = movingAverage(data, windowSize);
+    processed = standardize(processed);
+    return processed;
   }
 }

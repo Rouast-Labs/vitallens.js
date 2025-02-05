@@ -34,17 +34,13 @@ export class POSHandler extends SimpleMethodHandler {
       const rgbTensor = tf.tensor2d(floatArray, shape as [number, number]);
 
       // --- Temporal Normalization ---
-      // Compute the mean for each row; result shape: [n, 1]
-      const rowMean = tf.mean(rgbTensor, 1, true);
-      // Compute c_n = rgbTensor / rowMean (elementwise)
-      const c_n = tf.div(rgbTensor, rowMean);
+      // Compute the temporal mean; result shape: [1, 3]
+      const temporalMean = tf.mean(rgbTensor, 0, true);
+      // Compute c_n = rgbTensor / temporalMean
+      const c_n = tf.div(rgbTensor, temporalMean);
 
       // --- Projection ---
       // Define projection matrix P = np.asarray([[0, 1, -1], [-2, 1, 1]]).T
-      // That is, in TS:
-      //    P = [[0, -2],
-      //         [1,  1],
-      //         [-1, 1]]
       const P = tf.tensor2d([
         [0, -2],
         [1, 1],
@@ -89,6 +85,7 @@ export class POSHandler extends SimpleMethodHandler {
     data: number[],
     fps: number
   ): number[] {
+    // TODO: Look into cheaper detrending for long signals
     // Determine lambda for detrending from fps.
     const lambda = detrendLambdaForHRResponse(fps);
     // Detrend the signal.

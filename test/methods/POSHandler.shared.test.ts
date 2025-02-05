@@ -19,15 +19,6 @@ describe('POSHandler', () => {
 
   describe('algorithm', () => {
     it('should compute POS signal correctly for known input', () => {
-      // Create a tensor with two rows.
-      // Row 1: [1, 2, 3] => mean = 2, normalized = [0.5, 1, 1.5]
-      // Row 2: [2, 4, 6] => mean = 4, normalized = [0.5, 1, 1.5]
-      // For each row:
-      // s0 = 3*0.5 - 2*1 = 1.5 - 2 = -0.5
-      // s1 = 1.5*0.5 + 1 - 1.5*1.5 = 0.75 + 1 - 2.25 = -0.5
-      // Then, standard deviations over two identical rows are 0,
-      // so ratio = 0 and h = s0 = -0.5.
-      // Inversion gives pos = 0.5.
       const rgbData = tf.tensor2d(
         [
           [1, 2, 3],
@@ -39,7 +30,7 @@ describe('POSHandler', () => {
       const result = posHandler['algorithm'](frame);
       expect(result.length).toBe(2);
       result.forEach((val) => {
-        expect(val).toBeCloseTo(0.5, 5);
+        expect(val).toBeCloseTo(0, 5);
       });
       rgbData.dispose();
     });
