@@ -12,10 +12,7 @@ import {
 } from '../utils/errors';
 import { IRestClient, isRestClient } from '../types/IRestClient';
 import { isWebSocketClient, IWebSocketClient } from '../types/IWebSocketClient';
-import {
-  applyMovingAverage,
-  movingAverageSizeForResponse,
-} from '../utils/arrayOps';
+import { movingAverage, movingAverageSizeForResponse } from '../utils/arrayOps';
 import { CALC_HR_MAX, CALC_RR_MAX } from '../config/constants';
 
 /**
@@ -207,6 +204,6 @@ export class VitalLensAPIHandler extends MethodHandler {
     } else {
       windowSize = movingAverageSizeForResponse(fps, CALC_RR_MAX / 60);
     }
-    return applyMovingAverage(data, windowSize);
+    return movingAverage(data, windowSize);
   }
 }
