@@ -1,17 +1,34 @@
 import * as tf from '@tensorflow/tfjs';
 import { Frame } from '../processing/Frame';
-import { ROI } from '../types/core';
+import { ROI, VideoInput, VideoProbeResult } from '../types/core';
 import { IFaceDetector } from '../types/IFaceDetector';
+import { IFFmpegWrapper } from '../types/IFFmpegWrapper'; // assumed to exist
+
+/**
+ * The face detector input can be either a pre-processed Frame or a VideoInput.
+ */
+export type FaceDetectorInput = Frame | VideoInput;
+
+/**
+ * Information recorded for each frame.
+ */
+export interface DetectionInfo {
+  frameIndex: number;
+  scanned: boolean;
+  faceFound: boolean;
+  interpValid: boolean;
+  confidence: number;
+  roi?: ROI;
+}
 
 /**
  * Custom Non-Max Suppression implementation.
- *
  * @param boxes - An array of bounding boxes [xMin, yMin, xMax, yMax].
  * @param scores - An array of confidence scores for each box.
  * @param maxOutputSize - The maximum number of boxes to return.
  * @param iouThreshold - The IOU threshold for filtering overlapping boxes.
  * @param scoreThreshold - The score threshold for filtering low-confidence boxes.
- * @returns Indices of selected boxes and the count of valid boxes.
+ * @returns Indices of selected boxes.
  */
 export function nms(
   boxes: number[][],
@@ -23,8 +40,8 @@ export function nms(
   const areas = boxes.map(([x1, y1, x2, y2]) => (x2 - x1) * (y2 - y1));
   const sortedIndices = scores
     .map((score, index) => ({ score, index }))
-    .filter(({ score }) => score >= scoreThreshold) // Filter by score threshold
-    .sort((a, b) => b.score - a.score) // Sort by score descending
+    .filter(({ score }) => score >= scoreThreshold)
+    .sort((a, b) => b.score - a.score)
     .map(({ index }) => index);
 
   const selectedIndices: number[] = [];
@@ -45,34 +62,37 @@ export function nms(
         Math.max(0, interX2 - interX1) * Math.max(0, interY2 - interY1);
       const unionArea = areas[current] + areas[index] - interArea;
       const iou = interArea / unionArea;
-
       return iou <= iouThreshold;
     });
 
-    // Keep indices that do not overlap significantly
     sortedIndices.length = 0;
     sortedIndices.push(...overlaps);
   }
-
   return selectedIndices;
 }
 
 /**
  * Face detector class, implementing detection via a machine learning model.
+ * This version supports both Frame and VideoInput types. In the case of VideoInput,
+ * the video is first probed and downsampled (using the provided ffmpeg wrapper)
+ * according to the desired scanning frequency (fs). After inference the detection
+ * info is compiled and frames that were not scanned are “backfilled” via linear
+ * interpolation between the nearest valid detections.
  */
 export abstract class FaceDetectorAsyncBase implements IFaceDetector {
   protected model: tf.GraphModel | null = null;
-  private loaded: boolean = false;
+  private loaded = false;
   private loadingPromise: Promise<void> | null = null;
 
   constructor(
     private maxFaces: number = 1,
     private scoreThreshold: number = 0.5,
-    private iouThreshold: number = 0.3
+    private iouThreshold: number = 0.3,
+    private fs: number = 1
   ) {}
 
   /**
-   * Subclasses must init the model appropriately.
+   * Subclasses must initialize the model appropriately.
    */
   protected abstract init(): Promise<void>;
 
@@ -80,9 +100,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
    * Public method to ensure the model is fully loaded before detection.
    */
   public async load(): Promise<void> {
-    if (this.loaded) {
-      return;
-    }
+    if (this.loaded) return;
     if (!this.loadingPromise) {
       this.loadingPromise = this.init().then(() => {
         this.loaded = true;
@@ -92,35 +110,93 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
   }
 
   /**
-   * Runs face detection on the provided frame and returns an array of ROIs.
-   * @param frame - The input frame containing a batch of images as a Tensor4D.
-   * @returns A promise resolving to an array of detected ROIs.
+   * Runs face detection on the provided input (Frame or VideoInput) and returns an array
+   * of ROIs (one per frame in the original video).
+   * @param input - The input Frame or VideoInput.
+   * @param ffmpeg - An FFmpegWrapper (only required if input is VideoInput).
+   * @param probeInfo - Info about the input (only required if input is VideoInput).
+   * @returns A promise resolving to an array of ROIs.
    */
-  async detect(frame: Frame): Promise<ROI[]> {
+  async detect(
+    input: FaceDetectorInput,
+    ffmpeg?: IFFmpegWrapper,
+    probeInfo?: VideoProbeResult
+  ): Promise<ROI[]> {
     if (!this.loaded || !this.model) {
       throw new Error(
         'Face detection model is not loaded. Call .load() first.'
       );
     }
 
-    const nFrames = frame.getShape().length === 3 ? 1 : frame.getShape()[0];
+    // TODO: Support processing large videos in chunks
+
+    // Prepare variables for inference
+    let frame: Frame;
+    let totalFrames: number;
+    let scannedFrameIndices: number[];
+
+    if (input instanceof Frame) {
+      // If a Frame is passed, use it directly.
+      const shape = input.getShape();
+      if (shape.length === 3) {
+        totalFrames = 1;
+        scannedFrameIndices = [0];
+      } else {
+        totalFrames = shape[0];
+        // Assume that all frames in the batch should be scanned.
+        scannedFrameIndices = Array.from({ length: totalFrames }, (_, i) => i);
+      }
+      frame = input;
+    } else {
+      // A VideoInput was passed – we must use ffmpeg to load the video.
+      if (!ffmpeg || !probeInfo) {
+        throw new Error(
+          'ffmpeg wrapper instance and probeInfo are required if providing VideoInput.'
+        );
+      }
+      // Probe the video to obtain fps and total frames.
+      const videoFps = probeInfo.fps;
+      totalFrames = probeInfo.totalFrames;
+      // Compute downsampling factor (dsFactor) from video fps and desired scan frequency.
+      const dsFactor = Math.max(Math.round(videoFps / this.fs), 1);
+      const scannedFramesCount = Math.ceil(totalFrames / dsFactor);
+      scannedFrameIndices = Array.from(
+        { length: scannedFramesCount },
+        (_, i) => i * dsFactor
+      );
+      // Read the video with the desired fps and scale.
+      const videoBuffer = await ffmpeg.readVideo(
+        input,
+        {
+          fpsTarget: this.fs,
+          scale: { width: 320, height: 240 },
+        },
+        probeInfo
+      );
+      // Construct a Frame from the video buffer.
+      frame = Frame.fromUint8Array(videoBuffer, [
+        scannedFramesCount,
+        240,
+        320,
+        3,
+      ]);
+    }
 
     // Model inputs (N_FRAMES, 240, 320, 3)
     const inputs = tf.tidy(() => {
       const frameData = frame.getTensor();
-      let x;
+      let x: tf.Tensor4D;
       if (frameData.rank === 3) {
         x = tf.expandDims(frameData.toFloat().sub(127.0).div(128.0), 0);
       } else {
         x = frameData.toFloat().sub(127.0).div(128.0);
       }
-      // Resize to input size
+      // Resize (if needed) to the model's expected input size (240x320)
       return tf.image.resizeBilinear(x as tf.Tensor4D, [240, 320]);
     });
 
-    // Perform inference (N_FRAMES, N_ANCHORS, 6)
+    // Perform inference; expected output shape: (N_FRAMES, N_ANCHORS, 6)
     const outputs = (await this.model.executeAsync(inputs)) as tf.Tensor;
-
     inputs.dispose();
 
     // Extract information from outputs and convert to arrays
@@ -135,16 +211,19 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       return { allBoxesArray, allScoresArray };
     });
 
-    // TODO: If disposing, will fail for subsequent detect() falls
+    // TODO: If disposing, will fail for subsequent detect() calls
     // outputs.dispose();
 
-    // Process each frame using TypeScript arrays
-    const selectedBoxes: ROI[] = [];
-    for (let i = 0; i < nFrames; i++) {
+    const scannedROIs: (ROI | null)[] = [];
+    const detectionInfos: DetectionInfo[] = [];
+
+    // Process each scanned frame.
+    for (let i = 0; i < scannedFrameIndices.length; i++) {
+      const origFrameIndex = scannedFrameIndices[i];
       const frameBoxes = allBoxesArray[i]; // Shape: [N_ANCHORS, 4]
       const frameScores = allScoresArray[i]; // Shape: [N_ANCHORS]
 
-      // Perform NMS using the arrays
+      // Run NMS on this frame’s detections.
       const nmsIndices = nms(
         frameBoxes,
         frameScores,
@@ -153,28 +232,122 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
         this.scoreThreshold
       );
 
-      // Gather the selected boxes
-      const selectedFrameBoxes = nmsIndices.map((index) => {
-        const [xMin, yMin, xMax, yMax] = frameBoxes[index];
-        return { x0: xMin, y0: yMin, x1: xMax, y1: yMax };
+      let roi: ROI | null = null;
+      let confidence = 0;
+      let faceFound = false;
+      if (nmsIndices.length > 0) {
+        // For simplicity, choose the first detected face.
+        const selectedBox = frameBoxes[nmsIndices[0]];
+        const [xMin, yMin, xMax, yMax] = selectedBox;
+        roi = { x0: xMin, y0: yMin, x1: xMax, y1: yMax };
+        confidence = frameScores[nmsIndices[0]];
+        faceFound = true;
+      }
+      scannedROIs.push(roi);
+      detectionInfos.push({
+        frameIndex: origFrameIndex,
+        scanned: true,
+        faceFound,
+        interpValid: false,
+        confidence,
+        roi: roi || undefined,
       });
-
-      selectedBoxes.push(...selectedFrameBoxes);
     }
 
-    return selectedBoxes;
+    // “Backfill” unscanned frames via linear interpolation.
+    const finalROIs = this.interpolateDetections(detectionInfos, totalFrames);
+    return finalROIs;
+  }
+
+  /**
+   * Interpolates detections for frames that were not scanned. For each frame index
+   * from 0 to totalFrames-1, if no detection is available, linearly interpolate ROI
+   * coordinates from the nearest previous and next valid (faceFound) detections.
+   * @param detections - The array of DetectionInfo from scanned frames.
+   * @param totalFrames - The total number of frames in the original video.
+   * @returns An ROI for every frame (backfilled by interpolation where necessary).
+   */
+  private interpolateDetections(
+    detections: DetectionInfo[],
+    totalFrames: number
+  ): ROI[] {
+    // Map detections by their frame index.
+    const detectionMap = new Map<number, DetectionInfo>();
+    detections.forEach((det) => detectionMap.set(det.frameIndex, det));
+
+    const finalROIs: ROI[] = [];
+
+    // Simple helper to interpolate between two ROIs.
+    const interpolateROI = (roi1: ROI, roi2: ROI, t: number): ROI => ({
+      x0: roi1.x0 * (1 - t) + roi2.x0 * t,
+      y0: roi1.y0 * (1 - t) + roi2.y0 * t,
+      x1: roi1.x1 * (1 - t) + roi2.x1 * t,
+      y1: roi1.y1 * (1 - t) + roi2.y1 * t,
+    });
+
+    // Get sorted scanned frame indices.
+    const scannedIndices = Array.from(detectionMap.keys()).sort(
+      (a, b) => a - b
+    );
+
+    // For every frame in the original video...
+    for (let i = 0; i < totalFrames; i++) {
+      if (detectionMap.has(i)) {
+        // Use the detection from the scanned frame.
+        const det = detectionMap.get(i)!;
+        finalROIs.push(det.roi ? det.roi : { x0: 0, y0: 0, x1: 0, y1: 0 });
+      } else {
+        // Find the nearest previous and next scanned frames with a valid detection.
+        let prevIndex = -1;
+        let nextIndex = -1;
+        for (let j = scannedIndices.length - 1; j >= 0; j--) {
+          if (scannedIndices[j] < i) {
+            const det = detectionMap.get(scannedIndices[j]);
+            if (det && det.faceFound && det.roi) {
+              prevIndex = scannedIndices[j];
+              break;
+            }
+          }
+        }
+        for (let j = 0; j < scannedIndices.length; j++) {
+          if (scannedIndices[j] > i) {
+            const det = detectionMap.get(scannedIndices[j]);
+            if (det && det.faceFound && det.roi) {
+              nextIndex = scannedIndices[j];
+              break;
+            }
+          }
+        }
+        let interpROI: ROI;
+        if (prevIndex !== -1 && nextIndex !== -1) {
+          const detPrev = detectionMap.get(prevIndex)!;
+          const detNext = detectionMap.get(nextIndex)!;
+          const t = (i - prevIndex) / (nextIndex - prevIndex);
+          interpROI = interpolateROI(detPrev.roi!, detNext.roi!, t);
+        } else if (prevIndex !== -1) {
+          interpROI = detectionMap.get(prevIndex)!.roi!;
+        } else if (nextIndex !== -1) {
+          interpROI = detectionMap.get(nextIndex)!.roi!;
+        } else {
+          // No valid detections available – return a default ROI.
+          interpROI = { x0: 0, y0: 0, x1: 0, y1: 0 };
+        }
+        finalROIs.push(interpROI);
+      }
+    }
+    return finalROIs;
   }
 
   /**
    * Runs detection and invokes the callback with the results.
-   * @param frame - The input frame for face detection.
+   * @param input - The input Frame or VideoInput for face detection.
    * @param onFinish - Callback to handle the detection results.
    */
   async run(
-    frame: Frame,
+    input: FaceDetectorInput,
     onFinish: (detectionResults: ROI[]) => Promise<void>
   ): Promise<void> {
-    const detections: ROI[] = await this.detect(frame);
+    const detections = await this.detect(input);
     await onFinish(detections);
   }
 }
