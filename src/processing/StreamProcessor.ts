@@ -11,7 +11,7 @@ import { IFrameIterator } from '../types/IFrameIterator';
  * buffering, and triggering predictions.
  */
 export class StreamProcessor {
-  private isPaused = false;
+  private isPaused = true;
   private isPredicting = false;
   private roi: ROI | null = null;
   private targetFps: number = 30.0;
@@ -95,6 +95,7 @@ export class StreamProcessor {
 
         this.lastProcessedTime = currentTime;
 
+        // Retain the full frame. Released when face detection finishes/fails/not required.
         frame.retain();
 
         try {
