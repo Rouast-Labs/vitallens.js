@@ -1,5 +1,4 @@
 import { BufferManager } from '../processing/BufferManager';
-import { StreamProcessor } from '../processing/StreamProcessor';
 import { MethodHandler } from '../methods/MethodHandler';
 import { MethodHandlerFactory } from '../methods/MethodHandlerFactory';
 import {
@@ -8,54 +7,48 @@ import {
   VideoInput,
   MethodConfig,
 } from '../types/core';
-import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { IVitalLensController } from '../types/IVitalLensController';
 import { METHODS_CONFIG } from '../config/methodsConfig';
 import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
-import { IFaceDetector } from '../types/IFaceDetector';
 import { isBrowser } from '../utils/env';
 import { IRestClient } from '../types/IRestClient';
 import { IWebSocketClient } from '../types/IWebSocketClient';
+import { IStreamProcessor } from '../types/IStreamProcessor';
+import { IFrameIterator } from '../types/IFrameIterator';
+import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
+import { FrameIteratorFactory } from '../processing/FrameIteratorFactory';
+import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
  * and predictions for both file-based and live stream scenarios.
  */
 export abstract class VitalLensControllerBase implements IVitalLensController {
-  protected frameIteratorFactory: IFrameIteratorFactory | null = null;
+  protected frameIteratorFactory: FrameIteratorFactory | null = null;
   protected bufferManager: BufferManager;
-  protected streamProcessor: StreamProcessor | null = null;
+  protected streamProcessor: IStreamProcessor | null = null;
   protected methodHandler: MethodHandler;
   protected methodConfig: MethodConfig;
+  protected faceDetectionWorker: IFaceDetectionWorker | null = null;
+  protected ffmpeg: IFFmpegWrapper | null = null;
   protected vitalsEstimateManager: VitalsEstimateManager;
-  protected faceDetector: IFaceDetector;
   protected eventListeners: { [event: string]: ((data: unknown) => void)[] } =
     {};
 
   constructor(protected options: VitalLensOptions) {
     this.methodConfig = METHODS_CONFIG[this.options.method];
     this.bufferManager = new BufferManager();
-    this.methodHandler = this.createMethodHandler(this.options);
-    this.frameIteratorFactory = this.createFrameIteratorFactory(this.options);
+    this.methodHandler = this.createMethodHandler(options);
+    this.frameIteratorFactory = new FrameIteratorFactory(options);
     this.vitalsEstimateManager = new VitalsEstimateManager(
       this.methodConfig,
       this.options,
       this.methodHandler.postprocess.bind(this.methodHandler)
     );
-    this.faceDetector = this.createFaceDetector();
+    if (options.globalRoi === undefined) {
+      this.faceDetectionWorker = this.createFaceDetectionWorker();
+    }
   }
-
-  /**
-   * Subclasses must return the appropriate FrameIteratorFactory instance.
-   */
-  protected abstract createFrameIteratorFactory(
-    options: VitalLensOptions
-  ): IFrameIteratorFactory;
-
-  /**
-   * Subclasses must return the appropriate FaceDetector instance.
-   */
-  protected abstract createFaceDetector(): IFaceDetector;
 
   /**
    * Subclasses must return the appropriate RestClient instance.
@@ -66,6 +59,30 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * Subclasses must return the appropriate WebSocketClient instance.
    */
   protected abstract createWebSocketClient(apiKey: string): IWebSocketClient;
+
+  /**
+   * Subclasses must return the appropriate FFmpegWrapper instance.
+   */
+  protected abstract createFFmpegWrapper(): IFFmpegWrapper;
+
+  /**
+   * Subclasses must return the appropriate Worker instance.
+   */
+  protected abstract createFaceDetectionWorker(): IFaceDetectionWorker;
+
+  /**
+   * Subclasses must return the appropriate StreamProcessor instance.
+   */
+  protected abstract createStreamProcessor(
+    options: VitalLensOptions,
+    methodConfig: MethodConfig,
+    frameIterator: IFrameIterator,
+    bufferManager: BufferManager,
+    faceDetectionWorker: IFaceDetectionWorker | null,
+    methodHandler: MethodHandler,
+    onPredict: (result: VitalLensResult) => Promise<void>,
+    onNoFace: () => Promise<void>
+  ): IStreamProcessor;
 
   /**
    * Creates the appropriate method handler based on the options.
@@ -116,21 +133,17 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       );
     }
 
-    if (!this.options.globalRoi) {
-      await this.faceDetector.load();
-    }
-
     const frameIterator = this.frameIteratorFactory.createStreamFrameIterator(
       stream,
       videoElement
     );
 
-    this.streamProcessor = new StreamProcessor(
+    this.streamProcessor = this.createStreamProcessor(
       this.options,
       this.methodConfig,
       frameIterator,
       this.bufferManager,
-      this.faceDetector,
+      this.faceDetectionWorker,
       this.methodHandler,
       async (incrementalResult) => {
         // onPredict - process and dispatch incremental result unless paused
@@ -195,13 +208,17 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       throw new Error('FrameIteratorFactory is not initialized.');
     }
 
+    if (!this.ffmpeg) {
+      this.ffmpeg = this.createFFmpegWrapper();
+    }
+
     await this.methodHandler.init();
-    await this.faceDetector.load();
 
     const frameIterator = this.frameIteratorFactory.createFileFrameIterator(
       videoInput,
       this.methodConfig,
-      this.faceDetector
+      this.ffmpeg,
+      this.faceDetectionWorker
     );
     await frameIterator.start();
     for await (const framesChunk of frameIterator) {
@@ -254,6 +271,29 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     if (this.eventListeners[event]) {
       delete this.eventListeners[event];
     }
+  }
+
+  /**
+   * Stop worker and dispose of all resources
+   */
+  async dispose(): Promise<void> {
+    // Terminate the face detection worker if it exists.
+    if (this.faceDetectionWorker) {
+      await this.faceDetectionWorker.terminate();
+      this.faceDetectionWorker = null;
+    }
+    // Clean up ffmpeg, streamProcessor, etc.
+    if (this.ffmpeg) {
+      this.ffmpeg.cleanup();
+      this.ffmpeg = null;
+    }
+    if (this.streamProcessor) {
+      this.streamProcessor.stop();
+      this.streamProcessor = null;
+    }
+    // Reset any internal state.
+    this.bufferManager.cleanup();
+    this.vitalsEstimateManager.resetAll();
   }
 
   /**
