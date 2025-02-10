@@ -450,7 +450,8 @@ describe('VitalLensControllerBase', () => {
       const fakeStreamProcessor = {
         isProcessing: jest.fn().mockReturnValue(true),
       };
-      controller['streamProcessor'] = fakeStreamProcessor as unknown as IStreamProcessor;
+      controller['streamProcessor'] =
+        fakeStreamProcessor as unknown as IStreamProcessor;
       expect(controller['isProcessing']()).toBe(true);
     });
     test('should return false if streamProcessor is null', () => {
