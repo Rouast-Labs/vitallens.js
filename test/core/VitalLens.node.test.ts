@@ -11,6 +11,7 @@ jest.mock('../../src/core/VitalLensController.node', () => ({
     })),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
+    dispose: jest.fn(),
   })),
 }));
 
@@ -19,13 +20,6 @@ describe('VitalLens (Node)', () => {
 
   beforeEach(() => {
     vitalLens = new VitalLens({ apiKey: 'test-key', method: 'vitallens' });
-  });
-
-  test('should process a file successfully', async () => {
-    const mockFile = new Blob();
-    const result = await vitalLens.processVideoFile(mockFile);
-
-    expect(result).toEqual({ message: 'Processed file successfully.' });
   });
 
   test('should throw an error when setVideoStream is called without arguments', async () => {
@@ -49,6 +43,13 @@ describe('VitalLens (Node)', () => {
     expect(vitalLens['controller'].stopVideoStream).toHaveBeenCalled();
   });
 
+  test('should process a file successfully', async () => {
+    const mockFile = new Blob();
+    const result = await vitalLens.processVideoFile(mockFile);
+
+    expect(result).toEqual({ message: 'Processed file successfully.' });
+  });
+
   test('should call addEventListener on the controller', () => {
     vitalLens.addEventListener('vitals', jest.fn());
     expect(vitalLens['controller'].addEventListener).toHaveBeenCalled();
@@ -57,5 +58,10 @@ describe('VitalLens (Node)', () => {
   test('should call removeEventListener on the controller', () => {
     vitalLens.removeEventListener('vitals');
     expect(vitalLens['controller'].removeEventListener).toHaveBeenCalled();
+  });
+
+  test('should call dispose on the controller on close', () => {
+    vitalLens.close();
+    expect(vitalLens['controller'].dispose).toHaveBeenCalled();
   });
 });

@@ -86,4 +86,11 @@ export abstract class VitalLensBase {
   removeEventListener(event: string): void {
     this.controller.removeEventListener(event);
   }
+
+  /**
+   * Closes VitalLens and disposes of its resources.
+   */
+  async close(): Promise<void> {
+    await this.controller.dispose();
+  }
 }
