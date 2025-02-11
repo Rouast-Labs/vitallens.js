@@ -1,6 +1,6 @@
 import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
-import { browser, tidy } from '@tensorflow/tfjs-core';
+import { browser, tidy } from '@tensorflow/tfjs';
 
 /**
  * Frame iterator for MediaStreams (e.g., live video from a webcam).

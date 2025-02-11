@@ -3,10 +3,10 @@
 
 import { StreamFrameIterator } from '../../src/processing/StreamFrameIterator';
 import { Frame } from '../../src/processing/Frame';
-import { browser } from '@tensorflow/tfjs-core';
+import { browser } from '@tensorflow/tfjs';
 
-jest.mock('@tensorflow/tfjs-core', () => ({
-  ...jest.requireActual('@tensorflow/tfjs-core'),
+jest.mock('@tensorflow/tfjs', () => ({
+  ...jest.requireActual('@tensorflow/tfjs'),
   browser: {
     fromPixels: jest.fn(() => {
       const mockTypedArray = new Uint8Array([1, 2, 3]);
