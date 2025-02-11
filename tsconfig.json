@@ -19,7 +19,7 @@
     "declarationMap": true,
     "typeRoots": ["./node_modules/@types"],
     "types": ["jest"],
-    "sourceMap": true
+    "sourceMap": false
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "test", "scripts", "examples"]

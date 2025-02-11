@@ -246,6 +246,8 @@ For environment-specific tests, you can use:
 ```bash
 npm run test:browser
 npm run test:node
+npm run test:browser-integration
+npm run test:node-integration
 ```
 
 ### Linting

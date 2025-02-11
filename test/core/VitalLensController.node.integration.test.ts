@@ -114,5 +114,7 @@ describe('VitalLensController Integration (Node)', () => {
     expect(result).toHaveProperty('fps');
     expect(typeof result.fps).toBe('number');
     expect(result.fps).toBeGreaterThan(0);
+
+    controller.dispose();
   }, 30000);
 });

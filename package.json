@@ -27,7 +27,8 @@
     "test": "jest --selectProjects node browser",
     "test:browser": "jest --selectProjects browser",
     "test:node": "jest --selectProjects node",
-    "test:integration": "npm run build:integration && jest --selectProjects integration-browser",
+    "test:browser-integration": "npm run build:integration && jest --selectProjects browser-integration",
+    "test:node-integration": "npm run build:integration && jest --selectProjects node-integration",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.{ts,js,json,css,md}\"",
     "start:browser-webcam-minimal": "EXAMPLE_TO_OPEN=browser/webcam_minimal nodemon scripts/server.cjs",
@@ -83,8 +84,8 @@
     "ws": "^8.18.0"
   },
   "peerDependencies": {
-    "@tensorflow/tfjs": "^4.20.0",
-    "@tensorflow/tfjs-node": "^4.20.0"
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-node": "^4.22.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.7",

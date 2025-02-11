@@ -12,3 +12,13 @@ declare module '*ffmpeg-worker.bundle.js' {
   const value: string;
   export default value;
 }
+
+declare module '*faceDetection.worker.browser.bundle.js' {
+  const value: string;
+  export default value;
+}
+
+declare module '*faceDetection.worker.node.bundle.js' {
+  const value: string;
+  export default value;
+}
