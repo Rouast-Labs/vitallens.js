@@ -2,7 +2,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import * as tf from '@tensorflow/tfjs';
-import { Frame, getActualSizeFromRawData } from '../../src/processing/Frame';
+import {
+  Frame,
+  getActualSizeFromRawData,
+  getRawDataFromTensor,
+} from '../../src/processing/Frame';
 import { ROI } from '../../src/types';
 
 describe('Frame Class', () => {
@@ -136,6 +140,57 @@ describe('Frame Class', () => {
     });
   });
 
+  describe('fromFloat32Array', () => {
+    test('initializes correctly', () => {
+      const shape = [2, 2];
+      const timestamp = [0.5, 1.0, 1.5, 2.0];
+      const data = new Float32Array([1.1, 2.2, 3.3, 4.4]);
+      const frame = Frame.fromFloat32Array(data, shape, timestamp, mockROI);
+
+      expect(frame.getShape()).toEqual(shape);
+      expect(frame.getDType()).toBe('float32');
+      expect(frame.getTimestamp()).toEqual(timestamp);
+      expect(frame.getROI()).toEqual(mockROI);
+
+      // Retrieve data and compare values.
+      const retrievedData = frame.getFloat32Array();
+      expect(Array.from(retrievedData)).toEqual(Array.from(data));
+    });
+
+    test('throws for mismatched raw data size', () => {
+      const shape = [2, 2]; // expects 4 elements
+      const data = new Float32Array([1.1, 2.2, 3.3]); // Only 3 elements
+      expect(() => Frame.fromFloat32Array(data, shape)).toThrowError(
+        /Mismatch in raw data size/
+      );
+    });
+  });
+
+  describe('fromTransferable', () => {
+    test('initializes correctly from transferable data', () => {
+      const rawData = new Uint8Array([10, 20, 30]).buffer;
+      const shape = [3];
+      const dtype: tf.DataType = 'uint8' as tf.DataType;
+      const timestamp = [0.1, 0.2, 0.3];
+      const roi: ROI[] = [{ x0: 0, y0: 0, x1: 1, y1: 1 }];
+
+      const transferable = {
+        rawData,
+        shape,
+        dtype,
+        timestamp,
+        roi,
+      };
+
+      const frame = Frame.fromTransferable(transferable);
+      expect(frame.getRawData()).toBe(rawData);
+      expect(frame.getShape()).toEqual(shape);
+      expect(frame.getDType()).toBe(dtype);
+      expect(frame.getTimestamp()).toEqual(timestamp);
+      expect(frame.getROI()).toEqual(roi);
+    });
+  });
+
   describe('getTensor', () => {
     test('returns correct tensor when keepTensor is true', () => {
       const tensor = tf.tensor([1, 2, 3], [3], 'int32');
@@ -176,6 +231,24 @@ describe('Frame Class', () => {
     });
   });
 
+  describe('retain and release', () => {
+    test('retain increments and release decrements refCount, disposing tensor at zero', () => {
+      // Create a frame with a kept tensor.
+      const tensor = tf.tensor([1, 2, 3], [3], 'int32');
+      const frame = new Frame({ tensor, keepTensor: true });
+      // Initially, refCount is 0.
+      // Retain the frame twice.
+      frame.retain();
+      frame.retain();
+      // Release once: refCount becomes 1, tensor should still be available.
+      frame.release();
+      expect(frame.hasTensor()).toBe(true);
+      // Release again: refCount becomes 0, tensor should be disposed.
+      frame.release();
+      expect(() => frame.getTensor()).toThrowError();
+    });
+  });
+
   describe('disposeTensor', () => {
     test('disposes of tensor when kept', () => {
       const tensor = tf.tensor([1, 2, 3], [3], 'int32');
@@ -183,6 +256,38 @@ describe('Frame Class', () => {
 
       frame.disposeTensor();
       expect(() => frame.getTensor()).toThrow();
+    });
+  });
+
+  describe('toTransferable', () => {
+    test('returns a transferable object with correct fields', () => {
+      const rawData = new Uint8Array([5, 10, 15]).buffer;
+      const shape = [3];
+      const dtype: tf.DataType = 'uint8' as tf.DataType;
+      const timestamp = [0.1, 0.2, 0.3];
+      const roi: ROI[] = [{ x0: 0, y0: 0, x1: 1, y1: 1 }];
+      const frame = new Frame({
+        rawData,
+        shape,
+        dtype,
+        timestamp,
+        roi,
+        keepTensor: false,
+      });
+
+      const transferable = frame.toTransferable();
+      expect(transferable.rawData).toBe(rawData);
+      expect(transferable.shape).toEqual(shape);
+      expect(transferable.dtype).toBe(dtype);
+      expect(transferable.timestamp).toEqual(timestamp);
+      expect(transferable.roi).toEqual(roi);
+
+      // Reconstruct frame from transferable and check values.
+      const reconstructed = Frame.fromTransferable(transferable);
+      expect(reconstructed.getShape()).toEqual(shape);
+      expect(reconstructed.getDType()).toBe(dtype);
+      expect(reconstructed.getTimestamp()).toEqual(timestamp);
+      expect(reconstructed.getROI()).toEqual(roi);
     });
   });
 
@@ -210,9 +315,26 @@ describe('Frame Class', () => {
     });
   });
 
-  // TODO: Test getInt32Array
-  // TODO: Test getFloat32Array
-  // TODO: Test retain and release
+  describe('getFloat32Array', () => {
+    test('returns Float32Array for float32 dtype', () => {
+      const data = new Float32Array([0.5, 1.5, 2.5]);
+      const frame = Frame.fromFloat32Array(data, [3], [0.1, 0.2, 0.3], mockROI);
+      expect(Array.from(frame.getFloat32Array())).toEqual(Array.from(data));
+    });
+
+    test('converts other dtypes to Float32Array', () => {
+      // Create a frame with int32 raw data and convert to Float32Array.
+      const intData = new Int32Array([1, 2, 3]);
+      const frame = new Frame({
+        rawData: intData.buffer,
+        shape: [3],
+        dtype: 'int32',
+        keepTensor: false,
+      });
+      const floatArray = frame.getFloat32Array();
+      expect(Array.from(floatArray)).toEqual([1, 2, 3]);
+    });
+  });
 
   describe('Miscellaneous', () => {
     test('getTypedArrayClass correctly maps dtypes', () => {
@@ -256,5 +378,16 @@ describe('getActualSizeFromRawData', () => {
     expect(() => getActualSizeFromRawData(buffer, 'unknown' as any)).toThrow(
       'Unsupported dtype: unknown'
     );
+  });
+});
+
+describe('getRawDataFromTensor', () => {
+  test('extracts raw data from a tensor accurately', () => {
+    const tensor = tf.tensor([1, 2, 3, 4], [2, 2], 'float32');
+    const rawData = getRawDataFromTensor(tensor);
+    const extracted = new Float32Array(rawData);
+    const expected = tensor.dataSync() as Float32Array;
+    expect(Array.from(extracted)).toEqual(Array.from(expected));
+    tensor.dispose();
   });
 });

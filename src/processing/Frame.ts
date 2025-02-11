@@ -11,6 +11,14 @@ export interface FrameOptions {
   roi?: ROI[];
 }
 
+export interface FrameTransferable {
+  rawData: ArrayBuffer;
+  shape: number[];
+  dtype: tf.DataType;
+  timestamp: number[];
+  roi: ROI[];
+}
+
 /**
  * Determines the size (number of elements) from an ArrayBuffer of raw data.
  * @param rawData The raw data
@@ -31,6 +39,30 @@ export function getActualSizeFromRawData(
     default:
       throw new Error(`Unsupported dtype: ${dtype}`);
   }
+}
+
+/**
+ * Extracts the raw data from a tf.Tensor.
+ * @param tensor The tensor
+ * @returns The raw data
+ */
+export function getRawDataFromTensor(tensor: tf.Tensor): ArrayBuffer {
+  const typedData = tensor.dataSync() as Float32Array | Int32Array | Uint8Array;
+  const expectedSize = tensor.shape.reduce((a, b) => a * b, 1);
+  const exactBuffer = typedData.buffer.slice(
+    typedData.byteOffset,
+    typedData.byteOffset + typedData.byteLength
+  );
+  const actualSize = getActualSizeFromRawData(
+    exactBuffer as ArrayBuffer,
+    tensor.dtype
+  );
+  if (expectedSize !== actualSize) {
+    throw new Error(
+      `Mismatch in tensor size: expected ${expectedSize}, but got ${actualSize}`
+    );
+  }
+  return exactBuffer as ArrayBuffer;
 }
 
 /**
@@ -62,25 +94,7 @@ export class Frame {
         this.tensor = tensor;
       } else {
         // Do not keep the tensor. Convert to raw data:
-        const typedData = tensor.dataSync() as
-          | Float32Array
-          | Int32Array
-          | Uint8Array;
-        const expectedSize = tensor.shape.reduce((a, b) => a * b, 1);
-        const exactBuffer = typedData.buffer.slice(
-          typedData.byteOffset,
-          typedData.byteOffset + typedData.byteLength
-        );
-        const actualSize = getActualSizeFromRawData(
-          exactBuffer as ArrayBuffer,
-          tensor.dtype
-        );
-        if (expectedSize !== actualSize) {
-          throw new Error(
-            `Mismatch in tensor size: expected ${expectedSize}, but got ${actualSize}`
-          );
-        }
-        this.rawData = exactBuffer as ArrayBuffer;
+        this.rawData = getRawDataFromTensor(tensor);
       }
       this.shape = tensor.shape;
       this.dtype = tensor.dtype;
@@ -187,6 +201,20 @@ export class Frame {
   }
 
   /**
+   * Reconstructs a Frame instance from transferable data.
+   * @param data The transferable data object.
+   */
+  static fromTransferable(data: FrameTransferable): Frame {
+    return new Frame({
+      rawData: data.rawData,
+      shape: data.shape,
+      dtype: data.dtype,
+      timestamp: data.timestamp,
+      roi: data.roi,
+    });
+  }
+
+  /**
    * Returns a tf.Tensor. If `keepTensor` was true, this will be the same reference
    * originally passed in (unless disposed of). If `keepTensor` was false,
    * this will create a new tensor from raw data each time.
@@ -255,6 +283,21 @@ export class Frame {
   }
 
   /**
+   * Returns a plain object representation of this Frame that is transferable.
+   * It includes the raw data and metadata necessary to reconstruct the Frame.
+   * TODO
+   */
+  toTransferable(): FrameTransferable {
+    return {
+      rawData: this.rawData || getRawDataFromTensor(this.tensor!),
+      shape: this.shape,
+      dtype: this.dtype,
+      timestamp: this.timestamp,
+      roi: this.roi,
+    };
+  }
+
+  /**
    * Returns the raw data as a Uint8Array.
    */
   getUint8Array(): Uint8Array {
@@ -267,22 +310,6 @@ export class Frame {
       const typedArray = new TypedArrayClass(this.rawData!);
 
       return new Uint8Array(typedArray);
-    }
-  }
-
-  /**
-   * Returns the raw data as a Int32Array.
-   */
-  getInt32Array(): Int32Array {
-    if (!this.rawData) {
-      throw new Error('No raw data stored.');
-    } else if (this.rawData && this.dtype === 'int32') {
-      return new Int32Array(this.rawData);
-    } else {
-      const TypedArrayClass = this.getTypedArrayClass();
-      const typedArray = new TypedArrayClass(this.rawData!);
-
-      return new Int32Array(typedArray);
     }
   }
 
