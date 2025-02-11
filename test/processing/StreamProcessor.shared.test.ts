@@ -1,14 +1,57 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { StreamProcessor } from '../../src/processing/StreamProcessor';
+import { StreamProcessorBase } from '../../src/processing/StreamProcessor.base';
 import { BufferManager } from '../../src/processing/BufferManager';
 import { MethodHandler } from '../../src/methods/MethodHandler';
-import { IFaceDetector } from '../../src/types/IFaceDetector';
 import { IFrameIterator } from '../../src/types/IFrameIterator';
-import { ROI, VitalLensOptions, MethodConfig } from '../../src/types';
+import {
+  ROI,
+  VitalLensOptions,
+  MethodConfig,
+  VitalLensResult,
+} from '../../src/types';
 import { Frame } from '../../src/processing/Frame';
 import * as tf from '@tensorflow/tfjs';
+
+class TestStreamProcessor extends StreamProcessorBase {
+  triggerFaceDetection(frame: Frame, currentTime: number): void {
+    // For testing, simulate a detection event with a non-empty result.
+    const fakeEvent = new MessageEvent('message', {
+      data: {
+        detections: [{ x0: 10, y0: 10, x1: 50, y1: 50 }],
+        probeInfo: {
+          totalFrames: 100,
+          fps: 30,
+          width: 640,
+          height: 480,
+          codec: 'h264',
+          bitrate: 1000,
+          rotation: 0,
+          issues: false,
+        },
+      },
+    });
+    this.handleFaceDetectionResult(fakeEvent);
+    // In this simple test implementation, release the frame.
+    frame.release();
+  }
+
+  handleFaceDetectionResult(event: MessageEvent): void {
+    const data = event.data;
+    if (data && data.detections && data.detections.length > 0) {
+      // Update ROI to the first detection.
+      const detection = data.detections[0];
+      this.roi = detection;
+      // Simulate adding a new buffer for the updated ROI.
+      this.bufferManager.addBuffer(detection, this.methodConfig, 1);
+    } else {
+      // If no detections, trigger onNoFace and clean up.
+      this.onNoFace();
+      this.bufferManager.cleanup();
+    }
+  }
+}
 
 const mockROI: ROI = { x0: 0, y0: 0, x1: 100, y1: 100 };
 const mockFrame3D = Frame.fromTensor(
@@ -40,7 +83,6 @@ const methodConfig: MethodConfig = {
 describe('StreamProcessor', () => {
   let mockBufferManager: jest.Mocked<BufferManager>;
   let mockMethodHandler: jest.Mocked<MethodHandler>;
-  let mockFaceDetector: jest.Mocked<IFaceDetector>;
   let mockFrameIterator: jest.Mocked<IFrameIterator>;
   let onPredictMock: jest.Mock;
   let onNoFaceMock: jest.Mock;
@@ -69,15 +111,6 @@ describe('StreamProcessor', () => {
       cleanup: jest.fn(),
     } as unknown as jest.Mocked<MethodHandler>;
 
-    // Create a mock FaceDetector. By default, it returns a detection.
-    mockFaceDetector = {
-      run: jest.fn(async (frame, callback) => {
-        const mockDetections = [{ x0: 0.1, y0: 0.2, x1: 0.6, y1: 0.7 }];
-        await callback(mockDetections);
-      }),
-      load: jest.fn(),
-    } as unknown as jest.Mocked<IFaceDetector>;
-
     // Create a mock FrameIterator that yields frames indefinitely.
     mockFrameIterator = {
       [Symbol.asyncIterator]: jest.fn(() => {
@@ -97,23 +130,23 @@ describe('StreamProcessor', () => {
       stop: jest.fn(),
     } as unknown as jest.Mocked<IFrameIterator>;
 
-    onPredictMock = jest.fn();
-    onNoFaceMock = jest.fn();
+    onPredictMock = jest.fn(async (result: VitalLensResult) => {});
+    onNoFaceMock = jest.fn(async () => {});
   });
 
   test('should initialize with the correct ROI and buffer', () => {
-    const streamProcessor = new StreamProcessor(
+    const processor = new TestStreamProcessor(
       options,
       methodConfig,
       mockFrameIterator,
       mockBufferManager,
-      mockFaceDetector,
+      null,
       mockMethodHandler,
       onPredictMock,
       onNoFaceMock
     );
 
-    streamProcessor.init();
+    processor.init();
 
     // When a global ROI is provided and face detector is not used, the ROI should be set and a buffer added.
     expect(mockBufferManager.addBuffer).toHaveBeenCalledWith(
@@ -124,94 +157,90 @@ describe('StreamProcessor', () => {
   });
 
   test('should start processing frames and trigger prediction', async () => {
-    const streamProcessor = new StreamProcessor(
+    const processor = new TestStreamProcessor(
       options,
       methodConfig,
       mockFrameIterator,
       mockBufferManager,
-      mockFaceDetector,
+      null, // No face detection worker provided.
       mockMethodHandler,
       onPredictMock,
       onNoFaceMock
     );
 
-    // Start the processor. This will call frameIterator.start() and start processing frames.
-    await streamProcessor.start();
+    // Start processing; this calls frameIterator.start() and kicks off the async loop.
+    await processor.start();
 
-    // Allow some time for the async processing loop to run.
+    // Allow some time for the processing loop to run.
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(mockFrameIterator.start).toHaveBeenCalled();
-    // Expect that for each yielded frame the BufferManager.add was called.
+    // Expect that for each yielded frame the BufferManager.add method was invoked.
     expect(mockBufferManager.add).toHaveBeenCalled();
-    // Expect that when buffers are ready and methodHandler.getReady() is true, process is invoked.
+    // Expect that when buffers are ready and the method handler is ready, process() is invoked.
     expect(mockMethodHandler.process).toHaveBeenCalled();
-    // And that onPredict callback is eventually invoked.
+    // And eventually the onPredict callback should be invoked.
     expect(onPredictMock).toHaveBeenCalled();
   });
 
   test('should update ROI on face detection', async () => {
-    const streamProcessor = new StreamProcessor(
+    const processor = new TestStreamProcessor(
       options,
       methodConfig,
       mockFrameIterator,
       mockBufferManager,
-      mockFaceDetector,
+      {} as any, // dummy face detection worker (not used since we override triggerFaceDetection)
       mockMethodHandler,
       onPredictMock,
       onNoFaceMock
     );
 
-    // Call handleFaceDetection directly.
-    await streamProcessor['handleFaceDetection'](mockFrame3D as any, 0);
+    // Call triggerFaceDetection with a frame.
+    processor.triggerFaceDetection(mockFrame3D, 0);
 
-    // Expect that faceDetector.run is called with the frame.
-    expect(mockFaceDetector.run).toHaveBeenCalledWith(
-      mockFrame3D,
-      expect.any(Function)
+    // Expect that BufferManager.addBuffer is called with the detected ROI.
+    expect(mockBufferManager.addBuffer).toHaveBeenCalledWith(
+      { x0: 10, y0: 10, x1: 50, y1: 50 },
+      methodConfig,
+      1
     );
-    // Since our options.method is 'vitallens' and isEmpty returns true, a new buffer should be added.
-    expect(mockBufferManager.addBuffer).toHaveBeenCalled();
   });
 
   test('should trigger onNoFace callback when no face is detected', async () => {
-    // Update the mock so that faceDetector.run returns no detections.
-    mockFaceDetector.run.mockImplementationOnce(async (frame, callback) => {
-      await callback([]);
-    });
-
-    const streamProcessor = new StreamProcessor(
+    const processor = new TestStreamProcessor(
       options,
       methodConfig,
       mockFrameIterator,
       mockBufferManager,
-      mockFaceDetector,
+      {} as any,
       mockMethodHandler,
       onPredictMock,
       onNoFaceMock
     );
 
-    await streamProcessor['handleFaceDetection'](mockFrame3D as any, 0);
+    // Simulate a face detection event with no detections.
+    const fakeEvent = new MessageEvent('message', {
+      data: { detections: [] },
+    });
+    processor.handleFaceDetectionResult(fakeEvent);
 
-    // Expect that onNoFace is triggered
     expect(onNoFaceMock).toHaveBeenCalled();
-    // And the bufferManager cleanup is invoked.
     expect(mockBufferManager.cleanup).toHaveBeenCalled();
   });
 
   test('should stop processing and clean up buffer', () => {
-    const streamProcessor = new StreamProcessor(
+    const processor = new TestStreamProcessor(
       options,
       methodConfig,
       mockFrameIterator,
       mockBufferManager,
-      mockFaceDetector,
+      {} as any,
       mockMethodHandler,
       onPredictMock,
       onNoFaceMock
     );
 
-    streamProcessor.stop();
+    processor.stop();
 
     expect(mockFrameIterator.stop).toHaveBeenCalled();
     expect(mockMethodHandler.cleanup).toHaveBeenCalled();

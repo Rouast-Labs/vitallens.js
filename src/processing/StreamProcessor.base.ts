@@ -1,25 +1,23 @@
 import { MethodConfig, ROI, VitalLensOptions, VitalLensResult } from '../types';
 import { BufferManager } from './BufferManager';
-import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
-import { IFaceDetector } from '../types/IFaceDetector';
 import { MethodHandler } from '../methods/MethodHandler';
 import { Frame } from './Frame';
 import { IFrameIterator } from '../types/IFrameIterator';
+import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 
 /**
  * Manages the processing loop for live streams, including frame capture,
  * buffering, and triggering predictions.
  */
-export class StreamProcessor {
+export abstract class StreamProcessorBase {
   private isPaused = true;
   private isPredicting = false;
-  private roi: ROI | null = null;
+  protected roi: ROI | null = null;
   private targetFps: number = 30.0;
   private fDetFs: number = 1.0;
   private lastProcessedTime: number = 0; // In seconds
   private lastFaceDetectionTime: number = 0; // In seconds
   private methodHandler: MethodHandler;
-  private useFaceDetector: boolean;
 
   /**
    * Creates a new StreamProcessor.
@@ -27,20 +25,20 @@ export class StreamProcessor {
    * @param methodConfig - Method-specific settings (e.g. fps, ROI sizing).
    * @param frameIterator - Source of frames (webcam or other).
    * @param bufferManager - Manages frames for each ROI and method state.
-   * @param faceDetector - Face detection interface (optional if global ROI is given).
+   * @param faceDetectionWorker - Face detection worker (optional if global ROI is given).
    * @param methodHandler - Handles actual vital sign algorithm processing.
    * @param onPredict - Callback invoked with each new VitalLensResult.
    * @param onNoFace - Callback invoked when face is lost.
    */
   constructor(
-    private options: VitalLensOptions,
-    private methodConfig: MethodConfig,
+    protected options: VitalLensOptions,
+    protected methodConfig: MethodConfig,
     private frameIterator: IFrameIterator,
-    private bufferManager: BufferManager,
-    private faceDetector: IFaceDetector,
+    protected bufferManager: BufferManager,
+    protected faceDetectionWorker: IFaceDetectionWorker | null,
     methodHandler: MethodHandler,
     private onPredict: (result: VitalLensResult) => Promise<void>,
-    private onNoFace: () => Promise<void>
+    protected onNoFace: () => Promise<void>
   ) {
     this.methodHandler = methodHandler;
     // Derive target fps
@@ -48,14 +46,21 @@ export class StreamProcessor {
       ? this.options.overrideFpsTarget
       : this.methodConfig.fpsTarget;
     this.fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0;
-    this.useFaceDetector = this.options.globalRoi === undefined;
+
+    if (this.faceDetectionWorker) {
+      this.faceDetectionWorker.onmessage =
+        this.handleFaceDetectionResult.bind(this);
+      this.faceDetectionWorker.onerror = (error) => {
+        console.error('Face detection worker error:', error);
+      };
+    }
   }
 
   /**
    * Initializes the StreamProcessor, setting up a global ROI if provided.
    */
   init() {
-    if (!this.useFaceDetector && this.options.globalRoi) {
+    if (!this.faceDetectionWorker && this.options.globalRoi) {
       this.roi = this.options.globalRoi;
       this.bufferManager.addBuffer(
         this.options.globalRoi,
@@ -147,12 +152,12 @@ export class StreamProcessor {
           }
 
           if (
-            this.useFaceDetector &&
-            this.faceDetector &&
+            this.faceDetectionWorker &&
             currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs
           ) {
             this.lastFaceDetectionTime = currentTime;
-            this.handleFaceDetection(frame, currentTime);
+            console.log('FaceDet.start (worker)');
+            this.triggerFaceDetection(frame, currentTime);
           } else {
             frame.release();
           }
@@ -172,63 +177,14 @@ export class StreamProcessor {
     });
   }
 
-  /**
-   * Runs face detection on a single frame. If a face is found, updates the ROI in bufferManager.
-   * @param frame - Current frame to detect face in.
-   * @param currentTime - Timestamp in seconds.
-   */
-  private async handleFaceDetection(
+  // Abstract method/hook for running face detection.
+  protected abstract triggerFaceDetection(
     frame: Frame,
     currentTime: number
-  ): Promise<void> {
-    this.faceDetector.run(frame, async (dets) => {
-      if (!dets || dets.length < 1) {
-        // No face detected - clean up
-        this.roi = null;
-        this.bufferManager.cleanup();
-        this.onNoFace();
-        return;
-      }
+  ): void;
 
-      if (frame.getShape().length === 3) {
-        const absoluteDet = {
-          x0: Math.round(dets[0].x0 * frame.getShape()[1]),
-          y0: Math.round(dets[0].y0 * frame.getShape()[0]),
-          x1: Math.round(dets[0].x1 * frame.getShape()[1]),
-          y1: Math.round(dets[0].y1 * frame.getShape()[0]),
-        };
-
-        // Update ROI if it is null or the face has moved outside of the current ROI.
-        const shouldUpdateROI =
-          this.roi === null ||
-          (this.options.method === 'vitallens' &&
-            !checkFaceInROI(absoluteDet, this.roi, [0.6, 1.0])) ||
-          this.options.method !== 'vitallens';
-
-        if (shouldUpdateROI) {
-          this.roi = getROIForMethod(
-            absoluteDet,
-            this.methodConfig,
-            { height: frame.getShape()[0], width: frame.getShape()[1] },
-            true
-          );
-          if (
-            this.bufferManager.isEmpty() ||
-            this.options.method === 'vitallens'
-          ) {
-            // Add a new buffer only if we don't have one yet or if method is vitallens
-            this.bufferManager.addBuffer(
-              this.roi,
-              this.methodConfig,
-              currentTime
-            );
-          }
-        }
-      }
-
-      frame.release();
-    });
-  }
+  // Abstract method to handle worker responses with face detection results.
+  protected abstract handleFaceDetectionResult(event: MessageEvent): void;
 
   /**
    * Returns `true` we are actively processing
