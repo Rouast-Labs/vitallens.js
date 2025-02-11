@@ -1,24 +1,16 @@
 import { MethodConfig, VitalLensOptions, VideoInput } from '../types/core';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
-import { IFrameIteratorFactory } from '../types/IFrameIteratorFactory';
 import { FileFrameIterator } from './FileFrameIterator';
 import { FileRGBIterator } from './FileRGBIterator';
 import { StreamFrameIterator } from './StreamFrameIterator';
-import { IFaceDetector } from '../types/IFaceDetector';
 import { IFrameIterator } from '../types/IFrameIterator';
+import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 
 /**
  * Creates iterators for video processing, including frame capture and preprocessing.
  */
-export abstract class FrameIteratorFactoryBase
-  implements IFrameIteratorFactory
-{
+export class FrameIteratorFactory {
   constructor(private options: VitalLensOptions) {}
-
-  /**
-   * Subclasses must return the environment-specific FFmpeg wrapper.
-   */
-  protected abstract getFFmpegWrapper(): IFFmpegWrapper;
 
   /**
    * Creates a frame iterator for live streams.
@@ -48,15 +40,15 @@ export abstract class FrameIteratorFactoryBase
   createFileFrameIterator(
     videoInput: VideoInput,
     methodConfig: MethodConfig,
-    faceDetector: IFaceDetector
+    ffmpeg: IFFmpegWrapper,
+    faceDetectionWorker: IFaceDetectionWorker | null
   ): IFrameIterator {
-    const ffmpeg = this.getFFmpegWrapper();
     if (this.options.method === 'vitallens') {
       return new FileFrameIterator(
         videoInput,
         this.options,
         methodConfig,
-        faceDetector,
+        faceDetectionWorker,
         ffmpeg
       );
     } else {
@@ -64,7 +56,7 @@ export abstract class FrameIteratorFactoryBase
         videoInput,
         this.options,
         methodConfig,
-        faceDetector,
+        faceDetectionWorker,
         ffmpeg
       );
     }
