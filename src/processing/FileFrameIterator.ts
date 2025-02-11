@@ -9,14 +9,13 @@ import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { getRepresentativeROI, getROIForMethod } from '../utils/faceOps';
-import { IFaceDetector } from '../types/IFaceDetector';
+import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 
 /**
  * Frame iterator for video files (e.g., local file paths, File, or Blob inputs).
  * Yields 4D `Frame`s representing pre-processed segments of the video file
  */
 export class FileFrameIterator extends FrameIteratorBase {
-  private ffmpeg: IFFmpegWrapper;
   private currentFrameIndex: number = 0;
   private probeInfo: VideoProbeResult | null = null;
   private fpsTarget: number = 0;
@@ -27,61 +26,57 @@ export class FileFrameIterator extends FrameIteratorBase {
     private videoInput: VideoInput,
     private options: VitalLensOptions,
     private methodConfig: MethodConfig,
-    private faceDetector: IFaceDetector,
-    ffmpegWrapper: IFFmpegWrapper
+    private faceDetectionWorker: IFaceDetectionWorker | null,
+    private ffmpeg: IFFmpegWrapper
   ) {
     super();
-    this.ffmpeg = ffmpegWrapper;
   }
 
   /**
    * Starts the iterator by initializing the FFmpeg wrapper and probing the video.
    */
   async start(): Promise<void> {
-    await this.ffmpeg.init();
-    await this.ffmpeg.loadInput(this.videoInput);
-    // Probe to get video information
-    this.probeInfo = await this.ffmpeg.probeVideo(this.videoInput);
-    if (!this.probeInfo) {
-      throw new Error(
-        'Failed to retrieve video probe information. Ensure the input is valid.'
+    // Get the ROI
+    if (this.faceDetectionWorker) {
+      // Run face detection
+      const { detections, probeInfo } =
+        await this.faceDetectionWorker.detectFaces(this.videoInput, 'video');
+      // Derive roi from faces
+      this.probeInfo = probeInfo;
+      this.roi = detections.map((det) =>
+        getROIForMethod(
+          det,
+          this.methodConfig,
+          { height: probeInfo.height, width: probeInfo.width },
+          true
+        )
       );
+      // Load ffmpeg after finishing face detection
+      await this.ffmpeg.init();
+      await this.ffmpeg.loadInput(this.videoInput);
+    } else {
+      // Load ffmpeg
+      await this.ffmpeg.init();
+      await this.ffmpeg.loadInput(this.videoInput);
+      // Probe to get video information
+      this.probeInfo = await this.ffmpeg.probeVideo(this.videoInput);
+      if (!this.probeInfo) {
+        throw new Error(
+          'Failed to retrieve video probe information. Ensure the input is valid.'
+        );
+      }
+      // Use global ROI
+      this.roi = Array(this.probeInfo.totalFrames).fill(this.options.globalRoi);
     }
-    const totalFrames = this.probeInfo.totalFrames;
+
     // Derive fps target and downsampling factor
     this.fpsTarget = this.options.overrideFpsTarget
       ? this.options.overrideFpsTarget
       : this.methodConfig.fpsTarget;
     this.dsFactor = Math.max(
-      Math.round(this.probeInfo.fps / this.fpsTarget),
+      Math.round(this.probeInfo!.fps / this.fpsTarget),
       1
     );
-    if (this.options.globalRoi) {
-      this.roi = Array(totalFrames).fill(this.options.globalRoi);
-    } else {
-      // Run face detection
-      const faces = (await this.faceDetector.detect(
-        this.videoInput,
-        this.ffmpeg,
-        this.probeInfo
-      )) as ROI[];
-      // Convert faces to absolute units
-      const absoluteROIs = faces.map(({ x0, y0, x1, y1 }) => ({
-        x0: Math.round(x0 * this.probeInfo!.width),
-        y0: Math.round(y0 * this.probeInfo!.height),
-        x1: Math.round(x1 * this.probeInfo!.width),
-        y1: Math.round(y1 * this.probeInfo!.height),
-      }));
-      // Derive roi from faces
-      this.roi = absoluteROIs.map((face) =>
-        getROIForMethod(
-          face,
-          this.methodConfig,
-          { height: this.probeInfo!.height, width: this.probeInfo!.width },
-          true
-        )
-      );
-    }
   }
 
   /**
