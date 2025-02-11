@@ -15,6 +15,7 @@ import {
 } from '../../src/types/core';
 import { IFFmpegWrapper } from '../../src/types/IFFmpegWrapper';
 import { IFaceDetector } from '../../src/types/IFaceDetector';
+import { IFaceDetectionWorker } from '../../src/types/IFaceDetectionWorker';
 
 // Dummy FFmpeg wrapper that simulates behavior for testing.
 class DummyFFmpegWrapper implements IFFmpegWrapper {
@@ -55,25 +56,45 @@ class DummyFFmpegWrapper implements IFFmpegWrapper {
   cleanup = jest.fn(() => {});
 }
 
-// Dummy face detector that returns the same ROI for every frame.
-class DummyFaceDetector implements IFaceDetector {
-  load = jest.fn(async () => Promise.resolve());
-  run = jest.fn(async () => Promise.resolve());
-  detect = jest.fn(
-    async (
-      videoFrames: Frame,
-      ffmpeg: any,
-      probeInfo: VideoProbeResult
-    ): Promise<ROI[]> => {
-      // Use Array.from to create an array of ROIs so that each ROI is a separate object.
-      return Array.from({ length: probeInfo.totalFrames }, () => ({
-        x0: 0.1,
-        y0: 0.1,
-        x1: 0.4,
-        y1: 0.4,
-      }));
-    }
-  );
+// Dummy face detection worker that returns the same ROI for every frame.
+class DummyFaceDetectionWorker implements IFaceDetectionWorker {
+  postMessage(message: unknown, transfer?: Transferable[]): void {}
+  terminate(): void | Promise<number> {
+    return;
+  }
+  onmessage: ((ev: MessageEvent) => unknown) | null = null;
+  onmessageerror: ((ev: MessageEvent) => unknown) | null = null;
+  onerror: ((ev: ErrorEvent) => unknown) | null = null;
+  addEventListener?(
+    type: string,
+    listener: EventListenerOrEventListenerObject
+  ): void {}
+  removeEventListener?(
+    type: string,
+    listener: EventListenerOrEventListenerObject
+  ): void {}
+  detectFaces = jest.fn(async (videoInput: VideoInput, type: string) => {
+    // For testing the "face detection" branch, we simulate a detection.
+    const expectedROI: ROI = {
+      x0: Math.round(0.1 * 640),
+      y0: Math.round(0.1 * 480),
+      x1: Math.round(0.4 * 640),
+      y1: Math.round(0.4 * 480),
+    };
+    // Also supply a probeInfo similar to what FFmpeg returns.
+    const probeInfo: VideoProbeResult = {
+      totalFrames: 20,
+      fps: 10,
+      width: 640,
+      height: 480,
+      codec: 'h264',
+      bitrate: 1000,
+      rotation: 0,
+      issues: false,
+    };
+    // You could return multiple detections if desired. Here we return one.
+    return { detections: Array(20).fill(expectedROI), probeInfo };
+  });
 }
 
 // Dummy options and method config.
@@ -132,29 +153,89 @@ describe('extractRGBForROI', () => {
 
 describe('FileRGBIterator', () => {
   let ffmpegWrapper: DummyFFmpegWrapper;
-  let faceDetector: DummyFaceDetector;
+  let faceDetectionWorker: DummyFaceDetectionWorker;
   let iterator: FileRGBIterator;
 
   beforeEach(() => {
     ffmpegWrapper = new DummyFFmpegWrapper();
-    faceDetector = new DummyFaceDetector();
+    faceDetectionWorker = new DummyFaceDetectionWorker();
     iterator = new FileRGBIterator(
       dummyVideoInput,
       dummyOptions,
       dummyMethodConfig,
-      faceDetector,
+      faceDetectionWorker,
       ffmpegWrapper
     );
   });
 
-  it('should throw if start() is called with invalid probe info', async () => {
-    // Force probeVideo to return null by defining a function that accepts the VideoInput parameter.
-    ffmpegWrapper.probeVideo = jest.fn(
-      async (videoInput: VideoInput) => null as any
-    );
-    await expect(iterator.start()).rejects.toThrow(
-      'Failed to retrieve video probe information'
-    );
+  describe('start', () => {
+    it('should throw if called with invalid probe info (no face detection worker)', async () => {
+      // Create an iterator without a face detection worker.
+      const iteratorNoFace = new FileRGBIterator(
+        dummyVideoInput,
+        dummyOptions,
+        dummyMethodConfig,
+        null,
+        ffmpegWrapper
+      );
+      // Force probeVideo to return null.
+      ffmpegWrapper.probeVideo = jest.fn(
+        async (videoInput: VideoInput) => null as any
+      );
+      await expect(iteratorNoFace.start()).rejects.toThrow(
+        'Failed to retrieve video probe information'
+      );
+    });
+
+    it('should initialize roi and compute rgb when no face detection worker is provided (using globalRoi)', async () => {
+      // Create an iterator without a face detection worker.
+      dummyOptions.globalRoi = {
+        x0: Math.round(0.2 * 640),
+        y0: Math.round(0.2 * 480),
+        x1: Math.round(0.6 * 640),
+        y1: Math.round(0.6 * 480),
+      };
+      const iteratorNoFace = new FileRGBIterator(
+        dummyVideoInput,
+        dummyOptions,
+        dummyMethodConfig,
+        null,
+        ffmpegWrapper
+      );
+      await iteratorNoFace.start();
+      const expectedAbsoluteROI = {
+        x0: Math.round(0.2 * 640),
+        y0: Math.round(0.2 * 480),
+        x1: Math.round(0.6 * 640),
+        y1: Math.round(0.6 * 480),
+      };
+      // In the "global ROI" branch, roi is initialized as an array of length equal to totalFrames.
+      expect(iteratorNoFace['roi'].length).toBe(20);
+      // Each ROI should equal the provided globalRoi.
+      iteratorNoFace['roi'].forEach((r: ROI) => {
+        expect(r).toEqual(expectedAbsoluteROI);
+      });
+      // Also, rgb should be computed.
+      expect(iteratorNoFace['rgb']).not.toBeNull();
+      // Verify that readVideo was called
+      expect(ffmpegWrapper.readVideo).toHaveBeenCalled();
+    });
+
+    it('should initialize roi and compute rgb when face detection worker is provided', async () => {
+      await iterator.start();
+      const expectedAbsoluteROI = {
+        x0: Math.round(0.1 * 640),
+        y0: Math.round(0.1 * 480),
+        x1: Math.round(0.4 * 640),
+        y1: Math.round(0.4 * 480),
+      };
+      // In the "global ROI" branch, roi is initialized as an array of length equal to totalFrames.
+      expect(iterator['roi'].length).toBe(20);
+      // Each ROI should equal the provided globalRoi.
+      iterator['roi'].forEach((r: ROI) => {
+        expect(r).toEqual(expectedAbsoluteROI);
+      });
+    });
   });
 
   it('should initialize roi and rgb data on start()', async () => {
@@ -177,32 +258,34 @@ describe('FileRGBIterator', () => {
     expect(ffmpegWrapper.readVideo).toHaveBeenCalled();
   });
 
-  it('should return a Frame with correct properties from next()', async () => {
-    // Start the iterator.
-    await iterator.start();
-    // Now call next()
-    const frame = await iterator.next();
-    expect(frame).not.toBeNull();
-    expect(frame!.getTimestamp().length).toEqual(6);
-    expect(frame!.getShape()).toEqual([6, 3]);
-    expect(frame!.getROI().length).toEqual(frame!.getTimestamp().length);
-  });
+  describe('next', () => {
+    it('should return a Frame with correct properties from next()', async () => {
+      // Start the iterator.
+      await iterator.start();
+      // Now call next()
+      const frame = await iterator.next();
+      expect(frame).not.toBeNull();
+      expect(frame!.getTimestamp().length).toEqual(6);
+      expect(frame!.getShape()).toEqual([6, 3]);
+      expect(frame!.getROI().length).toEqual(frame!.getTimestamp().length);
+    });
 
-  it('should eventually return null when no frames remain', async () => {
-    await iterator.start();
-    // Consume all frames.
-    let frame: Frame | null = null;
-    let count = 0;
-    do {
-      frame = await iterator.next();
-      count++;
-    } while (frame !== null);
-    expect(count).toBeGreaterThanOrEqual(1);
-  });
+    it('should eventually return null when no frames remain', async () => {
+      await iterator.start();
+      // Consume all frames.
+      let frame: Frame | null = null;
+      let count = 0;
+      do {
+        frame = await iterator.next();
+        count++;
+      } while (frame !== null);
+      expect(count).toBeGreaterThanOrEqual(1);
+    });
 
-  it('should throw error in next() if probe information not available', async () => {
-    await expect(iterator.next()).rejects.toThrow(
-      /Probe information is not available/
-    );
+    it('should throw error in next() if probe information not available', async () => {
+      await expect(iterator.next()).rejects.toThrow(
+        /Probe information is not available/
+      );
+    });
   });
 });

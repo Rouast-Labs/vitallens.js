@@ -11,4 +11,5 @@ export interface IVitalLensController {
   processVideoFile(filePath: VideoInput): Promise<VitalLensResult>;
   addEventListener(event: string, listener: (data: unknown) => void): void;
   removeEventListener(event: string): void;
+  dispose(): Promise<void>;
 }

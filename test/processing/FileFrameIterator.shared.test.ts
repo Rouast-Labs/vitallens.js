@@ -57,12 +57,20 @@ class DummyFFmpegWrapper implements IFFmpegWrapper {
 // Dummy face detection worker that returns the same ROI for every frame.
 class DummyFaceDetectionWorker implements IFaceDetectionWorker {
   postMessage(message: unknown, transfer?: Transferable[]): void {}
-  terminate(): void | Promise<number> { return; }
+  terminate(): void | Promise<number> {
+    return;
+  }
   onmessage: ((ev: MessageEvent) => unknown) | null = null;
   onmessageerror: ((ev: MessageEvent) => unknown) | null = null;
   onerror: ((ev: ErrorEvent) => unknown) | null = null;
-  addEventListener?(type: string, listener: EventListenerOrEventListenerObject): void {}
-  removeEventListener?(type: string, listener: EventListenerOrEventListenerObject): void {}
+  addEventListener?(
+    type: string,
+    listener: EventListenerOrEventListenerObject
+  ): void {}
+  removeEventListener?(
+    type: string,
+    listener: EventListenerOrEventListenerObject
+  ): void {}
   detectFaces = jest.fn(async (videoInput: VideoInput, type: string) => {
     // For testing the "face detection" branch, we simulate a detection.
     const expectedROI: ROI = {
@@ -83,7 +91,7 @@ class DummyFaceDetectionWorker implements IFaceDetectionWorker {
       issues: false,
     };
     // You could return multiple detections if desired. Here we return one.
-    return { detections: [expectedROI], probeInfo };
+    return { detections: Array(20).fill(expectedROI), probeInfo };
   });
 }
 
@@ -154,10 +162,10 @@ describe('FileFrameIterator', () => {
     it('should initialize roi when no face detection worker is provided (using globalRoi)', async () => {
       // Create an iterator without a face detection worker.
       dummyOptions.globalRoi = {
-        x0: Math.round(0.1 * 640),
-        y0: Math.round(0.1 * 480),
-        x1: Math.round(0.4 * 640),
-        y1: Math.round(0.4 * 480),
+        x0: Math.round(0.2 * 640),
+        y0: Math.round(0.2 * 480),
+        x1: Math.round(0.6 * 640),
+        y1: Math.round(0.6 * 480),
       };
       const iteratorNoFace = new FileFrameIterator(
         dummyVideoInput,
@@ -168,15 +176,31 @@ describe('FileFrameIterator', () => {
       );
       await iteratorNoFace.start();
       const expectedAbsoluteROI = {
+        x0: Math.round(0.2 * 640),
+        y0: Math.round(0.2 * 480),
+        x1: Math.round(0.6 * 640),
+        y1: Math.round(0.6 * 480),
+      };
+      // In the "global ROI" branch, roi is initialized as an array of length equal to totalFrames.
+      expect(iteratorNoFace['roi'].length).toBe(20);
+      // Each ROI should equal the provided globalRoi.
+      iteratorNoFace['roi'].forEach((r: ROI) => {
+        expect(r).toEqual(expectedAbsoluteROI);
+      });
+    });
+
+    it('should initialize roi when face detection worker is provided', async () => {
+      await iterator.start();
+      const expectedAbsoluteROI = {
         x0: Math.round(0.1 * 640),
         y0: Math.round(0.1 * 480),
         x1: Math.round(0.4 * 640),
         y1: Math.round(0.4 * 480),
       };
       // In the "global ROI" branch, roi is initialized as an array of length equal to totalFrames.
-      expect(iteratorNoFace['roi'].length).toBe(20);
+      expect(iterator['roi'].length).toBe(20);
       // Each ROI should equal the provided globalRoi.
-      iteratorNoFace['roi'].forEach((r: ROI) => {
+      iterator['roi'].forEach((r: ROI) => {
         expect(r).toEqual(expectedAbsoluteROI);
       });
     });
