@@ -2,7 +2,7 @@ import * as tf from '@tensorflow/tfjs';
 import { Frame } from '../processing/Frame';
 import { ROI, VideoInput, VideoProbeResult } from '../types/core';
 import { IFaceDetector } from '../types/IFaceDetector';
-import { IFFmpegWrapper } from '../types/IFFmpegWrapper'; // assumed to exist
+import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 
 /**
  * The face detector input can be either a pre-processed Frame or a VideoInput.
