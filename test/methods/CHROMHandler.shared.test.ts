@@ -1,6 +1,6 @@
+import * as tf from '@tensorflow/tfjs-core';
 import { CHROMHandler } from '../../src/methods/CHROMHandler';
 import { Frame } from '../../src/processing/Frame';
-import * as tf from '@tensorflow/tfjs';
 import { VitalLensOptions } from '../../src/types';
 
 describe('CHROMHandler', () => {

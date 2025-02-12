@@ -1,4 +1,4 @@
-import * as tf from '@tensorflow/tfjs';
+import tf from 'tfjs-provider';
 import { FaceDetectorAsyncBase } from './FaceDetectorAsync.base';
 import { modelJsonBase64, modelBinBase64 } from './modelAssets';
 

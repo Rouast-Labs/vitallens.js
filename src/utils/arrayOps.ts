@@ -1,4 +1,4 @@
-import * as tf from '@tensorflow/tfjs';
+import tf from 'tfjs-provider';
 import { identity, multiply, add, subtract, transpose, inv } from 'mathjs';
 import { Frame } from '../processing/Frame';
 import { ROI } from '../types/core';

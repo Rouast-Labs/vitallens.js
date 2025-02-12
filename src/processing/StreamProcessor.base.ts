@@ -156,7 +156,6 @@ export abstract class StreamProcessorBase {
             currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs
           ) {
             this.lastFaceDetectionTime = currentTime;
-            console.log('FaceDet.start (worker)');
             this.triggerFaceDetection(frame, currentTime);
           } else {
             frame.release();

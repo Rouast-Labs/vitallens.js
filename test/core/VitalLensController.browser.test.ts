@@ -24,6 +24,9 @@ jest.mock(
   '../../dist/faceDetection.worker.browser.bundle.js',
   () => 'data:application/javascript;base64,ZmFrZSBjb2Rl'
 );
+global.URL.createObjectURL = jest.fn(
+  () => 'data:application/javascript;base64,ZmFrZSBjb2Rl'
+);
 
 // Define a FakeWorker that implements the Worker interface.
 class FakeWorker extends EventTarget implements Worker {
@@ -113,7 +116,7 @@ describe('VitalLensController (Browser)', () => {
       expect(callArgs[0]).toBe(
         'data:application/javascript;base64,ZmFrZSBjb2Rl'
       );
-      expect(callArgs.length).toBe(1);
+      expect(callArgs.length).toBe(2);
 
       // Get the worker instance created by FakeWorkerMock.
       const workerInstance = FakeWorkerMock.mock.results[0].value;

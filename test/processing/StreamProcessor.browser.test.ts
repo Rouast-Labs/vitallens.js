@@ -151,9 +151,6 @@ describe('StreamProcessor (Browser)', () => {
         .calls[0][0];
       const secondCall = (mockFaceDetectionWorker.postMessage as jest.Mock).mock
         .calls[1][0];
-
-      console.log(firstCall);
-      console.log(secondCall);
       expect(firstCall.id).toBe(0);
       expect(secondCall.id).toBe(1);
     });
@@ -213,12 +210,12 @@ describe('StreamProcessor (Browser)', () => {
       (getROIForMethod as jest.Mock).mockReturnValue(updatedROI);
       (fakeBufferManager.isEmpty as jest.Mock).mockReturnValue(true);
 
+      const probeInfo = { width: 640, height: 480 };
       const eventWithDetections = new MessageEvent('message', {
         data: {
           id: 2,
           detections: [mockDetection],
-          width: 640,
-          height: 480,
+          probeInfo: probeInfo,
           timestamp: 2.5,
         },
       });
@@ -228,7 +225,7 @@ describe('StreamProcessor (Browser)', () => {
       expect(getROIForMethod).toHaveBeenCalledWith(
         mockDetection,
         methodConfig,
-        { height: 480, width: 640 },
+        probeInfo,
         true
       );
       // The processor's ROI should be updated.

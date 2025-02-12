@@ -12,7 +12,7 @@ import {
   VitalLensResult,
 } from '../../src/types';
 import { Frame } from '../../src/processing/Frame';
-import * as tf from '@tensorflow/tfjs';
+import * as tf from '@tensorflow/tfjs-core';
 
 class TestStreamProcessor extends StreamProcessorBase {
   triggerFaceDetection(frame: Frame, currentTime: number): void {

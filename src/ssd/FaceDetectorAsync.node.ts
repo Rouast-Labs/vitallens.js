@@ -1,5 +1,4 @@
-import * as tf from '@tensorflow/tfjs';
-import '@tensorflow/tfjs-node';
+import tf from 'tfjs-provider';
 import { FaceDetectorAsyncBase } from './FaceDetectorAsync.base';
 
 // IMPORTANT: We import the base64-encoded files here, which Rollup will inline in the node build

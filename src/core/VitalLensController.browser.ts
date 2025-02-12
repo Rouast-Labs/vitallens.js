@@ -14,6 +14,7 @@ import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import FFmpegWrapper from '../utils/FFmpegWrapper.browser';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.browser';
+import { createWorkerBlobURL } from '../utils/workerOps';
 
 export class VitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string): IRestClient {
@@ -26,9 +27,17 @@ export class VitalLensController extends VitalLensControllerBase {
     return new FFmpegWrapper();
   }
   protected createFaceDetectionWorker(): IFaceDetectionWorker {
-    // Create a browser Worker
-    const worker = new Worker(faceDetectionWorkerDataURI);
-    // Wrap it in our common interface wrapper.
+    // Convert the inlined data URI to a Blob URL.
+    const blobURL = createWorkerBlobURL(faceDetectionWorkerDataURI);
+
+    // Create the browser Worker using the blob URL.
+    const worker = new Worker(blobURL, { type: 'module' });
+
+    // Optionally, if you know when you're done with the worker you can later call:
+    // URL.revokeObjectURL(blobURL);
+    // (typically after worker termination)
+
+    // Wrap the worker with your interface wrapper.
     return new FaceDetectionWorker(worker);
   }
   protected createStreamProcessor(

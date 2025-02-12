@@ -1,4 +1,4 @@
-import * as tf from '@tensorflow/tfjs';
+import * as tf from '@tensorflow/tfjs-core';
 import { POSHandler } from '../../src/methods/POSHandler';
 import { Frame } from '../../src/processing/Frame';
 import { VitalLensOptions } from '../../src/types';

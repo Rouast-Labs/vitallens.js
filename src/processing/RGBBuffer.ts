@@ -1,6 +1,6 @@
+import tf from 'tfjs-provider';
 import { Frame } from './Frame';
 import { Buffer } from './Buffer';
-import * as tf from '@tensorflow/tfjs';
 import { ROI } from '../types';
 
 /**
@@ -30,7 +30,13 @@ export class RGBBuffer extends Buffer {
     const roi = overrideRoi ?? this.roi;
 
     // Validate ROI dimensions
-    if (roi.x0 < 0 || roi.y0 < 0 || roi.x1 > shape[1] || roi.y1 > shape[0]) {
+    if (
+      !roi ||
+      roi.x0 < 0 ||
+      roi.y0 < 0 ||
+      roi.x1 > shape[1] ||
+      roi.y1 > shape[0]
+    ) {
       throw new Error(
         `ROI dimensions are out of bounds. Frame dimensions: [${shape[0]}, ${shape[1]}], ROI: ${JSON.stringify(roi)}`
       );
@@ -41,13 +47,14 @@ export class RGBBuffer extends Buffer {
       // Get the tensor
       const tensor = frame.getTensor();
       // Crop the tensor based on the ROI
-      const cropped = tensor.slice(
+      const cropped = tf.slice(
+        tensor,
         [roi.y0, roi.x0, 0], // Start point [y, x, channel]
         [roi.y1 - roi.y0, roi.x1 - roi.x0, shape[2] || 1] // Size [height, width, depth]
       );
 
       // Compute the spatial average across the ROI
-      const averaged = cropped.mean([0, 1]);
+      const averaged = tf.mean(cropped, [0, 1]);
 
       return averaged;
     });

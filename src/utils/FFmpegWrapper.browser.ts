@@ -2,9 +2,10 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL, fetchFile } from '@ffmpeg/util';
 import { FFmpegWrapperBase } from './FFmpegWrapper.base';
 import { VideoInput, VideoProbeResult, VideoProcessingOptions } from '../types';
+import { createWorkerBlobURL } from './workerOps';
 
 // Import the worker bundle as a URL (which will be inlined as a data URI)
-import workerBundleDataURI from '../../dist/ffmpeg-worker.bundle.js';
+import workerBundleDataURI from '../../dist/ffmpeg.worker.bundle.js';
 
 export default class FFmpegWrapper extends FFmpegWrapperBase {
   private ffmpeg?: unknown;
@@ -27,7 +28,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
           'application/wasm'
         );
         // Passing worker bundle to avoid issues: https://github.com/ffmpegwasm/ffmpeg.wasm/issues/532
-        const workerURL = this.createWorkerBlobURL(workerBundleDataURI);
+        const workerURL = createWorkerBlobURL(workerBundleDataURI);
         // Now load FFmpeg with the obtained Blob URLs
         await (this.ffmpeg as FFmpeg).load({
           coreURL: coreURL,
@@ -39,25 +40,6 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
         throw err;
       }
     }
-  }
-
-  /**
-   * Converts a data URI or base64-encoded string of a worker script into a Blob URL.
-   * @param dataURI - A string containing either a full data URI or a base64-encoded worker script.
-   * @returns A Blob URL string representing the worker script.
-   */
-  createWorkerBlobURL(dataURI: string): string {
-    let encoded = dataURI;
-    if (dataURI.startsWith('data:')) {
-      const parts = dataURI.split(',');
-      if (parts.length < 2) {
-        throw new Error('Unexpected worker data URI format.');
-      }
-      encoded = parts[1];
-    }
-    const workerScript = atob(encoded);
-    const blob = new Blob([workerScript], { type: 'application/javascript' });
-    return URL.createObjectURL(blob);
   }
 
   /**

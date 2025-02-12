@@ -1,6 +1,6 @@
+import * as tf from '@tensorflow/tfjs-core';
 import { Frame } from '../../src/processing/Frame';
 import { GHandler } from '../../src/methods/GHandler';
-import * as tf from '@tensorflow/tfjs';
 import { VitalLensOptions } from '../../src/types';
 
 describe('GHandler', () => {

@@ -22,16 +22,12 @@ function onwarn(warning, defaultHandler) {
 
 // TODO: Check if any options have become are superfluous
 
-const nodeExternals = [
-  '@tensorflow/tfjs',
-  '@tensorflow/tfjs-node',
-  ...builtinModules,
-];
+const nodeExternals = ['@tensorflow/tfjs-node', ...builtinModules];
 
 const ffmpegWorkerBundleConfig = {
   input: 'src/ffmpeg-worker-entry.js',
   output: {
-    file: 'dist/ffmpeg-worker.bundle.js',
+    file: 'dist/ffmpeg.worker.bundle.js',
     format: 'esm',
     sourcemap: false,
   },
@@ -61,6 +57,14 @@ const faceDetectionWorkerNodeConfig = {
     format: 'cjs',
   },
   plugins: [
+    alias({
+      entries: [
+        {
+          find: 'tfjs-provider',
+          replacement: path.resolve(__dirname, 'src/tfjs-provider.node.ts'),
+        },
+      ],
+    }),
     url({
       include: ['models/**/*'],
       limit: Infinity,
@@ -78,14 +82,24 @@ const faceDetectionWorkerNodeConfig = {
 
 const faceDetectionWorkerBrowserConfig = {
   input: 'src/ssd/faceDetection.worker.browser.ts',
-  external: ['@tensorflow/tfjs'],
   output: {
     file: 'dist/faceDetection.worker.browser.bundle.js',
     format: 'esm',
   },
   plugins: [
+    alias({
+      entries: [
+        {
+          find: 'tfjs-provider',
+          replacement: path.resolve(
+            __dirname,
+            'src/tfjs-provider.browser.worker.ts'
+          ),
+        },
+      ],
+    }),
     url({
-      include: ['models/**/*', '**/ffmpeg-worker.bundle.js'],
+      include: ['models/**/*', '**/ffmpeg.worker.bundle.js'],
       limit: Infinity,
       emitFiles: false,
     }),
@@ -109,6 +123,14 @@ const nodeEsmConfig = {
   },
   onwarn,
   plugins: [
+    alias({
+      entries: [
+        {
+          find: 'tfjs-provider',
+          replacement: path.resolve(__dirname, 'src/tfjs-provider.node.ts'),
+        },
+      ],
+    }),
     url({
       include: ['**/faceDetection.worker.node.bundle.js'],
       limit: Infinity,
@@ -136,6 +158,14 @@ const nodeCjsConfig = {
   },
   onwarn,
   plugins: [
+    alias({
+      entries: [
+        {
+          find: 'tfjs-provider',
+          replacement: path.resolve(__dirname, 'src/tfjs-provider.node.ts'),
+        },
+      ],
+    }),
     url({
       include: ['**/faceDetection.worker.node.bundle.js'],
       limit: Infinity,
@@ -158,9 +188,17 @@ const browserConfig = {
   },
   onwarn,
   plugins: [
+    alias({
+      entries: [
+        {
+          find: 'tfjs-provider',
+          replacement: path.resolve(__dirname, 'src/tfjs-provider.browser.ts'),
+        },
+      ],
+    }),
     url({
       include: [
-        '**/ffmpeg-worker.bundle.js',
+        '**/ffmpeg.worker.bundle.js',
         '**/faceDetection.worker.browser.bundle.js',
       ],
       limit: Infinity,
@@ -170,7 +208,6 @@ const browserConfig = {
     nodeResolve({
       browser: true,
       preferBuiltins: false,
-      dedupe: ['@tensorflow/tfjs'],
     }),
     commonjs(),
     terser(),
@@ -187,7 +224,7 @@ const ffmpegWrapperBrowserConfig = {
   onwarn,
   plugins: [
     url({
-      include: ['**/ffmpeg-worker.bundle.js'],
+      include: ['**/ffmpeg.worker.bundle.js'],
       limit: Infinity,
       emitFiles: false,
     }),

@@ -1,6 +1,6 @@
+import tf from 'tfjs-provider';
 import { Frame } from './Frame';
 import { FrameIteratorBase } from './FrameIterator.base';
-import { browser, tidy } from '@tensorflow/tfjs';
 
 /**
  * Frame iterator for MediaStreams (e.g., live video from a webcam).
@@ -71,9 +71,9 @@ export class StreamFrameIterator extends FrameIteratorBase {
       return null;
     }
 
-    const tensor = tidy(() => {
+    const tensor = tf.tidy(() => {
       // TODO: Does this work with WebRTC stream?
-      return browser.fromPixels(this.videoElement!);
+      return tf.browser.fromPixels(this.videoElement!);
     });
 
     // Keep tensor for full frame

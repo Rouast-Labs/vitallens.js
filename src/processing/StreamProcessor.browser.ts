@@ -43,13 +43,12 @@ export class StreamProcessor extends StreamProcessorBase {
    * Handles worker responses with face detection results.
    */
   protected handleFaceDetectionResult(event: MessageEvent): void {
-    const { id, detections, width, height, timestamp, error } = event.data;
+    const { id, detections, probeInfo, timestamp, error } = event.data;
     if (error) {
       console.error(`Face detection error (id: ${id}):`, error);
       return;
     }
     // Log for debugging.
-    console.log('Face detection worker response:', detections);
     if (!detections || detections.length < 1) {
       // No face detected.
       this.roi = null;
@@ -69,7 +68,7 @@ export class StreamProcessor extends StreamProcessorBase {
       this.roi = getROIForMethod(
         det,
         this.methodConfig,
-        { height: height, width: width },
+        { height: probeInfo.height, width: probeInfo.width },
         true
       );
       if (this.bufferManager.isEmpty() || this.options.method === 'vitallens') {

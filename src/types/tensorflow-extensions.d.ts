@@ -1,7 +1,8 @@
-import * as tf from '@tensorflow/tfjs';
+import * as tfCore from '@tensorflow/tfjs-core';
 
-declare module '@tensorflow/tfjs' {
-  interface DataTypeMap extends tf.DataTypeMap {
+declare module '@tensorflow/tfjs-core' {
+  // Extend the existing interface using the imported alias.
+  interface DataTypeMap extends tfCore.DataTypeMap {
     uint8: Uint8Array;
   }
 }

@@ -1,4 +1,4 @@
-import * as tf from '@tensorflow/tfjs';
+import tf from 'tfjs-provider';
 import { ROI } from '../types';
 
 export interface FrameOptions {

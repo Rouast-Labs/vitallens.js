@@ -8,7 +8,7 @@ declare module '*.bin' {
   export default value;
 }
 
-declare module '*ffmpeg-worker.bundle.js' {
+declare module '*ffmpeg.worker.bundle.js' {
   const value: string;
   export default value;
 }
@@ -21,4 +21,10 @@ declare module '*faceDetection.worker.browser.bundle.js' {
 declare module '*faceDetection.worker.node.bundle.js' {
   const value: string;
   export default value;
+}
+
+declare module 'tfjs-provider' {
+  import * as tf from '@tensorflow/tfjs';
+  export * from '@tensorflow/tfjs';
+  export default tf;
 }
