@@ -48,7 +48,7 @@ describe('POSHandler', () => {
       // Create a simple linearly increasing signal.
       const rawSignal = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       const fps = 30;
-      const processed = posHandler.postprocess('ppg', rawSignal, fps);
+      const processed = posHandler.postprocess('ppg', rawSignal, fps, false);
       // Check same length.
       expect(processed.length).toBe(rawSignal.length);
 

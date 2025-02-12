@@ -1,9 +1,7 @@
 import * as tf from '@tensorflow/tfjs-core';
-import '@tensorflow/tfjs-backend-cpu';
+import '@tensorflow/tfjs-backend-webgl';
 
-tf.setBackend('cpu').then(() => {
-  console.log('tfjs backend is:', tf.getBackend());
-});
+tf.setBackend('webgl');
 
 export * from '@tensorflow/tfjs-core';
 export default tf;

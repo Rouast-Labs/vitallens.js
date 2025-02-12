@@ -1,13 +1,13 @@
 import { Frame } from '../processing/Frame';
 import { SimpleMethodHandler } from './SimpleMethodHandler';
-import * as tf from '@tensorflow/tfjs';
+import tf from 'tfjs-provider';
 import {
-  detrend,
   standardize,
   movingAverage,
   movingAverageSizeForHRResponse,
-  detrendLambdaForHRResponse,
+  adaptiveDetrend,
 } from '../../src/utils/arrayOps';
+import { CALC_HR_MIN } from '../config/constants';
 
 /**
  * Handler for processing frames using the POS algorithm.
@@ -28,10 +28,7 @@ export class POSHandler extends SimpleMethodHandler {
    */
   protected algorithm(rgb: Frame): number[] {
     return tf.tidy(() => {
-      // Create a 2D tensor from the Frame's Float32Array data.
-      const floatArray = rgb.getFloat32Array();
-      const shape = rgb.getShape(); // Expected: [n, 3]
-      const rgbTensor = tf.tensor2d(floatArray, shape as [number, number]);
+      const rgbTensor = rgb.getTensor();
 
       // --- Temporal Normalization ---
       // Compute the temporal mean; result shape: [1, 3]
@@ -50,8 +47,8 @@ export class POSHandler extends SimpleMethodHandler {
 
       // --- Tuning ---
       // Extract the two channels (each as shape [n])
-      const s0 = tf.slice(s, [0, 0], [-1, 1]).reshape([-1]);
-      const s1 = tf.slice(s, [0, 1], [-1, 1]).reshape([-1]);
+      const s0 = tf.reshape(tf.slice(s, [0, 0], [-1, 1]), [-1]);
+      const s1 = tf.reshape(tf.slice(s, [0, 1], [-1, 1]), [-1]);
 
       // Compute standard deviations.
       // Use tf.moments to get variance then tf.sqrt.
@@ -75,30 +72,26 @@ export class POSHandler extends SimpleMethodHandler {
 
   /**
    * Postprocess the estimated signal.
+   * Applies detrending and standardization.
    * @param signalType The type of signal ('ppg' or 'resp').
    * @param data The raw estimated signal.
-   * @param fps The sampling frequency of the signal.
-   * @returns The filtered and standardized signal.
+   * @param fps The sampling frequency.
+   * @param light Whether to do only light processing.
+   * @returns The filtered pulse signal.
    */
   postprocess(
     signalType: 'ppg' | 'resp',
     data: number[],
-    fps: number
+    fps: number,
+    light: boolean
   ): number[] {
-    // TODO: Look into cheaper detrending for long signals
-    // Determine lambda for detrending from fps.
-    const lambda = detrendLambdaForHRResponse(fps);
-    // Detrend the signal.
-    let processed = detrend(data, lambda);
-
+    let processed = light ? data : adaptiveDetrend(data, fps, CALC_HR_MIN / 60);
     // Determine the moving average window size.
     const windowSize = movingAverageSizeForHRResponse(fps);
     // Apply the moving average filter.
-    processed = movingAverage(processed, windowSize);
-
+    processed = movingAverage(data, windowSize);
     // Standardize the filtered signal.
-    processed = standardize(processed);
-
+    if (!light) processed = standardize(processed);
     return processed;
   }
 }

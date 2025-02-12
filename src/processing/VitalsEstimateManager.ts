@@ -41,7 +41,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   private postprocessFn: (
     signalType: 'ppg' | 'resp',
     data: number[],
-    fps: number
+    fps: number,
+    light: boolean
   ) => number[];
 
   /**
@@ -54,7 +55,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     postprocessFn: (
       signalType: 'ppg' | 'resp',
       data: number[],
-      fps: number
+      fps: number,
+      light: boolean
     ) => number[]
   ) {
     this.fpsTarget =
@@ -72,12 +74,14 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param incrementalResult - The incremental result to process.
    * @param sourceId - The source identifier (e.g., streamId or videoId).
    * @param defaultWaveformMode - The default waveformMode to set.
+   * @param light Whether to do only light processing.
    * @returns The aggregated result.
    */
   async processIncrementalResult(
     incrementalResult: VitalLensResult,
     sourceId: string,
-    defaultWaveformMode: string
+    defaultWaveformMode: string,
+    light: boolean = true
   ): Promise<VitalLensResult> {
     const currentTime = performance.now();
     const ppgWaveformData = incrementalResult.vital_signs?.ppg_waveform?.data;
@@ -158,6 +162,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     return await this.assembleResult(
       sourceId,
       waveformMode,
+      light,
       overlap,
       incrementalResult,
       estFps
@@ -407,6 +412,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * Assemble the result by performing FFT and extracting vitals.
    * @param sourceId - The source identifier.
    * @param waveformMode - Sets how much of waveforms is returned to user.
+   * @param light Whether to do only light processing.
    * @param overlap - The overlap.
    * @param incrementalResult - The latest incremental result - pass if returning incrementally
    * @param estFps - The rate at which estimates are being computed.
@@ -415,6 +421,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   private async assembleResult(
     sourceId: string,
     waveformMode: string,
+    light: boolean,
     overlap?: number,
     incrementalResult?: VitalLensResult,
     estFps?: number
@@ -522,7 +529,12 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         // Result ppg data long enough to apply moving average
         const fpsPpg = this.getCurrentFps(sourceId, resultPpgSize);
         if (fpsPpg) {
-          resultPpgData = this.postprocessFn('ppg', resultPpgData, fpsPpg);
+          resultPpgData = this.postprocessFn(
+            'ppg',
+            resultPpgData,
+            fpsPpg,
+            light
+          );
         }
       }
       if (resultPpgData.length > 0) {
@@ -541,7 +553,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           const hrPpgData = this.postprocessFn(
             'ppg',
             averagedPpgData.slice(-hrPpgSize),
-            fpsHr
+            fpsHr,
+            light
           );
           const hrPpgConf = averagedPpgConf.slice(-hrPpgSize);
           result.vital_signs.heart_rate = {
@@ -599,7 +612,12 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         // Result resp data long enough to apply moving average
         const fpsResp = this.getCurrentFps(sourceId, resultRespSize);
         if (fpsResp) {
-          resultRespData = this.postprocessFn('resp', resultRespData, fpsResp);
+          resultRespData = this.postprocessFn(
+            'resp',
+            resultRespData,
+            fpsResp,
+            light
+          );
         }
       }
       if (resultRespData.length > 0) {
@@ -618,7 +636,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           const rrRespData = this.postprocessFn(
             'resp',
             averagedRespData.slice(-rrRespSize),
-            fpsRr
+            fpsRr,
+            light
           );
           const rrRespConf = averagedRespConf.slice(-rrRespSize);
           result.vital_signs.respiratory_rate = {
@@ -787,7 +806,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @returns The aggregated VitalLensResult.
    */
   async getResult(sourceId: string): Promise<VitalLensResult> {
-    return await this.assembleResult(sourceId, 'complete');
+    return await this.assembleResult(sourceId, 'complete', false);
   }
 
   /**

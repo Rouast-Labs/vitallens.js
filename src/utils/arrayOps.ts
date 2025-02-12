@@ -237,3 +237,65 @@ export function standardize(signal: number[]): number[] {
   );
   return signal.map((v) => (v - mean) / (std || 1));
 }
+
+/**
+ * High-pass filter detrending using a first-order IIR filter.
+ * @param signal - The input signal array.
+ * @param fps - Sampling frequency in Hz.
+ * @param cutoff - Cutoff frequency in Hz (default: 0.5 Hz).
+ * @returns The detrended signal.
+ */
+export function efficientDetrend(
+  signal: number[],
+  fps: number,
+  cutoff = 0.5
+): number[] {
+  const dt = 1 / fps;
+  const RC = 1 / (2 * Math.PI * cutoff);
+  const alpha = RC / (RC + dt);
+  const output: number[] = new Array(signal.length);
+  output[0] = signal[0];
+  for (let i = 1; i < signal.length; i++) {
+    output[i] = alpha * (output[i - 1] + signal[i] - signal[i - 1]);
+  }
+  return output;
+}
+
+/**
+ * Zero-phase detrending by applying the high-pass filter forward and backward.
+ * @param signal - The input signal array.
+ * @param fps - Sampling frequency in Hz.
+ * @param cutoff - Cutoff frequency in Hz (default: 0.5 Hz).
+ * @returns The zero-phase detrended signal.
+ */
+export function efficientDetrendZeroPhase(
+  signal: number[],
+  fps: number,
+  cutoff = 0.5
+): number[] {
+  const forward = efficientDetrend(signal, fps, cutoff);
+  const backward = efficientDetrend(forward.slice().reverse(), fps, cutoff);
+  return backward.reverse();
+}
+
+/**
+ * Adaptive detrending: uses the matrix-based detrending for short signals and a high-pass filter for longer signals.
+ * @param signal - The input signal array.
+ * @param fps - Sampling frequency in Hz.
+ * @param cutoff - Cutoff frequency in Hz for the high-pass filter (default: 0.5 Hz).
+ * @param threshold - Signal length threshold to switch methods (default: 300 samples).
+ * @returns The detrended signal.
+ */
+export function adaptiveDetrend(
+  signal: number[],
+  fps: number,
+  cutoff = 0.5,
+  threshold = 300
+): number[] {
+  if (signal.length <= threshold) {
+    const lambda = detrendLambdaForHRResponse(fps);
+    return detrend(signal, lambda);
+  } else {
+    return efficientDetrendZeroPhase(signal, fps, cutoff);
+  }
+}

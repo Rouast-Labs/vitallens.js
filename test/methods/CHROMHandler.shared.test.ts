@@ -42,7 +42,7 @@ describe('CHROMHandler', () => {
       // Use a simple linearly increasing signal.
       const rawSignal = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       const fps = 30;
-      const processed = chromHandler.postprocess('ppg', rawSignal, fps);
+      const processed = chromHandler.postprocess('ppg', rawSignal, fps, false);
       // Check that the processed signal has the same length as the input.
       expect(processed.length).toBe(rawSignal.length);
 

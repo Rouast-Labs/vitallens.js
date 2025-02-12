@@ -608,6 +608,7 @@ describe('VitalsEstimateManager', () => {
       const result = await manager['assembleResult'](
         'source1',
         'incremental',
+        true,
         2,
         incrementalResult,
         1
@@ -657,7 +658,11 @@ describe('VitalsEstimateManager', () => {
       jest.spyOn(manager as any, 'estimateHeartRate').mockReturnValue(75);
       jest.spyOn(manager as any, 'estimateRespiratoryRate').mockReturnValue(18);
 
-      const result = await manager['assembleResult']('source1', 'windowed');
+      const result = await manager['assembleResult'](
+        'source1',
+        'windowed',
+        false
+      );
 
       expect(result).toEqual({
         time: [1002, 1003, 1004, 1005],
@@ -711,7 +716,11 @@ describe('VitalsEstimateManager', () => {
       jest.spyOn(manager as any, 'estimateHeartRate').mockReturnValue(75);
       jest.spyOn(manager as any, 'estimateRespiratoryRate').mockReturnValue(18);
 
-      const result = await manager['assembleResult']('source1', 'complete');
+      const result = await manager['assembleResult'](
+        'source1',
+        'complete',
+        false
+      );
 
       expect(result).toEqual({
         time: [1001, 1002, 1003, 1004, 1005],

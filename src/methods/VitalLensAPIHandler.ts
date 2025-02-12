@@ -13,11 +13,12 @@ import {
 import { IRestClient, isRestClient } from '../types/IRestClient';
 import { isWebSocketClient, IWebSocketClient } from '../types/IWebSocketClient';
 import {
+  adaptiveDetrend,
   movingAverage,
   movingAverageSizeForResponse,
   standardize,
 } from '../utils/arrayOps';
-import { CALC_HR_MAX, CALC_RR_MAX } from '../config/constants';
+import { CALC_HR_MAX, CALC_HR_MIN, CALC_RR_MAX } from '../config/constants';
 
 /**
  * Handler for processing frames using the VitalLens API via WebSocket or REST.
@@ -88,7 +89,7 @@ export class VitalLensAPIHandler extends MethodHandler {
 
     try {
       // Capture the start time
-      const startTime = performance.now();
+      // const startTime = performance.now();
 
       // Store the roi.
       const roi = framesChunk.getROI();
@@ -115,9 +116,9 @@ export class VitalLensAPIHandler extends MethodHandler {
       }
 
       // Capture the end time and calculate the duration
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      console.log(`API response received in ${duration.toFixed(0)} ms`);
+      // const endTime = performance.now();
+      // const duration = endTime - startTime;
+      // console.log(`API response received in ${duration.toFixed(0)} ms`);
 
       // Parse the response
       if (!response || typeof response.statusCode !== 'number') {
@@ -195,22 +196,30 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @param signalType The signal type.
    * @param data The raw estimated signal.
    * @param fps The sampling frequency of the estimated signal.
+   * @param light Whether to do only light processing.
    */
   postprocess(
     signalType: 'ppg' | 'resp',
     data: number[],
-    fps: number
+    fps: number,
+    light: boolean
   ): number[] {
-    // TODO: Detrending
-    // For example, use a moving average with window size based on fps.
     let windowSize: number;
+    let processed;
     if (signalType === 'ppg') {
+      processed = light ? data : adaptiveDetrend(data, fps, CALC_HR_MIN / 60);
       windowSize = movingAverageSizeForResponse(fps, CALC_HR_MAX / 60);
     } else {
+      processed = data;
       windowSize = movingAverageSizeForResponse(fps, CALC_RR_MAX / 60);
     }
-    let processed = movingAverage(data, windowSize);
-    processed = standardize(processed);
+
+    // Apply the moving average filter.
+    processed = movingAverage(processed, windowSize);
+
+    // Standardize the filtered signal.
+    if (!light) processed = standardize(processed);
+
     return processed;
   }
 }

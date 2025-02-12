@@ -15,6 +15,8 @@ export class StreamProcessor extends StreamProcessorBase {
       throw new Error('Face detection worker does not exist.');
     }
 
+    this.isDetecting = true;
+
     // Create a plain object that contains all data needed to reconstruct the Frame.
     const transferableData = frame.toTransferable();
     const requestId = this.faceDetectionRequestId++;
@@ -75,5 +77,8 @@ export class StreamProcessor extends StreamProcessorBase {
         this.bufferManager.addBuffer(this.roi, this.methodConfig, timestamp);
       }
     }
+
+    this.lastFaceDetectionTime = timestamp;
+    this.isDetecting = false;
   }
 }

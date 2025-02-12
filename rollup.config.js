@@ -56,6 +56,7 @@ const faceDetectionWorkerNodeConfig = {
     file: 'dist/faceDetection.worker.node.bundle.js',
     format: 'cjs',
   },
+  onwarn,
   plugins: [
     alias({
       entries: [
@@ -86,6 +87,7 @@ const faceDetectionWorkerBrowserConfig = {
     file: 'dist/faceDetection.worker.browser.bundle.js',
     format: 'esm',
   },
+  onwarn,
   plugins: [
     alias({
       entries: [

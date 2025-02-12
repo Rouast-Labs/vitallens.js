@@ -1,11 +1,13 @@
-import * as tf from '@tensorflow/tfjs';
+import tf from 'tfjs-provider';
 import { Frame } from '../processing/Frame';
 import {
-  detrend,
-  detrendLambdaForHRResponse,
+  adaptiveDetrend,
+  movingAverage,
+  movingAverageSizeForHRResponse,
   standardize,
 } from '../utils/arrayOps';
 import { SimpleMethodHandler } from './SimpleMethodHandler';
+import { CALC_HR_MIN } from '../config/constants';
 
 /**
  * Handler for processing frames using the CHROM algorithm.
@@ -25,10 +27,7 @@ export class CHROMHandler extends SimpleMethodHandler {
    */
   protected algorithm(rgb: Frame): number[] {
     return tf.tidy(() => {
-      // Create a 2D tensor from the Frame's Float32Array data.
-      const floatArray = rgb.getFloat32Array();
-      const shape = rgb.getShape(); // Expected shape: [n, 3]
-      const rgbTensor = tf.tensor2d(floatArray, shape as [number, number]);
+      const rgbTensor = rgb.getTensor();
 
       // --- RGB Normalization ---
       // Compute the temporal mean; result shape: [1, 3]
@@ -77,16 +76,22 @@ export class CHROMHandler extends SimpleMethodHandler {
    * @param signalType The type of signal ('ppg' or 'resp').
    * @param data The raw estimated signal.
    * @param fps The sampling frequency.
+   * @param light Whether to do only light processing.
    * @returns The filtered pulse signal.
    */
   postprocess(
     signalType: 'ppg' | 'resp',
     data: number[],
-    fps: number
+    fps: number,
+    light: boolean
   ): number[] {
-    const lambda = detrendLambdaForHRResponse(fps);
-    let processed = detrend(data, lambda);
-    processed = standardize(processed);
+    let processed = light ? data : adaptiveDetrend(data, fps, CALC_HR_MIN / 60);
+    // Determine the moving average window size.
+    const windowSize = movingAverageSizeForHRResponse(fps);
+    // Apply the moving average filter.
+    processed = movingAverage(data, windowSize);
+    // Standardize the filtered signal.
+    if (!light) processed = standardize(processed);
     return processed;
   }
 }

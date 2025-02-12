@@ -53,7 +53,7 @@ describe('GHandler', () => {
       const rawSignal = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       // Choose a sample frames-per-second value.
       const fps = 30;
-      const processed = gHandler.postprocess('ppg', rawSignal, fps);
+      const processed = gHandler.postprocess('ppg', rawSignal, fps, false);
       // Check that the processed signal has the same length as the raw signal.
       expect(processed.length).toBe(rawSignal.length);
 

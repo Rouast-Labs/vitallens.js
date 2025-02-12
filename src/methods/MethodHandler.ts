@@ -34,11 +34,13 @@ export abstract class MethodHandler {
    * @param signalType The signal type.
    * @param data The raw estimated signal.
    * @param fps The sampling frequency of the estimated signal.
+   * @param light Whether to do only light processing.
    */
   abstract postprocess(
     signalType: 'ppg' | 'resp',
     data: number[],
-    fps: number
+    fps: number,
+    light: boolean
   ): number[];
 
   /**

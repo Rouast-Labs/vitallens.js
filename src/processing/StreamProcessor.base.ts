@@ -12,11 +12,12 @@ import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 export abstract class StreamProcessorBase {
   private isPaused = true;
   private isPredicting = false;
+  protected isDetecting = false;
   protected roi: ROI | null = null;
   private targetFps: number = 30.0;
-  private fDetFs: number = 1.0;
+  private fDetFs: number = 0.5;
   private lastProcessedTime: number = 0; // In seconds
-  private lastFaceDetectionTime: number = 0; // In seconds
+  protected lastFaceDetectionTime: number = 0; // In seconds
   private methodHandler: MethodHandler;
 
   /**
@@ -153,9 +154,9 @@ export abstract class StreamProcessorBase {
 
           if (
             this.faceDetectionWorker &&
+            !this.isDetecting &&
             currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs
           ) {
-            this.lastFaceDetectionTime = currentTime;
             this.triggerFaceDetection(frame, currentTime);
           } else {
             frame.release();
