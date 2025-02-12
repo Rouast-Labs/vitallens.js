@@ -132,23 +132,23 @@ describe('VitalLensControllerBase', () => {
   });
 
   describe('createMethodHandler', () => {
-    test('should create a MethodHandler with correct dependencies (WebSocket)', () => {
-      const optionsWithWebSocket: VitalLensOptions = {
-        apiKey: 'test-key',
-        method: 'vitallens',
-        requestMode: 'websocket',
-      };
-      const methodHandlerWithWebSocket =
-        controller['createMethodHandler'](optionsWithWebSocket);
-      expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
-        optionsWithWebSocket,
-        {
-          webSocketClient: expect.any(Object),
-          restClient: undefined,
-        }
-      );
-      expect(methodHandlerWithWebSocket).toBeDefined();
-    });
+    // test('should create a MethodHandler with correct dependencies (WebSocket)', () => {
+    //   const optionsWithWebSocket: VitalLensOptions = {
+    //     apiKey: 'test-key',
+    //     method: 'vitallens',
+    //     requestMode: 'websocket',
+    //   };
+    //   const methodHandlerWithWebSocket =
+    //     controller['createMethodHandler'](optionsWithWebSocket);
+    //   expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
+    //     optionsWithWebSocket,
+    //     {
+    //       webSocketClient: expect.any(Object),
+    //       restClient: undefined,
+    //     }
+    //   );
+    //   expect(methodHandlerWithWebSocket).toBeDefined();
+    // });
 
     test('should create a MethodHandler with correct dependencies (REST)', () => {
       const optionsWithRest: VitalLensOptions = {
@@ -176,6 +176,17 @@ describe('VitalLensControllerBase', () => {
       expect(() =>
         controller['createMethodHandler'](optionsWithoutApiKey)
       ).toThrowError(/An API key is required/);
+    });
+
+    test('should throw an error if requestMode is websocket', () => {
+      const optionsWithWebSocket: VitalLensOptions = {
+        method: 'vitallens',
+        apiKey: 'test-key',
+        requestMode: 'websocket',
+      };
+      expect(() =>
+        controller['createMethodHandler'](optionsWithWebSocket)
+      ).toThrowError(/WebSocket request mode is disabled for now/);
     });
 
     test('should create a MethodHandler without requiring an apiKey for non-vitallens methods', () => {

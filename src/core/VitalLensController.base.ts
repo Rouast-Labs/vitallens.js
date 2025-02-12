@@ -96,12 +96,18 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
           'Get one for free at https://www.rouast.com/api.'
       );
     }
+    // Temporarily disable WebSocket
+    if (options.requestMode === 'websocket') {
+      throw new Error(
+        'WebSocket request mode is disabled for now. Please use requestMode: rest'
+      );
+    }
     const requestMode = options.requestMode || 'rest'; // Default to REST
     const dependencies = {
-      webSocketClient:
-        options.method === 'vitallens' && requestMode === 'websocket'
-          ? this.createWebSocketClient(this.options.apiKey!)
-          : undefined,
+      // webSocketClient:
+      //   options.method === 'vitallens' && requestMode === 'websocket'
+      //     ? this.createWebSocketClient(this.options.apiKey!)
+      //     : undefined,
       restClient:
         options.method === 'vitallens' && requestMode === 'rest'
           ? this.createRestClient(this.options.apiKey!)
