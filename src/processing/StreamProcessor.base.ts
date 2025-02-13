@@ -106,12 +106,14 @@ export abstract class StreamProcessorBase {
 
         try {
           // Add frame to buffer(s). Use buffer ROI for vitallens, otherwise pass this.roi
-          await this.bufferManager.add(
-            frame,
-            this.methodConfig.method !== 'vitallens'
-              ? (this.roi ?? undefined)
-              : undefined
-          );
+          if (!this.bufferManager.isEmpty()) {
+            await this.bufferManager.add(
+              frame,
+              this.methodConfig.method !== 'vitallens'
+                ? (this.roi ?? undefined)
+                : undefined
+            );
+          }
 
           // If buffers + method are ready, run a prediction
           if (

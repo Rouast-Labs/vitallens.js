@@ -1,6 +1,10 @@
 import { StreamProcessorBase } from './StreamProcessor.base';
 import { Frame } from './Frame';
-import { checkFaceInROI, getROIForMethod } from '../utils/faceOps';
+import {
+  checkFaceInROI,
+  checkROIValid,
+  getROIForMethod,
+} from '../utils/faceOps';
 
 export class StreamProcessor extends StreamProcessorBase {
   private faceDetectionRequestId: number = 0;
@@ -61,10 +65,11 @@ export class StreamProcessor extends StreamProcessorBase {
     // Use the first detection
     const det = detections[0];
     const shouldUpdateROI =
-      this.roi === null ||
-      (this.options.method === 'vitallens' &&
-        !checkFaceInROI(det, this.roi, [0.6, 1.0])) ||
-      this.options.method !== 'vitallens';
+      checkROIValid(det) &&
+      (this.roi === null ||
+        (this.options.method === 'vitallens' &&
+          !checkFaceInROI(det, this.roi, [0.6, 1.0])) ||
+        this.options.method !== 'vitallens');
 
     if (shouldUpdateROI) {
       this.roi = getROIForMethod(

@@ -21,7 +21,12 @@ export class RGBBuffer extends Buffer {
   ): Promise<Frame> {
     // Assert that the frame data is a 3D tensor
     const shape = frame.getShape();
-    if (shape.length !== 3) {
+    if (
+      shape.length !== 3 ||
+      shape[0] <= 0 ||
+      shape[1] <= 0 ||
+      shape[2] !== 3
+    ) {
       throw new Error(
         `Frame data must be a 3D tensor. Received rank: ${shape.length}`
       );
@@ -35,7 +40,9 @@ export class RGBBuffer extends Buffer {
       roi.x0 < 0 ||
       roi.y0 < 0 ||
       roi.x1 > shape[1] ||
-      roi.y1 > shape[0]
+      roi.y1 > shape[0] ||
+      roi.x1 - roi.x0 <= 0 ||
+      roi.y1 - roi.y0 <= 0
     ) {
       throw new Error(
         `ROI dimensions are out of bounds. Frame dimensions: [${shape[0]}, ${shape[1]}], ROI: ${JSON.stringify(roi)}`

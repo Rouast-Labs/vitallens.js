@@ -3,7 +3,11 @@
 
 import { StreamProcessor } from '../../src/processing/StreamProcessor.browser';
 import { Frame } from '../../src/processing/Frame';
-import { checkFaceInROI, getROIForMethod } from '../../src/utils/faceOps';
+import {
+  checkFaceInROI,
+  checkROIValid,
+  getROIForMethod,
+} from '../../src/utils/faceOps';
 import { VitalLensOptions, MethodConfig, VideoInput } from '../../src/types';
 import { BufferManager } from '../../src/processing/BufferManager';
 import { IFaceDetectionWorker } from '../../src/types/IFaceDetectionWorker';
@@ -11,6 +15,7 @@ import { IFaceDetectionWorker } from '../../src/types/IFaceDetectionWorker';
 jest.mock('../../src/utils/faceOps', () => ({
   checkFaceInROI: jest.fn(),
   getROIForMethod: jest.fn(),
+  checkROIValid: jest.fn(),
 }));
 
 describe('StreamProcessor (Browser)', () => {
@@ -207,6 +212,7 @@ describe('StreamProcessor (Browser)', () => {
       const updatedROI = { x0: 12, y0: 22, x1: 48, y1: 58 };
       // Configure the mocked functions.
       (checkFaceInROI as jest.Mock).mockReturnValue(false);
+      (checkROIValid as jest.Mock).mockReturnValue(true);
       (getROIForMethod as jest.Mock).mockReturnValue(updatedROI);
       (fakeBufferManager.isEmpty as jest.Mock).mockReturnValue(true);
 
@@ -244,6 +250,7 @@ describe('StreamProcessor (Browser)', () => {
       (processor as any).roi = currentROI;
       // Simulate that the detected face is already inside the current ROI.
       (checkFaceInROI as jest.Mock).mockReturnValue(true);
+      (checkROIValid as jest.Mock).mockReturnValue(true);
       (fakeBufferManager.addBuffer as jest.Mock).mockClear();
 
       const eventWithDetections = new MessageEvent('message', {

@@ -98,7 +98,7 @@ describe('StreamProcessor', () => {
       setState: jest.fn(),
       resetState: jest.fn(),
       cleanup: jest.fn(),
-      isEmpty: jest.fn(() => true),
+      isEmpty: jest.fn(() => false),
     } as unknown as jest.Mocked<BufferManager>;
 
     // Create a mock MethodHandler that returns a fake state.

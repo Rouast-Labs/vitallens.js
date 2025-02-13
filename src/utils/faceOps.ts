@@ -290,3 +290,14 @@ export function checkROIInFace(
 
   return isWidthInsideFace && isHeightInsideFace;
 }
+
+/**
+ * Check whether an ROI is valid.
+ * @param roi - The region of interest (ROI) represented as { x0, y0, x1, y1 }.
+ * @returns True if the ROI is valid, else False
+ */
+export function checkROIValid(roi: ROI): boolean {
+  return (
+    roi.x0 >= 0 && roi.y0 >= 0 && roi.x1 - roi.x0 > 0 && roi.y1 - roi.y0 > 0
+  );
+}
