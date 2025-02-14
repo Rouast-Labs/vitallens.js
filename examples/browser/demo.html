@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>VitalLens Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      /* Overall body style */
+      body {
+        margin: 0;
+        padding: 0;
+        background: black;
+        color: white;
+        font-family: monospace;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      /* Mode toggle area with tab buttons */
+      #modeToggle {
+        padding: 10px;
+        background: #222;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+      .tab-button {
+        padding: 8px 16px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #333;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: white;
+      }
+      .tab-button.active {
+        border-bottom: 2px solid #007bff;
+        background-color: #222;
+      }
+      /* Video container */
+      .video-container {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - 60vh);
+        background: black;
+        overflow: hidden;
+      }
+      .video-container video,
+      .video-container canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      /* Ensure canvas does not block video controls */
+      .video-container canvas {
+        pointer-events: none;
+      }
+      /* Drop zone style for file mode */
+      #dropZone {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 2px dashed #007bff;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 18px;
+        color: #007bff;
+        background: rgba(0, 0, 0, 0.8);
+        cursor: pointer;
+        box-sizing: border-box;
+        padding: 20px;
+      }
+      #dropZone.hover {
+        background: rgba(0, 123, 255, 0.2);
+      }
+      /* Spinner overlay with animated spinner */
+      .spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 40px;
+        height: 40px;
+        transform: translate(-50%, -50%);
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid #fff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: translate(-50%, -50%) rotate(0deg); }
+        100% { transform: translate(-50%, -50%) rotate(360deg); }
+      }
+      /* Controls and Log area */
+      #controls {
+        background: #111;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      #controls button {
+        padding: 8px 16px;
+        font-size: 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      /* FPS display */
+      #fpsDisplay {
+        font-size: 14px;
+        color: #0f0;
+        min-width: 100px;
+      }
+      /* Log area */
+      #log {
+        flex: 1;
+        height: 40px;
+        overflow-y: auto;
+        font-size: 14px;
+        background: #000;
+        padding: 5px;
+        border: 1px solid #333;
+      }
+      /* Method dropdown styling */
+      #methodSelect {
+        padding: 8px;
+        font-size: 16px;
+        background: #333;
+        color: white;
+        border: none;
+      }
+      /* Charts container */
+      .charts-container {
+        width: 100%;
+        height: 40vh;
+        background: black;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+      .chart-wrapper {
+        display: flex;
+        flex-direction: row;
+        flex: 1 1 0;
+        min-height: 0;
+        gap: 10px;
+        position: relative;
+      }
+      .chart-container {
+        position: relative;
+        flex-grow: 1;
+        min-height: 0;
+      }
+      .chart-container canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+      }
+      .vital-stats {
+        min-width: 150px;
+        margin-left: 10px;
+        text-align: left;
+        color: white;
+      }
+      /* Download button */
+      #downloadButton {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        z-index: 1000;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Mode toggle -->
+    <div id="modeToggle">
+      <button id="webcamModeButton" class="tab-button">Webcam</button>
+      <button id="fileModeButton" class="tab-button">File</button>
+    </div>
+
+    <!-- Video Container -->
+    <div class="video-container" id="video-container">
+      <video id="video" autoplay muted playsinline style="display: none;"></video>
+      <canvas id="canvas" style="display: none;"></canvas>
+      <div id="dropZone" style="display: none;">
+        Drag &amp; drop a video file here or click to select one
+      </div>
+      <div id="spinner" class="spinner" style="display: none;"></div>
+      <input type="file" id="videoInput" accept="video/*" style="display: none;" />
+    </div>
+
+    <!-- Controls and Log -->
+    <div id="controls">
+      <select id="methodSelect">
+        <option value="vitallens" selected>VitalLens</option>
+        <option value="pos">POS</option>
+        <option value="chrom">Chrom</option>
+        <option value="g">G</option>
+      </select>
+      <div id="fpsDisplay"></div>
+      <div id="log"></div>
+      <button id="controlButton"></button>
+    </div>
+
+    <!-- Vitals Charts Container -->
+    <div class="charts-container">
+      <div class="chart-wrapper">
+        <div class="chart-container">
+          <canvas id="ppgChart"></canvas>
+        </div>
+        <div class="vital-stats" id="ppgStats"></div>
+      </div>
+      <div class="chart-wrapper">
+        <div class="chart-container">
+          <canvas id="respChart"></canvas>
+        </div>
+        <div class="vital-stats" id="respStats"></div>
+      </div>
+    </div>
+
+    <!-- Download Button -->
+    <button id="downloadButton">Download JSON</button>
+
+    <script type="module">
+      import { VitalLens } from '../vitallens.browser.js';
+
+      class VitalLensDemo {
+        constructor() {
+          // State
+          this.mode = ""; // will be set to 'webcam' or 'file'
+          this.vitallens = null;
+          this.isProcessing = false;
+          this.MAX_DATA_POINTS = 300;
+          this.videoFileLoaded = null;
+          this.charts = {};
+          this.currentMethod = null;
+          this.logMessages = [];
+          this.latestResult = null;
+
+          // Cache DOM elements
+          this.video = document.getElementById("video");
+          this.canvas = document.getElementById("canvas");
+          this.dropZone = document.getElementById("dropZone");
+          this.videoInput = document.getElementById("videoInput");
+          this.spinner = document.getElementById("spinner");
+          this.controlButton = document.getElementById("controlButton");
+          this.logElement = document.getElementById("log");
+          this.fpsDisplay = document.getElementById("fpsDisplay");
+          this.webcamModeButton = document.getElementById("webcamModeButton");
+          this.fileModeButton = document.getElementById("fileModeButton");
+          this.methodSelect = document.getElementById("methodSelect");
+          this.downloadButton = document.getElementById("downloadButton");
+
+          // Bind events
+          this.bindEvents();
+        }
+
+        addLog(message) {
+          if (this.logMessages.length >= 2) {
+            this.logMessages.shift();
+          }
+          this.logMessages.push(message);
+          this.logElement.textContent = this.logMessages.join("\n");
+        }
+
+        updateFpsDisplay(fps, estFps) {
+          this.fpsDisplay.textContent =
+            "FPS: " + (fps ? fps.toFixed(1) : "N/A") +
+            " | estFps: " + (estFps ? estFps.toFixed(1) : "N/A");
+        }
+
+        createChart(elementId, label, color) {
+          return new Chart(
+            document.getElementById(elementId).getContext("2d"),
+            {
+              type: "line",
+              data: {
+                labels: [],
+                datasets: [{
+                  label,
+                  data: [],
+                  borderColor: color,
+                  borderWidth: 2,
+                  tension: 0,
+                  pointRadius: 0,
+                }],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: true,
+                    position: "top",
+                    align: "start",
+                    labels: {
+                      boxWidth: 0,
+                      color,
+                      font: { size: 16, weight: "bold" },
+                    },
+                  },
+                },
+                animation: false,
+                scales: { x: { display: false }, y: { display: false } },
+              },
+            }
+          );
+        }
+
+        updateChart(chart, newData, maxDataPoints) {
+          let maxPoints = (maxDataPoints !== undefined) ? maxDataPoints : (newData ? newData.length : 0);
+          let dataToDisplay = (newData && newData.length) ? newData : new Array(maxPoints).fill(0);
+          if (maxPoints > 0) {
+            if (dataToDisplay.length > maxPoints) {
+              dataToDisplay = dataToDisplay.slice(-maxPoints);
+            }
+            if (dataToDisplay.length < maxPoints) {
+              const zerosNeeded = maxPoints - dataToDisplay.length;
+              const zeroPad = new Array(zerosNeeded).fill(0);
+              dataToDisplay = zeroPad.concat(dataToDisplay);
+            }
+            chart.data.datasets[0].data = dataToDisplay;
+            chart.data.labels = Array.from({ length: maxPoints }, (_, i) => i);
+          } else {
+            chart.data.datasets[0].data = dataToDisplay;
+            chart.data.labels = dataToDisplay.map((_, i) => i);
+          }
+          chart.update();
+        }
+
+        setCanvasDimensions() {
+          const rect = this.canvas.getBoundingClientRect();
+          this.canvas.width = rect.width;
+          this.canvas.height = rect.height;
+        }
+
+        drawFaceBox() {
+          const coords = this.latestResult?.face?.coordinates;
+          if (!coords || !coords.length) {
+            this.canvas.getContext("2d").clearRect(0, 0, this.canvas.width, this.canvas.height);
+            return;
+          }
+          const ctx = this.canvas.getContext("2d");
+          ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+          this.setCanvasDimensions();
+          const [x0, y0, x1, y1] = coords[coords.length - 1];
+          const w = x1 - x0, h = y1 - y0;
+          const videoWidth = this.video.videoWidth, videoHeight = this.video.videoHeight;
+          const containerWidth = this.canvas.width, containerHeight = this.canvas.height;
+          const videoAspect = videoWidth / videoHeight;
+          const containerAspect = containerWidth / containerHeight;
+          let displayedVideoWidth, displayedVideoHeight, offsetX, offsetY;
+          if (videoAspect > containerAspect) {
+            displayedVideoWidth = containerWidth;
+            displayedVideoHeight = containerWidth / videoAspect;
+            offsetX = 0;
+            offsetY = (containerHeight - displayedVideoHeight) / 2;
+          } else {
+            displayedVideoHeight = containerHeight;
+            displayedVideoWidth = containerHeight * videoAspect;
+            offsetX = (containerWidth - displayedVideoWidth) / 2;
+            offsetY = 0;
+          }
+          const scaleX = displayedVideoWidth / videoWidth, scaleY = displayedVideoHeight / videoHeight;
+          const boxX = offsetX + x0 * scaleX, boxY = offsetY + y0 * scaleY;
+          const boxW = w * scaleX, boxH = h * scaleY;
+          ctx.strokeStyle = "rgba(0, 255, 0, 0.8)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(boxX, boxY, boxW, boxH);
+        }
+
+        updateStats(elementId, label, value) {
+          const element = document.getElementById(elementId);
+          if (!element) return;
+          const color = elementId === "ppgStats" ? "red" : "blue";
+          element.innerHTML = `
+            <p style="font-size: 16px; margin: 10px 0 0; font-weight: bold; color: ${color};">${label}</p>
+            <p style="font-size: 48px; margin: 16px 0 0; font-weight: bold; color: ${color};">
+              ${value !== undefined ? value.toFixed(0) : "N/A"}
+            </p>`;
+        }
+
+        handleVitalLensResults(result) {
+          this.latestResult = result;
+          const { face, vital_signs, fps, estFps } = result;
+          if (!face?.coordinates) {
+            this.canvas.getContext("2d").clearRect(0, 0, this.canvas.width, this.canvas.height);
+          } else {
+            this.drawFaceBox();
+          }
+          const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } = vital_signs;
+          if (this.mode === "webcam") {
+            this.updateChart(this.charts.ppgChart, ppg_waveform?.data || [], this.MAX_DATA_POINTS);
+            this.updateChart(this.charts.respChart, respiratory_waveform?.data || [], this.MAX_DATA_POINTS);
+          } else {
+            this.updateChart(this.charts.ppgChart, ppg_waveform?.data || []);
+            this.updateChart(this.charts.respChart, respiratory_waveform?.data || []);
+          }
+          this.updateStats("ppgStats", "HR   bpm", heart_rate?.value);
+          this.updateStats("respStats", "RR   bpm", respiratory_rate?.value);
+          this.updateFpsDisplay(fps, estFps);
+        }
+
+        async initVitalLensInstance() {
+          const selectedMethod = this.methodSelect.value || "vitallens";
+          if (this.vitallens && this.currentMethod === selectedMethod) return;
+          if (this.vitallens) {
+            try {
+              await this.vitallens.close();
+            } catch (e) {
+              console.error("Error closing previous VitalLens instance:", e);
+            }
+          }
+          this.currentMethod = selectedMethod;
+          const options = {
+            apiKey: "YOUR_API_KEY",
+            method: this.currentMethod,
+          };
+          try {
+            this.vitallens = new VitalLens(options);
+            this.vitallens.addEventListener("vitals", this.handleVitalLensResults.bind(this));
+          } catch (e) {
+            this.addLog("Error initializing VitalLens: " + e.message);
+            console.error(e);
+          }
+        }
+
+        async setupWebcam() {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: false,
+              video: { facingMode: "user" },
+            });
+            this.video.srcObject = stream;
+            await this.vitallens.setVideoStream(stream, this.video);
+            this.video.onloadeddata = () => {
+              this.setCanvasDimensions();
+              this.video.play();
+            };
+          } catch (e) {
+            this.addLog("Error accessing webcam: " + e.message);
+            console.error(e);
+          }
+        }
+
+        setupWebcamUI() {
+          this.dropZone.style.display = "none";
+          this.videoInput.style.display = "none";
+          this.spinner.style.display = "none";
+          this.video.style.display = "block";
+          this.canvas.style.display = "block";
+          this.controlButton.textContent = "Pause";
+        }
+
+        setupFileModeUI() {
+          this.addLog("File mode activated.");
+          this.dropZone.style.display = "flex";
+          this.video.style.display = "none";
+          this.canvas.style.display = "none";
+          this.videoInput.style.display = "none";
+          this.controlButton.textContent = "Reset";
+        }
+
+        async loadAndProcessFile(file) {
+          this.addLog("Processing file: " + file.name);
+          this.dropZone.style.display = "none";
+          this.spinner.style.display = "block";
+          this.video.style.display = "block";
+          this.canvas.style.display = "block";
+          const url = URL.createObjectURL(file);
+          this.video.src = url;
+          this.video.load();
+          this.video.onloadeddata = async () => {
+            this.videoFileLoaded = file;
+            this.setCanvasDimensions();
+            this.video.pause();
+            await this.processFile(file);
+            this.spinner.style.display = "none";
+            this.video.controls = true;
+          };
+        }
+
+        async processFile(file) {
+          try {
+            const result = await this.vitallens.processVideoFile(file);
+            this.addLog("File processing complete.");
+            this.handleVitalLensResults(result);
+          } catch (e) {
+            this.addLog("Error processing file: " + e.message);
+            console.error(e);
+          }
+        }
+
+        resetVideoStreamView() {
+          if (this.video.srcObject) {
+            this.video.srcObject.getTracks().forEach((track) => track.stop());
+            this.video.srcObject = null;
+          }
+          this.video.src = "";
+          this.video.controls = false;
+        }
+
+        resetVideoFileView() {
+          this.video.src = "";
+          this.video.controls = false;
+          this.dropZone.style.display = "flex";
+          this.video.style.display = "none";
+          this.canvas.style.display = "none";
+        }
+
+        resetVitalsView() {
+          this.updateChart(this.charts.ppgChart, [], this.MAX_DATA_POINTS);
+          this.updateChart(this.charts.respChart, [], this.MAX_DATA_POINTS);
+          this.updateStats("ppgStats", "HR   bpm", undefined);
+          this.updateStats("respStats", "RR   bpm", undefined);
+          this.updateFpsDisplay(0, 0);
+        }
+
+        async switchMode(newMode) {
+          if (newMode === this.mode) return;
+          if (this.mode === "webcam" && this.vitallens) {
+            this.vitallens.stopVideoStream();
+            this.isProcessing = false;
+            this.resetVideoStreamView();
+          }
+          if (this.mode === "file") {
+            this.videoFileLoaded = null;
+            this.resetVideoFileView();
+          }
+          this.resetVitalsView();
+          await this.startMode(newMode, true, false);
+        }
+
+        async startMode(modeToStart, initUI, restartVitalLens) {
+          this.mode = modeToStart;
+          if (!this.vitallens || restartVitalLens) {
+            await this.initVitalLensInstance();
+          }
+          if (initUI) {
+            if (modeToStart === "webcam") {
+              this.setupWebcamUI();
+            } else {
+              this.setupFileModeUI();
+            }
+          }
+          if (this.mode === "webcam") {
+            await this.setupWebcam();
+            this.isProcessing = true;
+            this.vitallens.startVideoStream();
+          }
+          // Update tab styling
+          if (this.mode === "webcam") {
+            this.webcamModeButton.classList.add("active");
+            this.fileModeButton.classList.remove("active");
+          } else {
+            this.fileModeButton.classList.add("active");
+            this.webcamModeButton.classList.remove("active");
+          }
+        }
+
+        async restartMode() {
+          try {
+            await this.vitallens.close();
+          } catch (e) {
+            console.error("Error closing vitallens:", e);
+          }
+          await this.startMode(this.mode, false, true);
+          if (this.mode === "file" && this.videoFileLoaded) {
+            this.loadAndProcessFile(this.videoFileLoaded);
+          }
+        }
+
+        bindEvents() {
+          this.dropZone.addEventListener("click", () => this.videoInput.click());
+          this.dropZone.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            this.dropZone.classList.add("hover");
+          });
+          this.dropZone.addEventListener("dragleave", () => {
+            this.dropZone.classList.remove("hover");
+          });
+          this.dropZone.addEventListener("drop", (event) => {
+            event.preventDefault();
+            this.dropZone.classList.remove("hover");
+            const files = event.dataTransfer.files;
+            if (files.length) this.loadAndProcessFile(files[0]);
+          });
+          this.videoInput.addEventListener("change", () => {
+            if (this.videoInput.files.length) this.loadAndProcessFile(this.videoInput.files[0]);
+          });
+          this.methodSelect.addEventListener("change", () => this.restartMode());
+          this.controlButton.addEventListener("click", () => {
+            if (this.mode === "webcam") {
+              if (this.isProcessing) {
+                this.vitallens.pauseVideoStream();
+                this.controlButton.textContent = "Resume";
+                this.addLog("Webcam paused.");
+                this.isProcessing = false;
+              } else {
+                this.vitallens.startVideoStream();
+                this.controlButton.textContent = "Pause";
+                this.addLog("Webcam resumed.");
+                this.isProcessing = true;
+              }
+            } else if (this.mode === "file") {
+              this.resetVideoFileView();
+              this.setupFileModeUI();
+            }
+          });
+          this.downloadButton.addEventListener("click", () => {
+            if (this.latestResult) {
+              const dataStr = "data:text/json;charset=utf-8," +
+                encodeURIComponent(JSON.stringify(this.latestResult, null, 2));
+              const anchor = document.createElement("a");
+              anchor.setAttribute("href", dataStr);
+              anchor.setAttribute("download", "vitals_result.json");
+              document.body.appendChild(anchor);
+              anchor.click();
+              anchor.remove();
+              this.addLog("Results downloaded.");
+            } else {
+              this.addLog("No result available to download.");
+            }
+          });
+          window.addEventListener("resize", () => this.handleResize());
+          this.webcamModeButton.addEventListener("click", () => this.switchMode("webcam"));
+          this.fileModeButton.addEventListener("click", () => this.switchMode("file"));
+        }
+
+        handleResize() {
+          this.setCanvasDimensions();
+          if (this.charts.ppgChart) {
+            this.charts.ppgChart.resize();
+            this.charts.ppgChart.update();
+          }
+          if (this.charts.respChart) {
+            this.charts.respChart.resize();
+            this.charts.respChart.update();
+          }
+        }
+
+        init() {
+          // Initialize charts
+          this.charts.ppgChart = this.createChart("ppgChart", "Pulse", "red");
+          this.charts.respChart = this.createChart("respChart", "Respiration", "blue");
+          // Default mode: file
+          this.switchMode("file");
+        }
+      }
+
+      const demo = new VitalLensDemo();
+      window.onload = () => demo.init();
+    </script>
+  </body>
+</html>
+
+<!-- TODO: Case webcam -> Reset -> Switch methods -->
+ 
