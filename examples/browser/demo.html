@@ -525,6 +525,8 @@
           this.dropZone.style.display = "flex";
           this.video.style.display = "none";
           this.canvas.style.display = "none";
+          this.videoFileLoaded = null;
+          this.videoInput.value = "";
         }
 
         resetVitalsView() {
@@ -543,7 +545,6 @@
             this.resetVideoStreamView();
           }
           if (this.mode === "file") {
-            this.videoFileLoaded = null;
             this.resetVideoFileView();
           }
           this.resetVitalsView();
@@ -623,6 +624,7 @@
               }
             } else if (this.mode === "file") {
               this.resetVideoFileView();
+              this.resetVitalsView();
               this.setupFileModeUI();
             }
           });
