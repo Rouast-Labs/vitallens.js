@@ -243,10 +243,52 @@
     <script type="module">
       import { VitalLens } from '../vitallens.browser.js';
 
+      // Register a custom plugin that draws a dot marker at the playback position.
+      const playbackDotPlugin = {
+        id: 'playbackDot',
+        afterDatasetsDraw(chart, args, options) {
+          const ctx = chart.ctx;
+          // Get the marker index (xValue) from plugin options.
+          const markerIndex = options.xValue;
+          if (markerIndex === undefined || markerIndex === null) return;
+
+          // Get the dataset and its data
+          const dataset = chart.data.datasets[0];
+          const data = dataset.data;
+          if (!data || data.length === 0) return;
+          // Round markerIndex to nearest integer.
+          const index = Math.round(markerIndex);
+          if (index < 0 || index >= data.length) return;
+
+          // Get scales
+          const xScale = chart.scales.x;
+          const yScale = chart.scales.y;
+          // Determine pixel coordinates:
+          const xPixel = xScale.getPixelForValue(index);
+          const yValue = data[index];
+          const yPixel = yScale.getPixelForValue(yValue);
+
+          // Draw a circle (dot) at that point.
+          const radius = options.radius || 4;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(xPixel, yPixel, radius, 0, 2 * Math.PI);
+          // Fill with dataset color
+          ctx.fillStyle = dataset.borderColor;
+          ctx.fill();
+          // Outline with white
+          ctx.lineWidth = options.lineWidth || 2;
+          ctx.strokeStyle = options.strokeStyle || 'white';
+          ctx.stroke();
+          ctx.restore();
+        }
+      };
+      Chart.register(playbackDotPlugin);
+
       class VitalLensDemo {
         constructor() {
           // State
-          this.mode = ""; // will be set to 'webcam' or 'file'
+          this.mode = ""; // 'webcam' or 'file'
           this.vitallens = null;
           this.isProcessing = false;
           this.MAX_DATA_POINTS = 300;
@@ -289,41 +331,45 @@
         }
 
         createChart(elementId, label, color) {
-          return new Chart(
-            document.getElementById(elementId).getContext("2d"),
-            {
-              type: "line",
-              data: {
-                labels: [],
-                datasets: [{
-                  label,
-                  data: [],
-                  borderColor: color,
-                  borderWidth: 2,
-                  tension: 0,
-                  pointRadius: 0,
-                }],
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    display: true,
-                    position: "top",
-                    align: "start",
-                    labels: {
-                      boxWidth: 0,
-                      color,
-                      font: { size: 16, weight: "bold" },
-                    },
+          const ctx = document.getElementById(elementId).getContext("2d");
+          return new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: [],
+              datasets: [{
+                label,
+                data: [],
+                borderColor: color,
+                borderWidth: 2,
+                tension: 0,
+                pointRadius: 0,
+              }],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                playbackDot: {
+                  xValue: 0,
+                  radius: 4,
+                  lineWidth: 2,
+                  strokeStyle: 'white',
+                },
+                legend: {
+                  display: true,
+                  position: "top",
+                  align: "start",
+                  labels: {
+                    boxWidth: 0,
+                    color,
+                    font: { size: 16, weight: "bold" },
                   },
                 },
-                animation: false,
-                scales: { x: { display: false }, y: { display: false } },
               },
-            }
-          );
+              animation: false,
+              scales: { x: { display: false }, y: { display: false } },
+            },
+          });
         }
 
         updateChart(chart, newData, maxDataPoints) {
@@ -646,6 +692,26 @@
           window.addEventListener("resize", () => this.handleResize());
           this.webcamModeButton.addEventListener("click", () => this.switchMode("webcam"));
           this.fileModeButton.addEventListener("click", () => this.switchMode("file"));
+
+          // Update playback dot marker on video timeupdate (only in file mode)
+          this.video.addEventListener("timeupdate", () => {
+            if (this.mode === "file" && this.latestResult) {
+              const currentTime = this.video.currentTime;
+              const duration = this.video.duration;
+              const waveformLength = this.latestResult.vital_signs?.ppg_waveform?.data?.length || 0;
+              if (duration > 0 && waveformLength > 0) {
+                const markerIndex = (currentTime / duration) * (waveformLength - 1);
+                if (this.charts.ppgChart.options.plugins.playbackDot) {
+                  this.charts.ppgChart.options.plugins.playbackDot.xValue = markerIndex;
+                }
+                if (this.charts.respChart.options.plugins.playbackDot) {
+                  this.charts.respChart.options.plugins.playbackDot.xValue = markerIndex;
+                }
+                this.charts.ppgChart.update("none");
+                this.charts.respChart.update("none");
+              }
+            }
+          });
         }
 
         handleResize() {
@@ -661,7 +727,7 @@
         }
 
         init() {
-          // Initialize charts
+          // Initialize charts with playback dot plugin configured
           this.charts.ppgChart = this.createChart("ppgChart", "Pulse", "red");
           this.charts.respChart = this.createChart("respChart", "Respiration", "blue");
           // Default mode: file
@@ -674,6 +740,3 @@
     </script>
   </body>
 </html>
-
-<!-- TODO: Case webcam -> Reset -> Switch methods -->
- 
