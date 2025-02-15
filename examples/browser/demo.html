@@ -251,32 +251,22 @@
           // Get the marker index (xValue) from plugin options.
           const markerIndex = options.xValue;
           if (markerIndex === undefined || markerIndex === null) return;
-
-          // Get the dataset and its data
           const dataset = chart.data.datasets[0];
           const data = dataset.data;
           if (!data || data.length === 0) return;
-          // Round markerIndex to nearest integer.
           const index = Math.round(markerIndex);
           if (index < 0 || index >= data.length) return;
-
-          // Get scales
           const xScale = chart.scales.x;
           const yScale = chart.scales.y;
-          // Determine pixel coordinates:
           const xPixel = xScale.getPixelForValue(index);
           const yValue = data[index];
           const yPixel = yScale.getPixelForValue(yValue);
-
-          // Draw a circle (dot) at that point.
           const radius = options.radius || 4;
           ctx.save();
           ctx.beginPath();
           ctx.arc(xPixel, yPixel, radius, 0, 2 * Math.PI);
-          // Fill with dataset color
           ctx.fillStyle = dataset.borderColor;
           ctx.fill();
-          // Outline with white
           ctx.lineWidth = options.lineWidth || 2;
           ctx.strokeStyle = options.strokeStyle || 'white';
           ctx.stroke();
@@ -330,7 +320,7 @@
             " | estFps: " + (estFps ? estFps.toFixed(1) : "N/A");
         }
 
-        createChart(elementId, label, color) {
+        createChart(elementId, label, baseColor) {
           const ctx = document.getElementById(elementId).getContext("2d");
           return new Chart(ctx, {
             type: "line",
@@ -339,10 +329,23 @@
               datasets: [{
                 label,
                 data: [],
-                borderColor: color,
+                borderColor: `rgba(${baseColor},1)`,
+                segment: {
+                  borderColor: ctx => {
+                    const dataset = ctx.chart.data.datasets[0];
+                    const confArray = dataset.confidence;
+                    if (!confArray) return `rgba(${baseColor},1)`;
+                    const i = ctx.p0DataIndex;
+                    const conf1 = confArray[i] !== undefined ? confArray[i] : 1;
+                    const conf2 = confArray[i + 1] !== undefined ? confArray[i + 1] : conf1;
+                    const avgConf = Math.min((conf1 + conf2) / 2 + 0.1, 1);
+                    return `rgba(${baseColor},${avgConf})`;
+                  }
+                },
                 borderWidth: 2,
                 tension: 0,
                 pointRadius: 0,
+                confidence: []
               }],
             },
             options: {
@@ -361,7 +364,7 @@
                   align: "start",
                   labels: {
                     boxWidth: 0,
-                    color,
+                    color: `rgba(${baseColor},1)`,
                     font: { size: 16, weight: "bold" },
                   },
                 },
@@ -372,24 +375,31 @@
           });
         }
 
-        updateChart(chart, newData, maxDataPoints) {
+        updateChart(chart, newData, newConfidence, maxDataPoints) {
           let maxPoints = (maxDataPoints !== undefined) ? maxDataPoints : (newData ? newData.length : 0);
           let dataToDisplay = (newData && newData.length) ? newData : new Array(maxPoints).fill(0);
+          let confidenceToUse = (newConfidence && newConfidence.length) ? newConfidence : new Array(maxPoints).fill(0);
           if (maxPoints > 0) {
             if (dataToDisplay.length > maxPoints) {
               dataToDisplay = dataToDisplay.slice(-maxPoints);
+            }
+            if (confidenceToUse.length > maxPoints) {
+              confidenceToUse = confidenceToUse.slice(-maxPoints);
             }
             if (dataToDisplay.length < maxPoints) {
               const zerosNeeded = maxPoints - dataToDisplay.length;
               const zeroPad = new Array(zerosNeeded).fill(0);
               dataToDisplay = zeroPad.concat(dataToDisplay);
             }
-            chart.data.datasets[0].data = dataToDisplay;
-            chart.data.labels = Array.from({ length: maxPoints }, (_, i) => i);
-          } else {
-            chart.data.datasets[0].data = dataToDisplay;
-            chart.data.labels = dataToDisplay.map((_, i) => i);
+            if (confidenceToUse.length < maxPoints) {
+              const zerosNeeded = maxPoints - confidenceToUse.length;
+              const zeroPad = new Array(zerosNeeded).fill(0);
+              confidenceToUse = zeroPad.concat(confidenceToUse);
+            }
           }
+          chart.data.datasets[0].data = dataToDisplay;
+          chart.data.datasets[0].confidence = confidenceToUse;
+          chart.data.labels = Array.from({ length: maxPoints }, (_, i) => i);
           chart.update();
         }
 
@@ -402,7 +412,6 @@
         drawFaceBoxForRoi(roi) {
           const ctx = this.canvas.getContext("2d");
           ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-          // this.setCanvasDimensions();
           const [x0, y0, x1, y1] = roi;
           const w = x1 - x0, h = y1 - y0;
           const videoWidth = this.video.videoWidth, videoHeight = this.video.videoHeight;
@@ -453,11 +462,11 @@
           }
           const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } = vital_signs;
           if (this.mode === "webcam") {
-            this.updateChart(this.charts.ppgChart, ppg_waveform?.data || [], this.MAX_DATA_POINTS);
-            this.updateChart(this.charts.respChart, respiratory_waveform?.data || [], this.MAX_DATA_POINTS);
+            this.updateChart(this.charts.ppgChart, ppg_waveform?.data || [], ppg_waveform?.confidence || [], this.MAX_DATA_POINTS);
+            this.updateChart(this.charts.respChart, respiratory_waveform?.data || [], respiratory_waveform?.confidence || [], this.MAX_DATA_POINTS);
           } else {
-            this.updateChart(this.charts.ppgChart, ppg_waveform?.data || []);
-            this.updateChart(this.charts.respChart, respiratory_waveform?.data || []);
+            this.updateChart(this.charts.ppgChart, ppg_waveform?.data || [], ppg_waveform?.confidence || []);
+            this.updateChart(this.charts.respChart, respiratory_waveform?.data || [], respiratory_waveform?.confidence || []);
           }
           this.updateStats("ppgStats", "HR   bpm", heart_rate?.value);
           this.updateStats("respStats", "RR   bpm", respiratory_rate?.value);
@@ -712,7 +721,7 @@
               if (roiArray && roiArray.length) {
                 const currentIndex = Math.floor((this.video.currentTime / this.video.duration) * (roiArray.length));
                 const currentRoi = roiArray[currentIndex];
-                this.drawFaceBoxForRoi(currentRoi);
+                if (currentRoi) this.drawFaceBoxForRoi(currentRoi);
               }
             }
           });
@@ -732,8 +741,8 @@
 
         init() {
           // Initialize charts with playback dot plugin configured
-          this.charts.ppgChart = this.createChart("ppgChart", "Pulse", "red");
-          this.charts.respChart = this.createChart("respChart", "Respiration", "blue");
+          this.charts.ppgChart = this.createChart("ppgChart", "Pulse", "255,0,0");
+          this.charts.respChart = this.createChart("respChart", "Respiration", "0,0,255");
           // Default mode: file
           this.switchMode("file");
         }
