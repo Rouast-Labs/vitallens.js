@@ -468,8 +468,11 @@
             this.updateChart(this.charts.ppgChart, ppg_waveform?.data || [], ppg_waveform?.confidence || []);
             this.updateChart(this.charts.respChart, respiratory_waveform?.data || [], respiratory_waveform?.confidence || []);
           }
-          this.updateStats("ppgStats", "HR   bpm", heart_rate?.value);
-          this.updateStats("respStats", "RR   bpm", respiratory_rate?.value);
+          // Only display HR and RR if the confidence is >= 80%
+          const hrValue = (heart_rate && heart_rate.confidence >= 0.8) ? heart_rate.value : undefined;
+          const rrValue = (respiratory_rate && respiratory_rate.confidence >= 0.8) ? respiratory_rate.value : undefined;
+          this.updateStats("ppgStats", "HR   bpm", hrValue);
+          this.updateStats("respStats", "RR   bpm", rrValue);
           this.updateFpsDisplay(fps, estFps);
         }
 
