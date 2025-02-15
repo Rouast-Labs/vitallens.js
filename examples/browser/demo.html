@@ -399,16 +399,11 @@
           this.canvas.height = rect.height;
         }
 
-        drawFaceBox() {
-          const coords = this.latestResult?.face?.coordinates;
-          if (!coords || !coords.length) {
-            this.canvas.getContext("2d").clearRect(0, 0, this.canvas.width, this.canvas.height);
-            return;
-          }
+        drawFaceBoxForRoi(roi) {
           const ctx = this.canvas.getContext("2d");
           ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-          this.setCanvasDimensions();
-          const [x0, y0, x1, y1] = coords[coords.length - 1];
+          // this.setCanvasDimensions();
+          const [x0, y0, x1, y1] = roi;
           const w = x1 - x0, h = y1 - y0;
           const videoWidth = this.video.videoWidth, videoHeight = this.video.videoHeight;
           const containerWidth = this.canvas.width, containerHeight = this.canvas.height;
@@ -426,9 +421,12 @@
             offsetX = (containerWidth - displayedVideoWidth) / 2;
             offsetY = 0;
           }
-          const scaleX = displayedVideoWidth / videoWidth, scaleY = displayedVideoHeight / videoHeight;
-          const boxX = offsetX + x0 * scaleX, boxY = offsetY + y0 * scaleY;
-          const boxW = w * scaleX, boxH = h * scaleY;
+          const scaleX = displayedVideoWidth / videoWidth;
+          const scaleY = displayedVideoHeight / videoHeight;
+          const boxX = offsetX + x0 * scaleX;
+          const boxY = offsetY + y0 * scaleY;
+          const boxW = w * scaleX;
+          const boxH = h * scaleY;
           ctx.strokeStyle = "rgba(0, 255, 0, 0.8)";
           ctx.lineWidth = 2;
           ctx.strokeRect(boxX, boxY, boxW, boxH);
@@ -451,7 +449,7 @@
           if (!face?.coordinates) {
             this.canvas.getContext("2d").clearRect(0, 0, this.canvas.width, this.canvas.height);
           } else {
-            this.drawFaceBox();
+            this.drawFaceBoxForRoi(face.coordinates[face.coordinates.length-1]);
           }
           const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } = vital_signs;
           if (this.mode === "webcam") {
@@ -709,6 +707,12 @@
                 }
                 this.charts.ppgChart.update("none");
                 this.charts.respChart.update("none");
+              }
+              const roiArray = this.latestResult.face.coordinates;
+              if (roiArray && roiArray.length) {
+                const currentIndex = Math.floor((this.video.currentTime / this.video.duration) * (roiArray.length));
+                const currentRoi = roiArray[currentIndex];
+                this.drawFaceBoxForRoi(currentRoi);
               }
             }
           });
