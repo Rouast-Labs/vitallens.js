@@ -34,7 +34,10 @@ Using a different language or platform? We also have a [Python client](https://g
 
 - **Event-Driven API:**  
   Register event listeners to receive real-time updates on estimated vitals.
-  
+
+- **Pre-Built Web Component Widgets:**  
+  In addition to the core API, vitallens.js provides ready-to-use web components. Use the unified widget (supporting both file and webcam modes) or choose the specialized file-only or webcam-only widget for streamlined integration.
+
 - **TypeScript-Ready:**  
   Written in TypeScript with complete type definitions for enhanced developer experience.
   
