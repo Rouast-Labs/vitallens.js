@@ -1,8 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { VitalLens } from '../core/VitalLens.browser';
+import { VitalLensOptions } from '../types';
 import template from './template.html';
-import { Chart, ChartDataset, ScriptableLineSegmentContext } from 'chart.js';
+import {
+  Chart,
+  ChartDataset,
+  CategoryScale,
+  LinearScale,
+  LineController,
+  PointElement,
+  LineElement,
+  ScriptableLineSegmentContext,
+} from 'chart.js';
 
+Chart.register(
+  CategoryScale,
+  LineController,
+  LinearScale,
+  PointElement,
+  LineElement
+);
 export interface MyLineDataset extends ChartDataset<'line', number[]> {
   confidence?: number[];
 }
@@ -23,12 +40,14 @@ class VitalLensWidget extends HTMLElement {
   private vitalLensInstance!: VitalLens;
   private charts: any = {};
   private videoFileLoaded: File | null = null;
-  private currentMethod: string | null = null;
+  private currentMethod: 'vitallens' | 'pos' | 'chrom' | 'g' = 'vitallens';
   private logMessages: string[] = [];
   private latestResult: any = null;
   private isProcessingFlag: boolean = false;
   private MAX_DATA_POINTS: number = 300;
-  private mode: 'webcam' | 'file' = 'file';
+  private apiKey: string | null = null;
+  private proxyUrl: string | null = null;
+  private mode: string = '';
 
   constructor() {
     super();
@@ -39,6 +58,33 @@ class VitalLensWidget extends HTMLElement {
 
   connectedCallback() {
     // Query the shadow DOM for all UI elements.
+    this.getElements();
+
+    // Read configuration from attributes.
+    this.apiKey = this.getAttribute('api-key') || '';
+    this.proxyUrl = this.getAttribute('proxy-url') || null;
+
+    /// Bind UI events.
+    this.bindEvents();
+    // Initialize charts using Chart.js.
+    this.charts.ppgChart = this.createChart('ppgChart', 'Pulse', '255,0,0');
+    this.charts.respChart = this.createChart(
+      'respChart',
+      'Respiration',
+      '0,0,255'
+    );
+    // Start in file mode by default.
+    this.switchMode('file');
+  }
+
+  disconnectedCallback() {
+    // Clean up resources.
+    if (this.vitalLensInstance) {
+      this.vitalLensInstance.close();
+    }
+  }
+
+  private getElements() {
     this.videoElement = this.shadowRoot!.querySelector(
       '#video'
     ) as HTMLVideoElement;
@@ -73,37 +119,6 @@ class VitalLensWidget extends HTMLElement {
     this.downloadButtonElement = this.shadowRoot!.querySelector(
       '#downloadButton'
     ) as HTMLButtonElement;
-
-    // Read configuration from attributes.
-    const apiKey = this.getAttribute('api-key') || '';
-    const method = this.getAttribute('method') || 'vitallens';
-    const proxyUrl = this.getAttribute('proxy-url') || null;
-    const options: any = { method };
-    if (proxyUrl) {
-      options.proxyUrl = proxyUrl;
-    } else {
-      options.apiKey = apiKey;
-    }
-
-    // Initialize the VitalLens instance.
-    this.initVitalLensInstance(options)
-      .then(() => {
-        // Bind UI events.
-        this.bindEvents();
-        // Set default mode (for example, file mode).
-        this.switchMode('file');
-      })
-      .catch((err) => {
-        this.addLog('Error initializing VitalLens: ' + err);
-      });
-  }
-
-  disconnectedCallback() {
-    // Clean up resources.
-    if (this.vitalLensInstance) {
-      this.vitalLensInstance.stopVideoStream();
-      this.vitalLensInstance.close();
-    }
   }
 
   private addLog(message: string) {
@@ -331,7 +346,7 @@ class VitalLensWidget extends HTMLElement {
     this.updateFpsDisplay(fps, estFps);
   }
 
-  private async initVitalLensInstance(options: any) {
+  private async initVitalLensInstance() {
     const selectedMethod = this.methodSelectElement.value || 'vitallens';
     if (this.vitalLensInstance && this.currentMethod === selectedMethod) return;
     if (this.vitalLensInstance) {
@@ -341,7 +356,12 @@ class VitalLensWidget extends HTMLElement {
         console.error('Error closing previous VitalLens instance:', e);
       }
     }
-    this.currentMethod = selectedMethod;
+    this.currentMethod = selectedMethod as any;
+    const options: VitalLensOptions = {
+      method: this.currentMethod,
+      ...(this.apiKey ? { apiKey: this.apiKey } : {}),
+      ...(this.proxyUrl ? { proxyUrl: this.proxyUrl } : {}),
+    };
     try {
       this.vitalLensInstance = new VitalLens(options);
       this.vitalLensInstance.addEventListener(
@@ -449,7 +469,7 @@ class VitalLensWidget extends HTMLElement {
     this.updateFpsDisplay(0, 0);
   }
 
-  private async switchMode(newMode: 'webcam' | 'file') {
+  private async switchMode(newMode: string) {
     if (newMode === this.mode) return;
     if (this.mode === 'webcam' && this.vitalLensInstance) {
       this.vitalLensInstance.stopVideoStream();
@@ -464,22 +484,13 @@ class VitalLensWidget extends HTMLElement {
   }
 
   private async startMode(
-    modeToStart: 'webcam' | 'file',
+    modeToStart: string,
     initUI: boolean,
     restartVitalLens: boolean
   ) {
     this.mode = modeToStart;
     if (!this.vitalLensInstance || restartVitalLens) {
-      const apiKey = this.getAttribute('api-key') || '';
-      const method = this.getAttribute('method') || 'vitallens';
-      const proxyUrl = this.getAttribute('proxy-url') || null;
-      const options: any = { method };
-      if (proxyUrl) {
-        options.proxyUrl = proxyUrl;
-      } else {
-        options.apiKey = apiKey;
-      }
-      await this.initVitalLensInstance(options);
+      await this.initVitalLensInstance();
     }
     if (initUI) {
       if (modeToStart === 'webcam') {
@@ -624,18 +635,6 @@ class VitalLensWidget extends HTMLElement {
       this.charts.respChart.resize();
       this.charts.respChart.update();
     }
-  }
-
-  init() {
-    // Initialize charts using Chart.js.
-    this.charts.ppgChart = this.createChart('ppgChart', 'Pulse', '255,0,0');
-    this.charts.respChart = this.createChart(
-      'respChart',
-      'Respiration',
-      '0,0,255'
-    );
-    // Start in file mode by default.
-    this.switchMode('file');
   }
 }
 

@@ -2,10 +2,11 @@
   :host {
     display: flex;
     flex-direction: column;
-    min-width: 600px;
+    height: 100vh;
+    /* min-width: 600px;
     max-width: 800px;
     min-height: 600px;
-    max-height: 800px;
+    max-height: 800px; */
     background: black;
     color: white;
     font-family: monospace;
@@ -41,8 +42,9 @@
     overflow: hidden;
   } */
   .video-container {
-    flex: 1;
     position: relative;
+    width: 100%;
+    height: 40vh;
     overflow: hidden;
     background: black;
   }
@@ -137,19 +139,9 @@
     border: none;
   }
   /* Charts container */
-  /* .charts-container {
+  .charts-container {
     width: 100%;
     height: 40vh;
-    background: black;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 10px;
-    box-sizing: border-box;
-  } */
-  .charts-container {
-    flex: 0 0 40%; /* or a px value, etc. */
-    /* remove height: 40vh; */
     background: black;
     display: flex;
     flex-direction: column;
