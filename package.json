@@ -31,11 +31,11 @@
     "test:node-integration": "npm run build:integration && jest --selectProjects node-integration",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.{ts,js,json,css,md}\"",
-    "start:browser-demo": "EXAMPLE_TO_OPEN=browser/demo nodemon scripts/server.cjs",
-    "start:browser-webcomponent": "EXAMPLE_TO_OPEN=browser/webcomponent nodemon scripts/server.cjs",
+    "start:browser": "EXAMPLE_TO_OPEN=browser/widget nodemon scripts/server.cjs",
+    "start:browser-file": "EXAMPLE_TO_OPEN=browser/file_widget nodemon scripts/server.cjs",
+    "start:browser-file-minimal": "EXAMPLE_TO_OPEN=browser/file_minimal nodemon scripts/server.cjs",
+    "start:browser-webcam": "EXAMPLE_TO_OPEN=browser/webcam_widget nodemon scripts/server.cjs",
     "start:browser-webcam-minimal": "EXAMPLE_TO_OPEN=browser/webcam_minimal nodemon scripts/server.cjs",
-    "start:browser-webcam": "EXAMPLE_TO_OPEN=browser/webcam nodemon scripts/server.cjs",
-    "start:browser-file": "EXAMPLE_TO_OPEN=browser/file nodemon scripts/server.cjs",
     "start:node-file": "node ./examples/node/file.js"
   },
   "keywords": [

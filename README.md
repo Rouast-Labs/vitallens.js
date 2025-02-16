@@ -48,7 +48,7 @@ Please review our [Terms of Service](https://www.rouast.com/api/terms) and [Priv
 
 ### Node.js
 
-Install vitallens.js via npm or yarn:
+Install `vitallens.js` via npm or yarn:
 
 ```bash
 npm install vitallens
@@ -67,7 +67,11 @@ console.log(result);
 
 ### Browser
 
-For browser usage, you can either bundle vitallens.js with your project or load it directly from a CDN.
+For browser usage, you can either bundle `vitallens.js` with your project or load it directly from a CDN. In addition to the core API, `vitallens.js` also provides pre-built web component widgets. We offer three variants:
+
+- **Unified Widget:** Supports both file and webcam modes with mode toggles.
+- **File-Only Widget:** For processing video files only.
+- **Webcam-Only Widget:** For live webcam streaming only.
 
 For example, using **jsDelivr**:
 
@@ -77,6 +81,8 @@ For example, using **jsDelivr**:
 
 <!-- Or pin a specific version -->
 <script src="https://cdn.jsdelivr.net/npm/vitallens@0.0.1/dist/vitallens.browser.js"></script>
+
+<!-- Use with core API -->
 <script>
   // vitallens.js is exposed as a global, for example as window.VitalLens.
   const vl = new VitalLens({ method: 'vitallens', apiKey: 'YOUR_API_KEY' });
@@ -85,6 +91,16 @@ For example, using **jsDelivr**:
   vl.addEventListener('vitals', (data) => console.log(data));
   vl.startVideoStream();
 </script>
+
+<!-- Or use our widget -->
+<vitallens-widget api-key="YOUR_API_KEY"></vitallens-widget>
+
+<!-- Or, to use a specialized widget: -->
+<!-- File-only widget -->
+<vitallens-file-widget api-key="YOUR_API_KEY"></vitallens-file-widget>
+
+<!-- Webcam-only widget -->
+<vitallens-webcam-widget api-key="YOUR_API_KEY"></vitallens-webcam-widget>
 ```
 
 Alternatively, you can use **unpkg**:
@@ -98,7 +114,6 @@ Or **Skypack** if you prefer ES modules:
 ```html
 <script type="module">
   import { VitalLens } from 'https://cdn.skypack.dev/vitallens';
-  const vl = new VitalLens({ method: 'vitallens', apiKey: 'YOUR_API_KEY' });
   // Continue as above…
 </script>
 ```
@@ -191,25 +206,39 @@ export interface VitalLensResult {
 
 The repository contains several ready-to-run examples:
 
-- **Browser File Input:**  
-  [examples/browser/file.html](examples/browser/file.html)  
+- **Browser Unified Widget:**  
+  [examples/browser/widget.html](examples/browser/widget.html)  
+  To run this example, execute:
+  ```bash
+  npm run start:browser
+  ```
+
+- **Browser File Input Widget:**  
+  [examples/browser/file_widget.html](examples/browser/file_widget.html)  
   To run this example, execute:
   ```bash
   npm run start:browser-file
   ```
 
-- **Minimal Webcam Example:**  
+- **Browser File Input Minimal:**  
+  [examples/browser/file_minimal.html](examples/browser/file_minimal.html)  
+  To run this example, execute:
+  ```bash
+  npm run start:browser-file-minimal
+  ```
+
+- **Browser Webcam Input Widget:**  
+  [examples/browser/webcam_widget.html](examples/browser/webcam_widget.html)  
+  To run this example, execute:
+  ```bash
+  npm run start:browser-webcam
+  ```
+
+- **Browser Webcam Input Minimal:**  
   [examples/browser/webcam_minimal.html](examples/browser/webcam_minimal.html)  
   To run this example, execute:
   ```bash
   npm run start:browser-webcam-minimal
-  ```
-
-- **Advanced Webcam with Visualizations:**  
-  [examples/browser/webcam.html](examples/browser/webcam.html)  
-  To run this example, execute:
-  ```bash
-  npm run start:browser-webcam
   ```
 
 - **Node File Processing:**  
@@ -219,7 +248,7 @@ The repository contains several ready-to-run examples:
   npm run start:node-file
   ```
 
-Try opening the HTML examples in your browser or running the Node script to see vitallens.js in action.
+Try opening the HTML examples in your browser or running the Node script to see `vitallens.js` in action.
 
 ## Development
 
