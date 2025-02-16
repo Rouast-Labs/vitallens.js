@@ -13,12 +13,44 @@ import {
   ScriptableLineSegmentContext,
 } from 'chart.js';
 
+// Register the playbackDot plugin
+const playbackDotPlugin = {
+  id: 'playbackDot',
+  afterDatasetsDraw(chart: Chart, args: { cancelable: boolean }, options: any) {
+    const ctx = chart.ctx;
+    const markerIndex = options.xValue;
+    if (markerIndex === undefined || markerIndex === null) return;
+    const dataset = chart.data.datasets[0];
+    const data = dataset.data;
+    if (!data || data.length === 0) return;
+    const index = Math.round(markerIndex);
+    if (index < 0 || index >= data.length) return;
+    const xScale = chart.scales.x;
+    const yScale = chart.scales.y;
+    const xPixel = xScale.getPixelForValue(index);
+    const yValue = data[index];
+    if (typeof yValue !== 'number') return;
+    const yPixel = yScale.getPixelForValue(yValue);
+    const radius = options.radius || 4;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(xPixel, yPixel, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = dataset.borderColor as string;
+    ctx.fill();
+    ctx.lineWidth = options.lineWidth || 2;
+    ctx.strokeStyle = options.strokeStyle || 'white';
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
 Chart.register(
   CategoryScale,
   LineController,
   LinearScale,
   PointElement,
-  LineElement
+  LineElement,
+  playbackDotPlugin
 );
 export interface MyLineDataset extends ChartDataset<'line', number[]> {
   confidence?: number[];
