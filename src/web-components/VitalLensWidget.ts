@@ -205,12 +205,6 @@ class VitalLensWidget extends HTMLElement {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          playbackDot: {
-            xValue: 0,
-            radius: 4,
-            lineWidth: 2,
-            strokeStyle: 'white',
-          },
           legend: {
             display: true,
             position: 'top',
@@ -268,6 +262,34 @@ class VitalLensWidget extends HTMLElement {
     chart.data.datasets[0].confidence = confidenceToUse;
     chart.data.labels = Array.from({ length: maxPoints }, (_, i) => i);
     chart.update();
+  }
+
+  private disablePlaybackDotPlugin() {
+    if (this.charts.ppgChart.options.plugins.playbackDot) {
+      delete this.charts.ppgChart.options.plugins.playbackDot;
+    }
+    if (this.charts.respChart.options.plugins.playbackDot) {
+      delete this.charts.respChart.options.plugins.playbackDot;
+    }
+    this.charts.ppgChart.update();
+    this.charts.respChart.update();
+  }
+
+  private enablePlaybackDotPlugin() {
+    this.charts.ppgChart.options.plugins.playbackDot = {
+      xValue: 0,
+      radius: 4,
+      lineWidth: 2,
+      strokeStyle: 'white',
+    };
+    this.charts.respChart.options.plugins.playbackDot = {
+      xValue: 0,
+      radius: 4,
+      lineWidth: 2,
+      strokeStyle: 'white',
+    };
+    this.charts.ppgChart.update();
+    this.charts.respChart.update();
   }
 
   private setCanvasDimensions() {
@@ -466,6 +488,7 @@ class VitalLensWidget extends HTMLElement {
     try {
       const result = await this.vitalLensInstance.processVideoFile(file);
       this.addLog('File processing complete.');
+      this.enablePlaybackDotPlugin();
       this.handleVitalLensResults(result);
     } catch (e) {
       this.addLog('Error processing file: ' + (e as Error).message);
@@ -492,6 +515,7 @@ class VitalLensWidget extends HTMLElement {
     this.canvasElement.style.display = 'none';
     this.videoFileLoaded = null;
     this.videoInputElement.value = '';
+    this.disablePlaybackDotPlugin();
   }
 
   private resetVitalsView() {
