@@ -1,0 +1,24 @@
+import { VitalLensWidgetBase } from './VitalLensWidgetBase';
+
+class VitalLensWidgetUnified extends VitalLensWidgetBase {
+  constructor() {
+    super();
+  }
+  connectedCallback() {
+    // For unified widget, use the full template.
+    this.getElements();
+    this.apiKey = this.getAttribute('api-key') || '';
+    this.proxyUrl = this.getAttribute('proxy-url') || null;
+    this.bindEvents();
+    this.charts.ppgChart = this.createChart('ppgChart', 'Pulse', '230,34,0');
+    this.charts.respChart = this.createChart(
+      'respChart',
+      'Respiration',
+      '0,123,255'
+    );
+    this.switchMode('file');
+  }
+}
+
+customElements.define('vitallens-widget', VitalLensWidgetUnified);
+export default VitalLensWidgetUnified;

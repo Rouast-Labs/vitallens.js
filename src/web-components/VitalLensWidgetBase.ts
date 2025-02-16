@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { VitalLens } from '../core/VitalLens.browser';
 import { VitalLensOptions } from '../types';
-import template from './template.html';
+import widget from './widget.html';
 import logoUrl from '../../assets/vitallens-logo.png';
 import {
   Chart,
@@ -14,7 +14,7 @@ import {
   ScriptableLineSegmentContext,
 } from 'chart.js';
 
-// Register the playbackDot plugin
+// Register the playbackDot plugin.
 const playbackDotPlugin = {
   id: 'playbackDot',
   afterDatasetsDraw(chart: Chart, args: { cancelable: boolean }, options: any) {
@@ -53,59 +53,39 @@ Chart.register(
   LineElement,
   playbackDotPlugin
 );
+
 export interface MyLineDataset extends ChartDataset<'line', number[]> {
   confidence?: number[];
 }
 
-class VitalLensWidget extends HTMLElement {
-  private videoElement!: HTMLVideoElement;
-  private canvasElement!: HTMLCanvasElement;
-  private dropZoneElement!: HTMLElement;
-  private videoInputElement!: HTMLInputElement;
-  private spinnerElement!: HTMLElement;
-  private webcamModeButtonElement!: HTMLButtonElement;
-  private fileModeButtonElement!: HTMLButtonElement;
-  private controlButtonElement!: HTMLButtonElement;
-  private methodSelectElement!: HTMLSelectElement;
-  private fpsDisplayElement!: HTMLElement;
-  private downloadButtonElement!: HTMLButtonElement;
-  private vitalLensInstance!: VitalLens;
-  private charts: any = {};
-  private videoFileLoaded: File | null = null;
-  private currentMethod: 'vitallens' | 'pos' | 'chrom' | 'g' = 'vitallens';
-  private latestResult: any = null;
-  private isProcessingFlag: boolean = false;
-  private MAX_DATA_POINTS: number = 300;
-  private apiKey: string | null = null;
-  private proxyUrl: string | null = null;
-  private mode: string = '';
+export class VitalLensWidgetBase extends HTMLElement {
+  // Common properties
+  protected videoElement!: HTMLVideoElement;
+  protected canvasElement!: HTMLCanvasElement;
+  protected dropZoneElement!: HTMLElement;
+  protected videoInputElement!: HTMLInputElement;
+  protected spinnerElement!: HTMLElement;
+  protected webcamModeButtonElement!: HTMLButtonElement;
+  protected fileModeButtonElement!: HTMLButtonElement;
+  protected controlButtonElement!: HTMLButtonElement;
+  protected methodSelectElement!: HTMLSelectElement;
+  protected fpsDisplayElement!: HTMLElement;
+  protected downloadButtonElement!: HTMLButtonElement;
+  protected vitalLensInstance!: VitalLens;
+  protected charts: any = {};
+  protected videoFileLoaded: File | null = null;
+  protected currentMethod: 'vitallens' | 'pos' | 'chrom' | 'g' = 'vitallens';
+  protected latestResult: any = null;
+  protected isProcessingFlag: boolean = false;
+  protected MAX_DATA_POINTS: number = 300;
+  protected apiKey: string | null = null;
+  protected proxyUrl: string | null = null;
+  protected mode: string = '';
 
-  constructor() {
+  constructor(widgetString: string = widget.replace('__LOGO_URL__', logoUrl)) {
     super();
-    // Create a shadow DOM and inject the template.
     const shadow = this.attachShadow({ mode: 'open' });
-    shadow.innerHTML = template.replace('__LOGO_URL__', logoUrl);
-  }
-
-  connectedCallback() {
-    // Query the shadow DOM for all UI elements.
-    this.getElements();
-
-    // Read configuration from attributes.
-    this.apiKey = this.getAttribute('api-key') || '';
-    this.proxyUrl = this.getAttribute('proxy-url') || null;
-
-    /// Bind UI events.
-    this.bindEvents();
-    // Initialize charts using Chart.js.
-    this.charts.ppgChart = this.createChart('ppgChart', 'Pulse', '230,34,0');
-    this.charts.respChart = this.createChart(
-      'respChart',
-      'Respiration',
-      '0,123,255'
-    );
-    // Start in file mode by default.
-    this.switchMode('file');
+    shadow.innerHTML = widgetString;
   }
 
   disconnectedCallback() {
@@ -115,7 +95,7 @@ class VitalLensWidget extends HTMLElement {
     }
   }
 
-  private getElements() {
+  protected getElements() {
     this.videoElement = this.shadowRoot!.querySelector(
       '#video'
     ) as HTMLVideoElement;
@@ -151,12 +131,7 @@ class VitalLensWidget extends HTMLElement {
     ) as HTMLButtonElement;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private updateFpsDisplay(fps: number, estFps: number) {
-    this.fpsDisplayElement.textContent = `FPS: ${fps ? fps.toFixed(1) : 'N/A'}`;
-  }
-
-  private createChart(elementId: string, label: string, baseColor: string) {
+  protected createChart(elementId: string, label: string, baseColor: string) {
     const ctx = (
       this.shadowRoot!.querySelector(`#${elementId}`) as HTMLCanvasElement
     ).getContext('2d');
@@ -173,7 +148,6 @@ class VitalLensWidget extends HTMLElement {
             segment: {
               borderColor: (ctx: ScriptableLineSegmentContext): string => {
                 const chart = (ctx as any).chart;
-                // Now we know this dataset is of type MyLineDataset.
                 const dataset = chart.data.datasets[0] as MyLineDataset;
                 const confArray = dataset.confidence;
                 if (!confArray) return `rgba(${baseColor},1)`;
@@ -254,34 +228,6 @@ class VitalLensWidget extends HTMLElement {
     chart.update();
   }
 
-  private disablePlaybackDotPlugin() {
-    if (this.charts.ppgChart.options.plugins.playbackDot) {
-      delete this.charts.ppgChart.options.plugins.playbackDot;
-    }
-    if (this.charts.respChart.options.plugins.playbackDot) {
-      delete this.charts.respChart.options.plugins.playbackDot;
-    }
-    this.charts.ppgChart.update();
-    this.charts.respChart.update();
-  }
-
-  private enablePlaybackDotPlugin() {
-    this.charts.ppgChart.options.plugins.playbackDot = {
-      xValue: 0,
-      radius: 4,
-      lineWidth: 2,
-      strokeStyle: 'white',
-    };
-    this.charts.respChart.options.plugins.playbackDot = {
-      xValue: 0,
-      radius: 4,
-      lineWidth: 2,
-      strokeStyle: 'white',
-    };
-    this.charts.ppgChart.update();
-    this.charts.respChart.update();
-  }
-
   private setCanvasDimensions() {
     const rect = this.canvasElement.getBoundingClientRect();
     this.canvasElement.width = rect.width;
@@ -343,52 +289,9 @@ class VitalLensWidget extends HTMLElement {
       </p>`;
   }
 
-  private handleVitalLensResults(result: any) {
-    this.latestResult = result;
-    const { face, vital_signs, fps, estFps } = result;
-    if (!face?.coordinates) {
-      this.canvasElement
-        .getContext('2d')!
-        .clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
-    } else {
-      this.drawFaceBoxForRoi(face.coordinates[face.coordinates.length - 1]);
-    }
-    const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } =
-      vital_signs;
-    if (this.mode === 'webcam') {
-      this.updateChart(
-        this.charts.ppgChart,
-        ppg_waveform?.data || [],
-        ppg_waveform?.confidence || [],
-        this.MAX_DATA_POINTS
-      );
-      this.updateChart(
-        this.charts.respChart,
-        respiratory_waveform?.data || [],
-        respiratory_waveform?.confidence || [],
-        this.MAX_DATA_POINTS
-      );
-    } else {
-      this.updateChart(
-        this.charts.ppgChart,
-        ppg_waveform?.data || [],
-        ppg_waveform?.confidence || []
-      );
-      this.updateChart(
-        this.charts.respChart,
-        respiratory_waveform?.data || [],
-        respiratory_waveform?.confidence || []
-      );
-    }
-    const hrValue =
-      heart_rate && heart_rate.confidence >= 0.8 ? heart_rate.value : undefined;
-    const rrValue =
-      respiratory_rate && respiratory_rate.confidence >= 0.8
-        ? respiratory_rate.value
-        : undefined;
-    this.updateStats('ppgStats', 'HR   bpm', hrValue);
-    this.updateStats('respStats', 'RR   bpm', rrValue);
-    this.updateFpsDisplay(fps, estFps);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private updateFpsDisplay(fps: number, estFps: number) {
+    this.fpsDisplayElement.textContent = `FPS: ${fps ? fps.toFixed(1) : 'N/A'}`;
   }
 
   private async initVitalLensInstance() {
@@ -435,21 +338,32 @@ class VitalLensWidget extends HTMLElement {
     }
   }
 
-  private setupWebcamUI() {
-    this.dropZoneElement.style.display = 'none';
-    this.videoInputElement.style.display = 'none';
-    this.spinnerElement.style.display = 'none';
-    this.videoElement.style.display = 'block';
-    this.canvasElement.style.display = 'block';
-    this.controlButtonElement.textContent = 'Pause';
+  private enablePlaybackDotPlugin() {
+    this.charts.ppgChart.options.plugins.playbackDot = {
+      xValue: 0,
+      radius: 4,
+      lineWidth: 2,
+      strokeStyle: 'white',
+    };
+    this.charts.respChart.options.plugins.playbackDot = {
+      xValue: 0,
+      radius: 4,
+      lineWidth: 2,
+      strokeStyle: 'white',
+    };
+    this.charts.ppgChart.update();
+    this.charts.respChart.update();
   }
 
-  private setupFileModeUI() {
-    this.dropZoneElement.style.display = 'flex';
-    this.videoElement.style.display = 'none';
-    this.canvasElement.style.display = 'none';
-    this.videoInputElement.style.display = 'none';
-    this.controlButtonElement.textContent = 'Reset';
+  private disablePlaybackDotPlugin() {
+    if (this.charts.ppgChart.options.plugins.playbackDot) {
+      delete this.charts.ppgChart.options.plugins.playbackDot;
+    }
+    if (this.charts.respChart.options.plugins.playbackDot) {
+      delete this.charts.respChart.options.plugins.playbackDot;
+    }
+    this.charts.ppgChart.update();
+    this.charts.respChart.update();
   }
 
   private async loadAndProcessFile(file: File) {
@@ -480,37 +394,7 @@ class VitalLensWidget extends HTMLElement {
     }
   }
 
-  private resetVideoStreamView() {
-    if (this.videoElement.srcObject) {
-      (this.videoElement.srcObject as MediaStream)
-        .getTracks()
-        .forEach((track) => track.stop());
-      this.videoElement.srcObject = null;
-    }
-    this.videoElement.src = '';
-    this.videoElement.controls = false;
-  }
-
-  private resetVideoFileView() {
-    this.videoElement.src = '';
-    this.videoElement.controls = false;
-    this.dropZoneElement.style.display = 'flex';
-    this.videoElement.style.display = 'none';
-    this.canvasElement.style.display = 'none';
-    this.videoFileLoaded = null;
-    this.videoInputElement.value = '';
-    this.disablePlaybackDotPlugin();
-  }
-
-  private resetVitalsView() {
-    this.updateChart(this.charts.ppgChart, [], [], this.MAX_DATA_POINTS);
-    this.updateChart(this.charts.respChart, [], [], this.MAX_DATA_POINTS);
-    this.updateStats('ppgStats', 'HR   bpm', undefined);
-    this.updateStats('respStats', 'RR   bpm', undefined);
-    this.updateFpsDisplay(0, 0);
-  }
-
-  private async switchMode(newMode: string) {
+  protected async switchMode(newMode: string) {
     if (newMode === this.mode) return;
     if (this.mode === 'webcam' && this.vitalLensInstance) {
       this.vitalLensInstance.stopVideoStream();
@@ -567,7 +451,114 @@ class VitalLensWidget extends HTMLElement {
     }
   }
 
-  private bindEvents() {
+  private setupWebcamUI() {
+    this.dropZoneElement.style.display = 'none';
+    this.videoInputElement.style.display = 'none';
+    this.spinnerElement.style.display = 'none';
+    this.videoElement.style.display = 'block';
+    this.canvasElement.style.display = 'block';
+    this.controlButtonElement.textContent = 'Pause';
+  }
+
+  private setupFileModeUI() {
+    this.dropZoneElement.style.display = 'flex';
+    this.videoElement.style.display = 'none';
+    this.canvasElement.style.display = 'none';
+    this.videoInputElement.style.display = 'none';
+    this.controlButtonElement.textContent = 'Reset';
+  }
+
+  private resetVideoStreamView() {
+    if (this.videoElement.srcObject) {
+      (this.videoElement.srcObject as MediaStream)
+        .getTracks()
+        .forEach((track) => track.stop());
+      this.videoElement.srcObject = null;
+    }
+    this.videoElement.src = '';
+    this.videoElement.controls = false;
+  }
+
+  private resetVideoFileView() {
+    this.videoElement.src = '';
+    this.videoElement.controls = false;
+    this.dropZoneElement.style.display = 'flex';
+    this.videoElement.style.display = 'none';
+    this.canvasElement.style.display = 'none';
+    this.videoFileLoaded = null;
+    this.videoInputElement.value = '';
+    this.disablePlaybackDotPlugin();
+  }
+
+  private resetVitalsView() {
+    this.updateChart(this.charts.ppgChart, [], [], this.MAX_DATA_POINTS);
+    this.updateChart(this.charts.respChart, [], [], this.MAX_DATA_POINTS);
+    this.updateStats('ppgStats', 'HR   bpm', undefined);
+    this.updateStats('respStats', 'RR   bpm', undefined);
+    this.updateFpsDisplay(0, 0);
+  }
+
+  private handleVitalLensResults(result: any) {
+    this.latestResult = result;
+    const { face, vital_signs, fps, estFps } = result;
+    if (!face?.coordinates) {
+      this.canvasElement
+        .getContext('2d')!
+        .clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
+    } else {
+      this.drawFaceBoxForRoi(face.coordinates[face.coordinates.length - 1]);
+    }
+    const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } =
+      vital_signs;
+    if (this.mode === 'webcam') {
+      this.updateChart(
+        this.charts.ppgChart,
+        ppg_waveform?.data || [],
+        ppg_waveform?.confidence || [],
+        this.MAX_DATA_POINTS
+      );
+      this.updateChart(
+        this.charts.respChart,
+        respiratory_waveform?.data || [],
+        respiratory_waveform?.confidence || [],
+        this.MAX_DATA_POINTS
+      );
+    } else {
+      this.updateChart(
+        this.charts.ppgChart,
+        ppg_waveform?.data || [],
+        ppg_waveform?.confidence || []
+      );
+      this.updateChart(
+        this.charts.respChart,
+        respiratory_waveform?.data || [],
+        respiratory_waveform?.confidence || []
+      );
+    }
+    const hrValue =
+      heart_rate && heart_rate.confidence >= 0.8 ? heart_rate.value : undefined;
+    const rrValue =
+      respiratory_rate && respiratory_rate.confidence >= 0.8
+        ? respiratory_rate.value
+        : undefined;
+    this.updateStats('ppgStats', 'HR   bpm', hrValue);
+    this.updateStats('respStats', 'RR   bpm', rrValue);
+    this.updateFpsDisplay(fps, estFps);
+  }
+
+  private handleResize() {
+    this.setCanvasDimensions();
+    if (this.charts.ppgChart) {
+      this.charts.ppgChart.resize();
+      this.charts.ppgChart.update();
+    }
+    if (this.charts.respChart) {
+      this.charts.respChart.resize();
+      this.charts.respChart.update();
+    }
+  }
+
+  protected bindEvents() {
     this.dropZoneElement.addEventListener('click', () =>
       this.videoInputElement.click()
     );
@@ -622,13 +613,14 @@ class VitalLensWidget extends HTMLElement {
       }
     });
     window.addEventListener('resize', () => this.handleResize());
-    this.webcamModeButtonElement.addEventListener('click', () =>
-      this.switchMode('webcam')
-    );
-    this.fileModeButtonElement.addEventListener('click', () =>
-      this.switchMode('file')
-    );
-    // Update playback dot marker and ROI on video timeupdate (only in file mode)
+    const webcamButton = this.shadowRoot!.querySelector(
+      '#webcamModeButton'
+    ) as HTMLButtonElement;
+    const fileButton = this.shadowRoot!.querySelector(
+      '#fileModeButton'
+    ) as HTMLButtonElement;
+    webcamButton?.addEventListener('click', () => this.switchMode('webcam'));
+    fileButton?.addEventListener('click', () => this.switchMode('file'));
     this.videoElement.addEventListener('timeupdate', () => {
       if (this.mode === 'file' && this.latestResult) {
         const currentTime = this.videoElement.currentTime;
@@ -660,19 +652,6 @@ class VitalLensWidget extends HTMLElement {
       }
     });
   }
-
-  private handleResize() {
-    this.setCanvasDimensions();
-    if (this.charts.ppgChart) {
-      this.charts.ppgChart.resize();
-      this.charts.ppgChart.update();
-    }
-    if (this.charts.respChart) {
-      this.charts.respChart.resize();
-      this.charts.respChart.update();
-    }
-  }
 }
 
-customElements.define('vitallens-widget', VitalLensWidget);
-export default VitalLensWidget;
+customElements.define('vitallens-widget-base', VitalLensWidgetBase);

@@ -13,6 +13,8 @@ async function processFile(filePath) {
     console.log('Processing Results:', results);
   } catch (error) {
     console.error('Error processing file:', error);
+  } finally {
+    await vitallens.close();
   }
 }
 

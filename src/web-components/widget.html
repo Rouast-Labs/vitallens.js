@@ -26,7 +26,7 @@
   .logo-container img {
     height: 40px;
   }
-  .tabs-container {
+  #tabs-container {
     flex: 1 1 auto;
     display: flex;
     justify-content: center;
@@ -48,7 +48,7 @@
   .download-container {
     flex: 0 0 auto;
   }
-  /* Main content area (video + charts) fills remaining space */
+  /* Main content area (video + charts) */
   #main-content {
     flex: 1 1 auto;
     display: flex;
@@ -111,7 +111,7 @@
     text-align: left;
     color: white;
   }
-  /* Controls area: sized to content */
+  /* Controls area */
   #controls {
     flex: 0 0 auto;
     background: #111;
@@ -204,7 +204,7 @@
   <div class="logo-container">
     <img src="__LOGO_URL__" alt="VitalLens Logo" />
   </div>
-  <div class="tabs-container">
+  <div id="tabs-container">
     <button id="webcamModeButton" class="tab-button">Webcam</button>
     <button id="fileModeButton" class="tab-button">File</button>
   </div>
@@ -230,7 +230,7 @@
       <select id="methodSelect">
         <option value="vitallens" selected>VitalLens</option>
         <option value="pos">POS</option>
-        <option value="chrom">Chrom</option>
+        <option value="chrom">CHROM</option>
         <option value="g">G</option>
       </select>
     </div>
