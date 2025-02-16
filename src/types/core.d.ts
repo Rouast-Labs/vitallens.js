@@ -9,6 +9,7 @@ export type VideoInput = string | File | Blob;
 export interface VitalLensOptions {
   method: 'vitallens' | 'pos' | 'chrom' | 'g';
   apiKey?: string;
+  proxyUrl?: string;
   waveformMode?: 'incremental' | 'windowed' | 'complete';
   requestMode?: 'websocket' | 'rest';
   overrideFpsTarget?: number;

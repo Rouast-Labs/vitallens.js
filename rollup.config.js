@@ -9,6 +9,7 @@ import json from '@rollup/plugin-json';
 import alias from '@rollup/plugin-alias';
 import replace from '@rollup/plugin-replace';
 import { builtinModules } from 'module';
+import { string } from 'rollup-plugin-string';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -205,6 +206,9 @@ const browserConfig = {
       ],
       limit: Infinity,
       emitFiles: false,
+    }),
+    string({
+      include: '**/web-components/*.html',
     }),
     typescript(),
     nodeResolve({
