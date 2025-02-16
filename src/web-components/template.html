@@ -9,13 +9,24 @@
     font-family: monospace;
   }
   /* Mode toggle area */
-  #modeToggle {
+  #navbar {
     flex: 0 0 auto;
     padding: 10px;
     background: #222;
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: space-between;
+  }
+  .logo-container {
+    flex: 0 0 auto;
+  }
+  .logo-container img {
+    height: 40px;
+  }
+  .tabs-container {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
     gap: 10px;
   }
   .tab-button {
@@ -31,22 +42,25 @@
     border-bottom: 2px solid #007bff;
     background-color: #222;
   }
+  .download-container {
+    flex: 0 0 auto;
+  }
   /* Main content area (video + charts) fills remaining space */
-  .main-content {
+  #main-content {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
   }
   /* Video container: 40% of viewport height */
-  .video-container {
+  #video-container {
     position: relative;
     width: 100%;
     height: 40vh;
     overflow: hidden;
     background: black;
   }
-  .video-container video,
-  .video-container canvas {
+  #video-container video,
+  #video-container canvas {
     position: absolute;
     top: 0;
     left: 0;
@@ -54,11 +68,11 @@
     height: 100%;
     object-fit: contain;
   }
-  .video-container canvas {
+  #video-container canvas {
     pointer-events: none;
   }
   /* Charts container: 40% of viewport height */
-  .charts-container {
+  #charts-container {
     width: 100%;
     height: 40vh;
     background: black;
@@ -109,7 +123,6 @@
     border-radius: 5px;
     cursor: pointer;
   }
-  /* FPS and Log */
   #fpsDisplay {
     font-size: 14px;
     color: #0f0;
@@ -124,7 +137,6 @@
     padding: 5px;
     border: 1px solid #333;
   }
-  /* Method dropdown */
   #methodSelect {
     padding: 8px;
     font-size: 16px;
@@ -132,18 +144,13 @@
     color: white;
     border: none;
   }
-  /* Download button */
   #downloadButton {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
     padding: 10px 20px;
     background-color: #007bff;
     border: none;
     border-radius: 5px;
     color: white;
     cursor: pointer;
-    z-index: 1000;
   }
   /* Drop zone for file mode */
   #dropZone {
@@ -187,14 +194,21 @@
   }
 </style>
 
-<!-- The markup for the widget -->
-<div id="modeToggle">
-  <button id="webcamModeButton" class="tab-button">Webcam</button>
-  <button id="fileModeButton" class="tab-button">File</button>
+<div id="navbar">
+  <div class="logo-container">
+    <img src="__LOGO_URL__" alt="VitalLens Logo" />
+  </div>
+  <div class="tabs-container">
+    <button id="webcamModeButton" class="tab-button">Webcam</button>
+    <button id="fileModeButton" class="tab-button">File</button>
+  </div>
+  <div class="download-container">
+    <button id="downloadButton">Download JSON</button>
+  </div>
 </div>
 
-<div class="main-content">
-  <div class="video-container" id="video-container">
+<div id="main-content">
+  <div id="video-container">
     <video id="video" autoplay muted playsinline style="display: none;"></video>
     <canvas id="canvas" style="display: none;"></canvas>
     <div id="dropZone" style="display: none;">
@@ -214,7 +228,7 @@
     <div id="log"></div>
     <button id="controlButton"></button>
   </div>
-  <div class="charts-container">
+  <div id="charts-container">
     <div class="chart-wrapper">
       <div class="chart-container">
         <canvas id="ppgChart"></canvas>
@@ -228,5 +242,4 @@
       <div class="vital-stats" id="respStats"></div>
     </div>
   </div>
-  <button id="downloadButton">Download JSON</button>
 </div>

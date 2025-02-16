@@ -2,6 +2,7 @@
 import { VitalLens } from '../core/VitalLens.browser';
 import { VitalLensOptions } from '../types';
 import template from './template.html';
+import logoUrl from '../../assets/vitallens-logo.png';
 import {
   Chart,
   ChartDataset,
@@ -85,7 +86,7 @@ class VitalLensWidget extends HTMLElement {
     super();
     // Create a shadow DOM and inject the template.
     const shadow = this.attachShadow({ mode: 'open' });
-    shadow.innerHTML = template;
+    shadow.innerHTML = template.replace('__LOGO_URL__', logoUrl);
   }
 
   connectedCallback() {

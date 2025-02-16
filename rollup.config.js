@@ -207,6 +207,12 @@ const browserConfig = {
       limit: Infinity,
       emitFiles: false,
     }),
+    url({
+      include: ['**/*.png'],
+      limit: Infinity,
+      emitFiles: true,
+      fileName: '[dirname][hash][extname]',
+    }),
     string({
       include: '**/web-components/*.html',
     }),
