@@ -68,13 +68,11 @@ class VitalLensWidget extends HTMLElement {
   private controlButtonElement!: HTMLButtonElement;
   private methodSelectElement!: HTMLSelectElement;
   private fpsDisplayElement!: HTMLElement;
-  private logElement!: HTMLElement;
   private downloadButtonElement!: HTMLButtonElement;
   private vitalLensInstance!: VitalLens;
   private charts: any = {};
   private videoFileLoaded: File | null = null;
   private currentMethod: 'vitallens' | 'pos' | 'chrom' | 'g' = 'vitallens';
-  private logMessages: string[] = [];
   private latestResult: any = null;
   private isProcessingFlag: boolean = false;
   private MAX_DATA_POINTS: number = 300;
@@ -100,11 +98,11 @@ class VitalLensWidget extends HTMLElement {
     /// Bind UI events.
     this.bindEvents();
     // Initialize charts using Chart.js.
-    this.charts.ppgChart = this.createChart('ppgChart', 'Pulse', '255,0,0');
+    this.charts.ppgChart = this.createChart('ppgChart', 'Pulse', '230,34,0');
     this.charts.respChart = this.createChart(
       'respChart',
       'Respiration',
-      '0,0,255'
+      '0,123,255'
     );
     // Start in file mode by default.
     this.switchMode('file');
@@ -148,22 +146,14 @@ class VitalLensWidget extends HTMLElement {
     this.fpsDisplayElement = this.shadowRoot!.querySelector(
       '#fpsDisplay'
     ) as HTMLElement;
-    this.logElement = this.shadowRoot!.querySelector('#log') as HTMLElement;
     this.downloadButtonElement = this.shadowRoot!.querySelector(
       '#downloadButton'
     ) as HTMLButtonElement;
   }
 
-  private addLog(message: string) {
-    if (this.logMessages.length >= 2) {
-      this.logMessages.shift();
-    }
-    this.logMessages.push(message);
-    this.logElement.textContent = this.logMessages.join('\n');
-  }
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private updateFpsDisplay(fps: number, estFps: number) {
-    this.fpsDisplayElement.textContent = `FPS: ${fps ? fps.toFixed(1) : 'N/A'} | estFps: ${estFps ? estFps.toFixed(1) : 'N/A'}`;
+    this.fpsDisplayElement.textContent = `FPS: ${fps ? fps.toFixed(1) : 'N/A'}`;
   }
 
   private createChart(elementId: string, label: string, baseColor: string) {
@@ -345,7 +335,7 @@ class VitalLensWidget extends HTMLElement {
       `#${elementId}`
     ) as HTMLElement;
     if (!element) return;
-    const color = elementId === 'ppgStats' ? 'red' : 'blue';
+    const color = elementId === 'ppgStats' ? '#e62300' : '#007bff';
     element.innerHTML = `
       <p style="font-size: 16px; margin: 10px 0 0; font-weight: bold; color: ${color};">${label}</p>
       <p style="font-size: 48px; margin: 16px 0 0; font-weight: bold; color: ${color};">
@@ -424,7 +414,6 @@ class VitalLensWidget extends HTMLElement {
         this.handleVitalLensResults.bind(this)
       );
     } catch (e) {
-      this.addLog('Error initializing VitalLens: ' + (e as Error).message);
       console.error(e);
     }
   }
@@ -442,7 +431,6 @@ class VitalLensWidget extends HTMLElement {
         this.videoElement.play();
       };
     } catch (e) {
-      this.addLog('Error accessing webcam: ' + (e as Error).message);
       console.error(e);
     }
   }
@@ -457,7 +445,6 @@ class VitalLensWidget extends HTMLElement {
   }
 
   private setupFileModeUI() {
-    this.addLog('File mode activated.');
     this.dropZoneElement.style.display = 'flex';
     this.videoElement.style.display = 'none';
     this.canvasElement.style.display = 'none';
@@ -466,7 +453,6 @@ class VitalLensWidget extends HTMLElement {
   }
 
   private async loadAndProcessFile(file: File) {
-    this.addLog('Processing file: ' + file.name);
     this.dropZoneElement.style.display = 'none';
     this.spinnerElement.style.display = 'block';
     this.videoElement.style.display = 'block';
@@ -487,11 +473,9 @@ class VitalLensWidget extends HTMLElement {
   private async processFile(file: File) {
     try {
       const result = await this.vitalLensInstance.processVideoFile(file);
-      this.addLog('File processing complete.');
       this.enablePlaybackDotPlugin();
       this.handleVitalLensResults(result);
     } catch (e) {
-      this.addLog('Error processing file: ' + (e as Error).message);
       console.error(e);
     }
   }
@@ -612,12 +596,10 @@ class VitalLensWidget extends HTMLElement {
         if (this.isProcessingFlag) {
           this.vitalLensInstance.pauseVideoStream();
           this.controlButtonElement.textContent = 'Resume';
-          this.addLog('Webcam paused.');
           this.isProcessingFlag = false;
         } else {
           this.vitalLensInstance.startVideoStream();
           this.controlButtonElement.textContent = 'Pause';
-          this.addLog('Webcam resumed.');
           this.isProcessingFlag = true;
         }
       } else if (this.mode === 'file') {
@@ -637,9 +619,6 @@ class VitalLensWidget extends HTMLElement {
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();
-        this.addLog('Results downloaded.');
-      } else {
-        this.addLog('No result available to download.');
       }
     });
     window.addEventListener('resize', () => this.handleResize());
