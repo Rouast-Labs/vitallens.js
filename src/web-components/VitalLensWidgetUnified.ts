@@ -10,10 +10,14 @@ class VitalLensWidgetUnified extends VitalLensWidgetBase {
     this.apiKey = this.getAttribute('api-key') || '';
     this.proxyUrl = this.getAttribute('proxy-url') || null;
     this.bindEvents();
-    this.charts.ppgChart = this.createChart('ppgChart', 'Pulse', '230,34,0');
+    this.charts.ppgChart = this.createChart(
+      'ppgChart',
+      'PPG Waveform',
+      '230,34,0'
+    );
     this.charts.respChart = this.createChart(
       'respChart',
-      'Respiration',
+      'Respiratory Waveform',
       '0,123,255'
     );
     this.switchMode('file');

@@ -2,7 +2,7 @@
 import { VitalLens } from '../core/VitalLens.browser';
 import { VitalLensOptions } from '../types';
 import widget from './widget.html';
-import logoUrl from '../../assets/vitallens-logo.png';
+import logoUrl from '../../assets/vitallens_api.png';
 import {
   Chart,
   ChartDataset,
@@ -14,7 +14,7 @@ import {
   ScriptableLineSegmentContext,
 } from 'chart.js';
 
-// Register the playbackDot plugin.
+// Register plugins.
 const playbackDotPlugin = {
   id: 'playbackDot',
   afterDatasetsDraw(chart: Chart, args: { cancelable: boolean }, options: any) {
@@ -44,6 +44,30 @@ const playbackDotPlugin = {
     ctx.restore();
   },
 };
+const overlayTitlePlugin = {
+  id: 'overlayTitle',
+  afterDraw(
+    chart: Chart,
+    args: any,
+    options: { text: string; font?: string; color?: string }
+  ) {
+    const ctx = chart.ctx;
+    const chartArea = chart.chartArea;
+    if (!chartArea) return;
+    ctx.save();
+    ctx.font = options.font || 'bold 16px sans-serif';
+    const text = options.text || '';
+    const textWidth = ctx.measureText(text).width;
+    const textHeight = 16;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(chartArea.left, chartArea.top, textWidth + 8, textHeight + 8);
+    ctx.fillStyle = options.color || 'white';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(options.text || '', chartArea.left, chartArea.top + 8);
+    ctx.restore();
+  },
+};
 
 Chart.register(
   CategoryScale,
@@ -51,7 +75,8 @@ Chart.register(
   LinearScale,
   PointElement,
   LineElement,
-  playbackDotPlugin
+  playbackDotPlugin,
+  overlayTitlePlugin
 );
 
 export interface MyLineDataset extends ChartDataset<'line', number[]> {
@@ -135,15 +160,15 @@ export class VitalLensWidgetBase extends HTMLElement {
     const ctx = (
       this.shadowRoot!.querySelector(`#${elementId}`) as HTMLCanvasElement
     ).getContext('2d');
-    return new Chart(ctx!, {
+    const chart = new Chart(ctx!, {
       type: 'line',
       data: {
-        labels: [] as string[],
+        labels: [],
         datasets: [
           {
             label,
-            data: [] as number[],
-            confidence: [] as number[],
+            data: [],
+            confidence: [],
             borderColor: `rgba(${baseColor},1)`,
             segment: {
               borderColor: (ctx: ScriptableLineSegmentContext): string => {
@@ -170,20 +195,19 @@ export class VitalLensWidgetBase extends HTMLElement {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            display: true,
-            position: 'top',
-            align: 'start',
-            labels: {
-              boxWidth: 0,
-              color: `rgba(${baseColor},1)`,
-              font: { size: 16, weight: 'bold' },
-            },
+            display: false,
           },
         },
         animation: false,
         scales: { x: { display: false }, y: { display: false } },
       },
-    });
+    }) as any;
+    chart.options.plugins.overlayTitle = {
+      text: label,
+      font: 'bold 16px sans-serif',
+      color: `rgba(${baseColor},1)`,
+    };
+    return chart;
   }
 
   private updateChart(

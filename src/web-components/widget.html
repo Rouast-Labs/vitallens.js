@@ -8,7 +8,7 @@
     overflow: hidden;
     background: black;
     color: white;
-    font-family: monospace;
+    font-family: Arial, sans-serif;
     box-sizing: border-box;
   }
   /* Navbar area */
@@ -20,12 +20,34 @@
     align-items: center;
     justify-content: space-between;
   }
+  .logo-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: white;
+  }
   .logo-container {
     flex: 0 0 auto;
   }
   .logo-container img {
     height: 40px;
+    border-radius: 8px;
+    margin-right: 8px;
   }
+  .logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .logo-text .powered-by {
+    font-size: 12px;
+    font-weight: normal;
+  }
+  .logo-text .api-name {
+    font-size: 16px;
+    font-weight: bold;
+  }
+  /* Tabs and download button */
   #tabs-container {
     flex: 1 1 auto;
     display: flex;
@@ -201,9 +223,15 @@
 </style>
 
 <div id="navbar">
-  <div class="logo-container">
-    <img src="__LOGO_URL__" alt="VitalLens Logo" />
-  </div>
+  <a href="https://www.rouast.com/api/" target="_blank" class="logo-link">
+    <div class="logo-container">
+      <img src="__LOGO_URL__" alt="VitalLens API" />
+    </div>
+    <div class="logo-text">
+      <div class="powered-by">Powered by</div>
+      <div class="api-name">VitalLens API</div>
+    </div>
+  </a>
   <div id="tabs-container">
     <button id="webcamModeButton" class="tab-button">Webcam</button>
     <button id="fileModeButton" class="tab-button">File</button>
