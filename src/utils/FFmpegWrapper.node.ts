@@ -79,6 +79,8 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
         let rotation = 0;
         if (videoStream.tags?.rotate) {
           rotation = parseInt(videoStream.tags.rotate, 10);
+        } else if (videoStream.rotation) {
+          rotation = parseInt(videoStream.rotation as string);
         } else if (videoStream.side_data_list?.[0]?.rotation !== undefined) {
           rotation = parseInt(videoStream.side_data_list[0].rotation, 10);
         }

@@ -221,11 +221,15 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
     const bitrateMatch = output.match(/bitrate:\s*(\d+)\s*kb\/s/);
     const bitrate = bitrateMatch ? parseInt(bitrateMatch[1], 10) : 0;
 
+    // Parse rotation info (if available)
+    // Look for a line like: "displaymatrix: rotation of -90.00 degrees"
+    const rotationRegex =
+      /displaymatrix:\s*rotation\s*of\s*(-?\d+(?:\.\d+)?)\s*degrees/;
+    const rotationMatch = output.match(rotationRegex);
+    const rotation = rotationMatch ? parseFloat(rotationMatch[1]) : 0;
+
     // Infer total frames based on duration and fps.
     const totalFrames = Math.round(duration * fps);
-
-    // Rotation is not available from this output; default to 0.
-    const rotation = 0;
 
     // Flag indicating potential issues (if values had to be inferred, etc.)
     const issues = false;
