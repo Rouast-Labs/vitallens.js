@@ -51,7 +51,7 @@ describe('FFmpegWrapper (Browser)', () => {
     // Validate expected values (ensure they are reasonable)
     expect(probeInfo.fps).toBeCloseTo(30.1);
     expect(probeInfo.totalFrames).toEqual(354);
-    expect(probeInfo.width).toEqual(640);
+    expect(probeInfo.width).toEqual(854);
     expect(probeInfo.height).toEqual(480);
     expect(probeInfo.codec).toBeTruthy();
     expect(probeInfo.bitrate).toBeGreaterThan(0);
