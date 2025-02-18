@@ -6,6 +6,6 @@ export interface IVitalsEstimateManager {
     sourceId: string,
     defaultWaveformMode: string,
     light: boolean
-  ): Promise<VitalLensResult>;
+  ): Promise<VitalLensResult | null>;
   getResult(sourceId: string): Promise<VitalLensResult>;
 }
