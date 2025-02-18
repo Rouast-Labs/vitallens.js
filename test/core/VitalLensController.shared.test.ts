@@ -361,7 +361,9 @@ describe('VitalLensControllerBase', () => {
       ).toHaveBeenCalledWith(
         mockIncrementalResult,
         'frameIteratorId',
-        'complete'
+        'complete',
+        true,
+        false
       );
 
       // Ensure final cleanup is called and buffer state reset for this file ID

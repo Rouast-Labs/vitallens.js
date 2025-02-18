@@ -75,14 +75,16 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param sourceId - The source identifier (e.g., streamId or videoId).
    * @param defaultWaveformMode - The default waveformMode to set.
    * @param light Whether to do only light processing.
+   * @param returnResult Whether a result should be returned.
    * @returns The aggregated result.
    */
   async processIncrementalResult(
     incrementalResult: VitalLensResult,
     sourceId: string,
     defaultWaveformMode: string,
-    light: boolean = true
-  ): Promise<VitalLensResult> {
+    light: boolean = true,
+    returnResult: boolean = true
+  ): Promise<VitalLensResult | null> {
     const currentTime = performance.now();
     const ppgWaveformData = incrementalResult.vital_signs?.ppg_waveform?.data;
     const ppgWaveformConf =
@@ -159,14 +161,18 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       : undefined;
     this.lastEstimateTimestamps.set(sourceId, currentTime);
 
-    return await this.assembleResult(
-      sourceId,
-      waveformMode,
-      light,
-      overlap,
-      incrementalResult,
-      estFps
-    );
+    if (returnResult) {
+      return await this.assembleResult(
+        sourceId,
+        waveformMode,
+        light,
+        overlap,
+        incrementalResult,
+        estFps
+      );
+    } else {
+      return null;
+    }
   }
 
   /**

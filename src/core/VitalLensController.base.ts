@@ -158,7 +158,9 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
             await this.vitalsEstimateManager.processIncrementalResult(
               incrementalResult,
               frameIterator.getId(),
-              'windowed'
+              'windowed',
+              true,
+              true
             );
           this.dispatchEvent('vitals', result);
         }
@@ -238,11 +240,12 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
             new Float32Array(incrementalResult.state.data)
           );
         }
-        // TODO: Tell manager not to return anything
         await this.vitalsEstimateManager.processIncrementalResult(
           incrementalResult,
           frameIterator.getId(),
-          'complete'
+          'complete',
+          true,
+          false
         );
       }
     }
