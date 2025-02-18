@@ -153,7 +153,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
       options.pixelFormat || 'rgb24',
       '-f',
       'rawvideo',
-      '-vsync', // TODO: -fps_mode instead?
+      '-vsync',
       'passthrough',
       outputName,
     ]);
