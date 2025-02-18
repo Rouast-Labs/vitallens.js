@@ -285,7 +285,6 @@ export class Frame {
   /**
    * Returns a plain object representation of this Frame that is transferable.
    * It includes the raw data and metadata necessary to reconstruct the Frame.
-   * TODO
    */
   toTransferable(): FrameTransferable {
     return {
