@@ -21,8 +21,6 @@ function onwarn(warning, defaultHandler) {
   defaultHandler(warning);
 }
 
-// TODO: Check if any options have become are superfluous
-
 const nodeExternals = ['@tensorflow/tfjs-node', ...builtinModules];
 
 const ffmpegWorkerBundleConfig = {
