@@ -125,7 +125,7 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
       ffmpeg(filePath)
         .outputOptions('-pix_fmt', options.pixelFormat || 'rgb24')
         .outputOptions('-f', 'rawvideo')
-        .outputOptions('-vsync', 'passthrough')
+        .outputOptions('-vsync', 'passthrough') // TODO: -fps_mode instead?
         .outputOptions('-frame_pts', 'true')
         .videoFilters(filters)
         .save(tempFile)

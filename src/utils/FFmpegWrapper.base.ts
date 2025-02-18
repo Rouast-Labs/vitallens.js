@@ -95,6 +95,8 @@ export abstract class FFmpegWrapperBase implements IFFmpegWrapper {
 
     // Apply cropping
     if (options.crop) {
+      // Note: If video has rotation, ffmpeg swaps given params around if necessary
+      // E.g., if video has -90 rotation, w:h:x:y are internally swapped to h:w:y:x by ffmpeg
       const { x0, y0, x1, y1 } = options.crop;
       filters.push(`crop=${x1 - x0}:${y1 - y0}:${x0}:${y0}`);
     }
@@ -102,6 +104,8 @@ export abstract class FFmpegWrapperBase implements IFFmpegWrapper {
     // Apply scaling
     if (options.scale) {
       const scaleAlgorithm = options.scaleAlgorithm || 'bicubic';
+      // Note: If video has rotation, ffmpeg swaps given params around if necessary
+      // E.g., if video has -90 rotation, w:h are internally swapped to h:w by ffmpeg
       filters.push(`scale=${targetW}:${targetH}:flags=${scaleAlgorithm}`);
     }
 

@@ -58,12 +58,23 @@ self.onmessage = async (event: MessageEvent) => {
       probeInfo
     );
 
+    // Create effective width and height (w, h) based on probeInfo.
+    let w = probeInfo.width;
+    let h = probeInfo.height;
+    const absRotation = Math.abs(probeInfo.rotation);
+    if (absRotation === 90) {
+      // Swap width and height if rotated 90 degrees.
+      [w, h] = [h, w];
+    } else if (absRotation !== 0) {
+      throw new Error(`Unsupported rotation angle: ${probeInfo.rotation}`);
+    }
+
     // Convert to absolute coordinates
     const absoluteDets = dets.map(({ x0, y0, x1, y1 }) => ({
-      x0: Math.round(x0 * probeInfo.width),
-      y0: Math.round(y0 * probeInfo.height),
-      x1: Math.round(x1 * probeInfo.width),
-      y1: Math.round(y1 * probeInfo.height),
+      x0: Math.round(x0 * w),
+      y0: Math.round(y0 * h),
+      x1: Math.round(x1 * w),
+      y1: Math.round(y1 * h),
     }));
 
     // Return the detections along with any additional info.
