@@ -17,11 +17,14 @@ import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.browser';
 import { createWorkerBlobURL } from '../utils/workerOps';
 
 export class VitalLensController extends VitalLensControllerBase {
-  protected createRestClient(apiKey: string): IRestClient {
-    return new RestClient(apiKey);
+  protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
+    return new RestClient(apiKey, proxyUrl);
   }
-  protected createWebSocketClient(apiKey: string): IWebSocketClient {
-    return new WebSocketClient(apiKey);
+  protected createWebSocketClient(
+    apiKey: string,
+    proxyUrl?: string
+  ): IWebSocketClient {
+    return new WebSocketClient(apiKey, proxyUrl);
   }
   protected createFFmpegWrapper(): IFFmpegWrapper {
     return new FFmpegWrapper();
@@ -32,10 +35,6 @@ export class VitalLensController extends VitalLensControllerBase {
 
     // Create the browser Worker using the blob URL.
     const worker = new Worker(blobURL, { type: 'module' });
-
-    // Optionally, if you know when you're done with the worker you can later call:
-    // URL.revokeObjectURL(blobURL);
-    // (typically after worker termination)
 
     // Wrap the worker with your interface wrapper.
     return new FaceDetectionWorker(worker);

@@ -10,12 +10,12 @@ export abstract class RestClientBase implements IRestClient {
   private apiKey: string;
   protected headers: Record<string, string>;
 
-  constructor(apiKey: string) {
-    this.url = this.getRestEndpoint();
+  constructor(apiKey: string, proxyUrl?: string) {
+    this.url = proxyUrl ?? this.getRestEndpoint();
     this.apiKey = apiKey;
     this.headers = {
       'Content-Type': 'application/json',
-      'x-api-key': this.apiKey,
+      ...(proxyUrl ? {} : { 'x-api-key': this.apiKey }),
     };
   }
 

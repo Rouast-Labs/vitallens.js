@@ -64,6 +64,7 @@ describe('VitalLensController (Browser)', () => {
     apiKey: 'test-key',
     method: 'vitallens',
     requestMode: 'rest',
+    proxyUrl: 'mock-url',
   };
 
   beforeEach(() => {
@@ -73,22 +74,44 @@ describe('VitalLensController (Browser)', () => {
   });
 
   describe('createRestClient', () => {
-    test('should create a RestClient', () => {
+    test('should create a RestClient if API key provided', () => {
       const restClient = (controller as any).createRestClient(
         mockOptions.apiKey
       );
-      expect(RestClient).toHaveBeenCalledWith(mockOptions.apiKey);
+      expect(RestClient).toHaveBeenCalledWith(mockOptions.apiKey, undefined);
+      // Since RestClient is a mock constructor, we can also check that the returned value is an instance.
+      expect(restClient).toBeInstanceOf(RestClient);
+    });
+
+    test('should create a RestClient if proxyUrl provided', () => {
+      const restClient = (controller as any).createRestClient(
+        '',
+        mockOptions.proxyUrl
+      );
+      expect(RestClient).toHaveBeenCalledWith('', mockOptions.proxyUrl);
       // Since RestClient is a mock constructor, we can also check that the returned value is an instance.
       expect(restClient).toBeInstanceOf(RestClient);
     });
   });
 
   describe('createWebSocketClient', () => {
-    test('should create a WebSocketClient', () => {
+    test('should create a WebSocketClient when API key provided', () => {
       const wsClient = (controller as any).createWebSocketClient(
         mockOptions.apiKey
       );
-      expect(WebSocketClient).toHaveBeenCalledWith(mockOptions.apiKey);
+      expect(WebSocketClient).toHaveBeenCalledWith(
+        mockOptions.apiKey,
+        undefined
+      );
+      expect(wsClient).toBeInstanceOf(WebSocketClient);
+    });
+
+    test('should create a WebSocketClient when proxyUrl provided', () => {
+      const wsClient = (controller as any).createWebSocketClient(
+        '',
+        mockOptions.proxyUrl
+      );
+      expect(WebSocketClient).toHaveBeenCalledWith('', mockOptions.proxyUrl);
       expect(wsClient).toBeInstanceOf(WebSocketClient);
     });
   });

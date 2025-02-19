@@ -15,5 +15,5 @@ export const CALC_HR_MIN_WINDOW_SIZE = 2;
 export const CALC_RR_WINDOW_SIZE = 30;
 export const CALC_RR_MIN_WINDOW_SIZE = 4;
 
-export const FDET_DEFAULT_FS_FILE = 0.2;
+export const FDET_DEFAULT_FS_FILE = 0.5;
 export const FDET_DEFAULT_FS_STREAM = 1.0;

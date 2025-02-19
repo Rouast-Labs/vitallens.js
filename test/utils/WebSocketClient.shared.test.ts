@@ -66,6 +66,17 @@ describe('WebSocketClientBase', () => {
     expect(client.getIsConnected()).toBe(false);
   });
 
+  it('should set URL using getUrl when no proxyUrl is provided', () => {
+    // Access protected property via cast
+    expect((client as any).url).toEqual('test-url');
+  });
+
+  it('should set URL to the provided proxyUrl when given', () => {
+    const proxyUrl = 'wss://example.com/proxy';
+    const clientWithProxy = new TestWebSocketClient('test-api-key', proxyUrl);
+    expect((clientWithProxy as any).url).toEqual(proxyUrl);
+  });
+
   it('should connect and set connection status to true', async () => {
     await client.connect();
     expect(client.getIsConnected()).toBe(true);

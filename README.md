@@ -253,6 +253,71 @@ The repository contains several ready-to-run examples:
 
 Try opening the HTML examples in your browser or running the Node script to see `vitallens.js` in action.
 
+## Securing your API Key
+
+For security reasons, we recommend that you do not expose your API Key directly in client-side code. There are two primary approaches to secure your API Key:
+
+### 1. Run Everything on your Server
+
+If you are building a server-side application using Node.js, your API Key remains securely on your server. Simply call the API directly from your backend code without exposing your credentials.
+
+### 2. Use a Proxy Server for Client-Side Code
+
+If you need to use `vitallens.js` in a browser, you can set up a proxy server. The proxy server receives requests from the client, attaches your API Key (stored securely on the server), and forwards the request to the VitalLens API. This way, the API key is never exposed to the client.
+
+Our client library supports this by accepting a `proxyUrl` option. For example:
+
+```js
+import { VitalLens } from 'vitallens';
+const vl = new VitalLens({
+  method: 'vitallens',
+  proxyUrl: 'https://your-proxy-server.com/api' // URL to your deployed proxy server
+});
+```
+
+### Sample Proxy Server Implementation
+
+Below is a simple Node.js/Express proxy server implementation that you can use as a starting point:
+
+```js
+const express = require('express');
+const bodyParser = require('body-parser');
+const fetch = require('node-fetch');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Securely store your API key in an environment variable
+const API_KEY = process.env.VITALLENS_API_KEY;
+const VITALLENS_ENDPOINT = 'https://api.rouast.com/vitallens'; // Update if necessary
+
+app.use(bodyParser.json({ limit: '10mb' }));
+
+app.post('/', async (req, res) => {
+  try {
+    const response = await fetch(VITALLENS_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.text();
+    res.status(response.status).send(data);
+  } catch (error) {
+    console.error('Proxy error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Proxy server listening on port ${PORT}`);
+});
+```
+
+You can deploy this proxy server on any Node.js hosting platform (such as Heroku, Vercel, or your own server) and then set the URL as the `proxyUrl` in your VitalLens client configuration.
+
 ## Development
 
 ### Building the Library

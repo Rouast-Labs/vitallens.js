@@ -26,7 +26,7 @@ jest.mock('../../src/methods/MethodHandlerFactory');
 jest.mock('../../src/processing/VitalsEstimateManager');
 
 class TestVitalLensController extends VitalLensControllerBase {
-  protected createRestClient(apiKey: string): IRestClient {
+  protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
     return { sendFrames: jest.fn() };
   }
   protected createWebSocketClient(apiKey: string): IWebSocketClient {
@@ -175,7 +175,7 @@ describe('VitalLensControllerBase', () => {
       };
       expect(() =>
         controller['createMethodHandler'](optionsWithoutApiKey)
-      ).toThrowError(/An API key is required/);
+      ).toThrowError(/An API key or proxyUrl is required/);
     });
 
     test('should throw an error if requestMode is websocket', () => {

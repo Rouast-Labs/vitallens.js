@@ -25,8 +25,8 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket>
   protected url: string;
   protected isConnected: boolean = false;
 
-  constructor(apiKey: string) {
-    this.url = this.getUrl(apiKey);
+  constructor(apiKey: string, proxyUrl?: string) {
+    this.url = proxyUrl ?? this.getUrl(apiKey);
   }
 
   /**

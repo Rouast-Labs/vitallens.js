@@ -17,11 +17,14 @@ import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.node';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 
 export class VitalLensController extends VitalLensControllerBase {
-  protected createRestClient(apiKey: string): IRestClient {
-    return new RestClient(apiKey);
+  protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
+    return new RestClient(apiKey, proxyUrl);
   }
-  protected createWebSocketClient(apiKey: string): IWebSocketClient {
-    return new WebSocketClient(apiKey);
+  protected createWebSocketClient(
+    apiKey: string,
+    proxyUrl?: string
+  ): IWebSocketClient {
+    return new WebSocketClient(apiKey, proxyUrl);
   }
   protected createFFmpegWrapper(): IFFmpegWrapper {
     return new FFmpegWrapper();

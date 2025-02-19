@@ -53,12 +53,18 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   /**
    * Subclasses must return the appropriate RestClient instance.
    */
-  protected abstract createRestClient(apiKey: string): IRestClient;
+  protected abstract createRestClient(
+    apiKey: string,
+    proxyUrl?: string
+  ): IRestClient;
 
   /**
    * Subclasses must return the appropriate WebSocketClient instance.
    */
-  protected abstract createWebSocketClient(apiKey: string): IWebSocketClient;
+  protected abstract createWebSocketClient(
+    apiKey: string,
+    proxyUrl?: string
+  ): IWebSocketClient;
 
   /**
    * Subclasses must return the appropriate FFmpegWrapper instance.
@@ -90,9 +96,13 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @returns The method handler instance.
    */
   protected createMethodHandler(options: VitalLensOptions): MethodHandler {
-    if (options.method === 'vitallens' && !options.apiKey) {
+    if (
+      options.method === 'vitallens' &&
+      !options.apiKey &&
+      !options.proxyUrl
+    ) {
       throw new Error(
-        'An API key is required to use method=vitallens, but was not provided. ' +
+        'An API key or proxyUrl is required to use method=vitallens, but was not provided. ' +
           'Get one for free at https://www.rouast.com/api.'
       );
     }
@@ -106,11 +116,17 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     const dependencies = {
       // webSocketClient:
       //   options.method === 'vitallens' && requestMode === 'websocket'
-      //     ? this.createWebSocketClient(this.options.apiKey!)
+      //     ? this.createWebSocketClient(
+      //         this.options.apiKey ?? '',
+      //         this.options.proxyUrl
+      //       )
       //     : undefined,
       restClient:
         options.method === 'vitallens' && requestMode === 'rest'
-          ? this.createRestClient(this.options.apiKey!)
+          ? this.createRestClient(
+              this.options.apiKey ?? '',
+              this.options.proxyUrl
+            )
           : undefined,
     };
     return MethodHandlerFactory.createHandler(options, dependencies);

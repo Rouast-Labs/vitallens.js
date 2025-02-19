@@ -28,6 +28,7 @@ describe('RestClientBase', () => {
   let client: RestClientBase;
 
   beforeEach(() => {
+    // Updated constructor: pass options object with apiKey (and optionally proxyUrl)
     client = new MockRestClient('test-api-key');
   });
 
@@ -44,5 +45,21 @@ describe('RestClientBase', () => {
     await expect(
       client.sendFrames({ bad: true }, new Uint8Array([1, 2, 3]))
     ).rejects.toThrow('HTTP 500: Internal Server Error');
+  });
+
+  it('should set URL to the provided proxyUrl and omit x-api-key header when proxyUrl is used', () => {
+    const proxyUrl = 'https://example.com/proxy';
+    const clientWithProxy = new MockRestClient('test-api-key', proxyUrl);
+    expect((clientWithProxy as any).url).toEqual(proxyUrl);
+    expect((clientWithProxy as any).headers).not.toHaveProperty('x-api-key');
+  });
+
+  it('should set URL to default endpoint and include x-api-key header when no proxyUrl is provided', () => {
+    const clientNoProxy = new MockRestClient('test-api-key');
+    expect((clientNoProxy as any).url).toEqual(VITALLENS_REST_ENDPOINT);
+    expect((clientNoProxy as any).headers).toHaveProperty(
+      'x-api-key',
+      'test-api-key'
+    );
   });
 });
