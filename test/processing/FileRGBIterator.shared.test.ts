@@ -73,28 +73,30 @@ class DummyFaceDetectionWorker implements IFaceDetectionWorker {
     type: string,
     listener: EventListenerOrEventListenerObject
   ): void {}
-  detectFaces = jest.fn(async (videoInput: VideoInput, type: string) => {
-    // For testing the "face detection" branch, we simulate a detection.
-    const expectedROI: ROI = {
-      x0: Math.round(0.1 * 640),
-      y0: Math.round(0.1 * 480),
-      x1: Math.round(0.4 * 640),
-      y1: Math.round(0.4 * 480),
-    };
-    // Also supply a probeInfo similar to what FFmpeg returns.
-    const probeInfo: VideoProbeResult = {
-      totalFrames: 20,
-      fps: 10,
-      width: 640,
-      height: 480,
-      codec: 'h264',
-      bitrate: 1000,
-      rotation: 0,
-      issues: false,
-    };
-    // You could return multiple detections if desired. Here we return one.
-    return { detections: Array(20).fill(expectedROI), probeInfo };
-  });
+  detectFaces = jest.fn(
+    async (videoInput: VideoInput, type: string, fs: number) => {
+      // For testing the "face detection" branch, we simulate a detection.
+      const expectedROI: ROI = {
+        x0: Math.round(0.1 * 640),
+        y0: Math.round(0.1 * 480),
+        x1: Math.round(0.4 * 640),
+        y1: Math.round(0.4 * 480),
+      };
+      // Also supply a probeInfo similar to what FFmpeg returns.
+      const probeInfo: VideoProbeResult = {
+        totalFrames: 20,
+        fps: 10,
+        width: 640,
+        height: 480,
+        codec: 'h264',
+        bitrate: 1000,
+        rotation: 0,
+        issues: false,
+      };
+      // You could return multiple detections if desired. Here we return one.
+      return { detections: Array(20).fill(expectedROI), probeInfo };
+    }
+  );
 }
 
 // Dummy options and method config.

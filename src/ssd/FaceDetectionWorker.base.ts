@@ -23,6 +23,7 @@ export abstract class FaceDetectionWorkerBase implements IFaceDetectionWorker {
   async detectFaces(
     data: FaceDetectorInput,
     dataType: 'video' | 'frame',
+    fs: number,
     timestamp?: number
   ): Promise<{ detections: ROI[]; probeInfo: VideoProbeResult }> {
     return new Promise((resolve, reject) => {
@@ -51,6 +52,7 @@ export abstract class FaceDetectionWorkerBase implements IFaceDetectionWorker {
         id: requestId,
         data,
         dataType,
+        fs,
         timestamp,
       });
     });

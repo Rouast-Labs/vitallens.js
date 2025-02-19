@@ -119,7 +119,7 @@ describe('FaceDetectorAsync shared tests', () => {
     const mockTensor = tf.tensor3d(mockData, [224, 224, 3]);
     const frame = Frame.fromTensor(mockTensor, true, [0]);
 
-    const results: ROI[] = await faceDetector.detect(frame);
+    const results: ROI[] = await faceDetector.detect(frame, 1.0);
     const expectedResults = [{ x0: 0.2, y0: 0.2, x1: 0.6, y1: 0.6 }];
     expect(areROIsClose(results, expectedResults)).toBe(true);
 
@@ -134,7 +134,7 @@ describe('FaceDetectorAsync shared tests', () => {
     const frame = Frame.fromTensor(mockTensor, true, [0]);
 
     (uninitializedDetector as any).model = null;
-    await expect(uninitializedDetector.detect(frame)).rejects.toThrow(
+    await expect(uninitializedDetector.detect(frame, 1.0)).rejects.toThrow(
       'Face detection model is not loaded. Call .load() first.'
     );
     mockTensor.dispose();
@@ -222,6 +222,7 @@ describe('FaceDetectorAsync shared tests', () => {
 
       const results: ROI[] = await faceDetector.detect(
         fakeVideoInput,
+        1.0,
         fakeFfmpeg,
         fakeProbeInfo
       );

@@ -228,12 +228,32 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.ffmpeg,
       this.faceDetectionWorker
     );
+
+    this.dispatchEvent('progress', 'Detecting faces...');
+
     await frameIterator.start();
-    for await (const framesChunk of frameIterator) {
+
+    let chunkCounter = 1;
+    const iterator = frameIterator[Symbol.asyncIterator]();
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      this.dispatchEvent(
+        'progress',
+        `Loading video for chunk ${chunkCounter}...`
+      );
+      const { value: framesChunk, done } = await iterator.next();
+      if (done) break;
+
+      this.dispatchEvent(
+        'progress',
+        `Estimating vitals for chunk ${chunkCounter}...`
+      );
       const incrementalResult = await this.methodHandler.process(
         framesChunk,
         this.bufferManager.getState() ?? undefined
       );
+
       if (incrementalResult) {
         if (incrementalResult.state) {
           this.bufferManager.setState(
@@ -248,6 +268,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
           false
         );
       }
+      chunkCounter++;
     }
 
     const result = await this.vitalsEstimateManager.getResult(

@@ -4,6 +4,7 @@ import { MethodHandler } from '../methods/MethodHandler';
 import { Frame } from './Frame';
 import { IFrameIterator } from '../types/IFrameIterator';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
+import { FDET_DEFAULT_FS_STREAM } from '../config/constants';
 
 /**
  * Manages the processing loop for live streams, including frame capture,
@@ -46,7 +47,7 @@ export abstract class StreamProcessorBase {
     this.targetFps = this.options.overrideFpsTarget
       ? this.options.overrideFpsTarget
       : this.methodConfig.fpsTarget;
-    this.fDetFs = this.options.fDetFs ? this.options.fDetFs : 1.0;
+    this.fDetFs = this.options.fDetFs ?? FDET_DEFAULT_FS_STREAM;
 
     if (this.faceDetectionWorker) {
       this.faceDetectionWorker.onmessage =

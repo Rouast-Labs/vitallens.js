@@ -106,6 +106,7 @@ export class VitalLensWidgetBase extends HTMLElement {
   protected apiKey: string | null = null;
   protected proxyUrl: string | null = null;
   protected mode: string = '';
+  protected debug: boolean = false;
 
   constructor(widgetString: string = widget.replace('__LOGO_URL__', logoUrl)) {
     super();
@@ -259,41 +260,43 @@ export class VitalLensWidgetBase extends HTMLElement {
   }
 
   private drawFaceBoxForRoi(roi: [number, number, number, number]) {
-    const ctx = this.canvasElement.getContext('2d');
-    ctx!.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
-    const [x0, y0, x1, y1] = roi;
-    const w = x1 - x0,
-      h = y1 - y0;
-    const videoWidth = this.videoElement.videoWidth,
-      videoHeight = this.videoElement.videoHeight;
-    const containerWidth = this.canvasElement.width,
-      containerHeight = this.canvasElement.height;
-    const videoAspect = videoWidth / videoHeight;
-    const containerAspect = containerWidth / containerHeight;
-    let displayedVideoWidth: number,
-      displayedVideoHeight: number,
-      offsetX: number,
-      offsetY: number;
-    if (videoAspect > containerAspect) {
-      displayedVideoWidth = containerWidth;
-      displayedVideoHeight = containerWidth / videoAspect;
-      offsetX = 0;
-      offsetY = (containerHeight - displayedVideoHeight) / 2;
-    } else {
-      displayedVideoHeight = containerHeight;
-      displayedVideoWidth = containerHeight * videoAspect;
-      offsetX = (containerWidth - displayedVideoWidth) / 2;
-      offsetY = 0;
+    if (this.debug) {
+      const ctx = this.canvasElement.getContext('2d');
+      ctx!.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
+      const [x0, y0, x1, y1] = roi;
+      const w = x1 - x0,
+        h = y1 - y0;
+      const videoWidth = this.videoElement.videoWidth,
+        videoHeight = this.videoElement.videoHeight;
+      const containerWidth = this.canvasElement.width,
+        containerHeight = this.canvasElement.height;
+      const videoAspect = videoWidth / videoHeight;
+      const containerAspect = containerWidth / containerHeight;
+      let displayedVideoWidth: number,
+        displayedVideoHeight: number,
+        offsetX: number,
+        offsetY: number;
+      if (videoAspect > containerAspect) {
+        displayedVideoWidth = containerWidth;
+        displayedVideoHeight = containerWidth / videoAspect;
+        offsetX = 0;
+        offsetY = (containerHeight - displayedVideoHeight) / 2;
+      } else {
+        displayedVideoHeight = containerHeight;
+        displayedVideoWidth = containerHeight * videoAspect;
+        offsetX = (containerWidth - displayedVideoWidth) / 2;
+        offsetY = 0;
+      }
+      const scaleX = displayedVideoWidth / videoWidth;
+      const scaleY = displayedVideoHeight / videoHeight;
+      const boxX = offsetX + x0 * scaleX;
+      const boxY = offsetY + y0 * scaleY;
+      const boxW = w * scaleX;
+      const boxH = h * scaleY;
+      ctx!.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+      ctx!.lineWidth = 2;
+      ctx!.strokeRect(boxX, boxY, boxW, boxH);
     }
-    const scaleX = displayedVideoWidth / videoWidth;
-    const scaleY = displayedVideoHeight / videoHeight;
-    const boxX = offsetX + x0 * scaleX;
-    const boxY = offsetY + y0 * scaleY;
-    const boxW = w * scaleX;
-    const boxH = h * scaleY;
-    ctx!.strokeStyle = 'rgba(0, 255, 0, 0.8)';
-    ctx!.lineWidth = 2;
-    ctx!.strokeRect(boxX, boxY, boxW, boxH);
   }
 
   private updateStats(
@@ -340,8 +343,27 @@ export class VitalLensWidgetBase extends HTMLElement {
         'vitals',
         this.handleVitalLensResults.bind(this)
       );
+      // Register the new progress event listener.
+      this.vitalLensInstance.addEventListener(
+        'progress',
+        this.handleProgressEvent.bind(this)
+      );
     } catch (e) {
       console.error(e);
+    }
+  }
+
+  // New handler for progress events.
+  private handleProgressEvent(event: any) {
+    const progressMessageElement = this.shadowRoot!.querySelector(
+      '#progressMessage'
+    ) as HTMLElement;
+    if (this.mode === 'file') {
+      progressMessageElement.textContent = event;
+      progressMessageElement.style.display = 'block';
+    } else {
+      progressMessageElement.textContent = '';
+      progressMessageElement.style.display = 'none';
     }
   }
 
@@ -413,6 +435,12 @@ export class VitalLensWidgetBase extends HTMLElement {
       const result = await this.vitalLensInstance.processVideoFile(file);
       this.enablePlaybackDotPlugin();
       this.handleVitalLensResults(result);
+      const progressMessageElement = this.shadowRoot!.querySelector(
+        '#progressMessage'
+      ) as HTMLElement;
+      if (progressMessageElement) {
+        progressMessageElement.textContent = '';
+      }
     } catch (e) {
       console.error(e);
     }

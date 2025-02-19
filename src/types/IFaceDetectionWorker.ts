@@ -17,6 +17,7 @@ export interface IFaceDetectionWorker {
   detectFaces(
     data: unknown,
     dataType: 'video' | 'frame',
+    fs: number,
     timestamp?: number
   ): Promise<{ detections: ROI[]; probeInfo: VideoProbeResult }>;
 }

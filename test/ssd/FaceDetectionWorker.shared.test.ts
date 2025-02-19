@@ -57,7 +57,7 @@ describe('FaceDetectionWorkerBase', () => {
     const timestamp = 123;
 
     // Call detectFaces; it returns a promise.
-    const promise = worker.detectFaces(dummyInput, dataType, timestamp);
+    const promise = worker.detectFaces(dummyInput, dataType, 1.0, timestamp);
 
     // Retrieve the sent message. It should include an id, data, dataType, and timestamp.
     const sentMessage = worker.lastMessage as any;
@@ -100,7 +100,7 @@ describe('FaceDetectionWorkerBase', () => {
     const dataType = 'video' as const;
     const timestamp = 456;
 
-    const promise = worker.detectFaces(dummyInput, dataType, timestamp);
+    const promise = worker.detectFaces(dummyInput, dataType, 1.0, timestamp);
 
     const sentMessage = worker.lastMessage as any;
     expect(sentMessage).toBeDefined();

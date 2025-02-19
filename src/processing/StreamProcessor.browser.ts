@@ -36,6 +36,7 @@ export class StreamProcessor extends StreamProcessorBase {
         id: requestId,
         data: transferableData,
         dataType: 'frame',
+        fs: 1, // Not used
         timestamp: currentTime,
       },
       transferables

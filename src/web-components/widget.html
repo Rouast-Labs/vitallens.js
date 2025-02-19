@@ -220,6 +220,18 @@
     0% { transform: translate(-50%, -50%) rotate(0deg); }
     100% { transform: translate(-50%, -50%) rotate(360deg); }
   }
+  #progressMessage {
+    position: absolute;
+    top: calc(50% + 50px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: white;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    padding: 4px 8px;
+  }
 </style>
 
 <div id="navbar">
@@ -249,6 +261,7 @@
       Drag &amp; drop a video file here or click to select one
     </div>
     <div id="spinner" class="spinner" style="display: none;"></div>
+    <div id="progressMessage"></div>
     <input type="file" id="videoInput" accept="video/*" style="display: none;" />
   </div>
   <div id="controls">

@@ -16,7 +16,7 @@ let ffmpeg: IFFmpegWrapper | null = null;
 //   data: either a transferable representation of a Frame or a File/Blob,
 //   timestamp: optional extra info.
 self.onmessage = async (event: MessageEvent) => {
-  const { id, data, dataType, timestamp } = event.data;
+  const { id, data, dataType, fs, timestamp } = event.data;
 
   try {
     let input: FaceDetectorInput;
@@ -54,6 +54,7 @@ self.onmessage = async (event: MessageEvent) => {
     // Run face detection
     const dets = await faceDetector.detect(
       input,
+      fs,
       ffmpeg ?? undefined,
       probeInfo
     );

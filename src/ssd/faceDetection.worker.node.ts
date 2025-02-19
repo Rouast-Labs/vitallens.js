@@ -20,10 +20,11 @@ import { VideoInput, VideoProbeResult } from '../types';
   // Listen for messages from the parent thread.
   parentPort.on('message', async (event: unknown) => {
     // If you're using strict types, you may cast event as needed.
-    const { id, data, dataType, timestamp } = event as {
+    const { id, data, dataType, fs, timestamp } = event as {
       id: number;
       data: FaceDetectorInput;
       dataType: 'video' | 'frame';
+      fs: number;
       timestamp?: number;
     };
 
@@ -61,6 +62,7 @@ import { VideoInput, VideoProbeResult } from '../types';
       // Run face detection.
       const dets = await faceDetector.detect(
         input,
+        fs,
         ffmpeg ?? undefined,
         probeInfo
       );

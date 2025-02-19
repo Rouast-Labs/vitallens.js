@@ -10,6 +10,7 @@ import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { getRepresentativeROI, getROIForMethod } from '../utils/faceOps';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
+import { FDET_DEFAULT_FS_FILE } from '../config/constants';
 
 /**
  * Frame iterator for video files (e.g., local file paths, File, or Blob inputs).
@@ -40,7 +41,11 @@ export class FileFrameIterator extends FrameIteratorBase {
     if (this.faceDetectionWorker) {
       // Run face detection
       const { detections, probeInfo } =
-        await this.faceDetectionWorker.detectFaces(this.videoInput, 'video');
+        await this.faceDetectionWorker.detectFaces(
+          this.videoInput,
+          'video',
+          this.options.fDetFs ?? FDET_DEFAULT_FS_FILE
+        );
       // Derive roi from faces
       this.probeInfo = probeInfo;
       this.roi = detections.map((det) =>
@@ -123,7 +128,7 @@ export class FileFrameIterator extends FrameIteratorBase {
           endFrame: startFrameIndex + framesToRead,
         },
         pixelFormat: 'rgb24',
-        scaleAlgorithm: 'bicubic',
+        scaleAlgorithm: 'bilinear',
       },
       this.probeInfo
     );

@@ -88,13 +88,11 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
    * @param maxFaces The maximum number of faces to detect.
    * @param scoreThreshold Confidence threshold.
    * @param iouThreshold IOU threshold.
-   * @param fs Frequency (Hz) at which to scan frames.
    */
   constructor(
     private maxFaces: number = 1,
     private scoreThreshold: number = 0.5,
-    private iouThreshold: number = 0.3,
-    private fs: number = 1
+    private iouThreshold: number = 0.3
   ) {}
 
   /**
@@ -121,15 +119,13 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
    * @param batchFrameIndices - An array of original frame indices to process in this batch.
    * @param ffmpeg - The ffmpeg wrapper (required for VideoInput).
    * @param probeInfo - Probe information about the video (required for VideoInput).
-   * @param dsFactor - Downsampling factor (required for VideoInput).
    * @returns An array of DetectionInfo for the frames in the batch.
    */
   private async processBatch(
     input: FaceDetectorInput,
     batchFrameIndices: number[],
     ffmpeg?: IFFmpegWrapper,
-    probeInfo?: VideoProbeResult,
-    dsFactor?: number
+    probeInfo?: VideoProbeResult
   ): Promise<DetectionInfo[]> {
     let frame: Frame;
 
@@ -137,19 +133,18 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       frame = input;
     } else {
       // For VideoInput, call ffmpeg to read only this batch's frames.
-      if (!ffmpeg || !probeInfo || dsFactor === undefined) {
-        throw new Error(
-          'ffmpeg, probeInfo, and dsFactor are required for VideoInput.'
-        );
+      if (!ffmpeg || !probeInfo) {
+        throw new Error('ffmpeg and probeInfo are required for VideoInput.');
       }
       // The batchFrameIndices are original frame indices.
       // Determine the trim boundaries.
       const batchStart = batchFrameIndices[0];
       const batchEnd = batchFrameIndices[batchFrameIndices.length - 1];
+      const fs = probeInfo.fps / (batchFrameIndices[1] - batchFrameIndices[0]);
       const videoBuffer = await ffmpeg.readVideo(
         input,
         {
-          fpsTarget: this.fs,
+          fpsTarget: fs,
           scale: { width: 320, height: 240 },
           trim: { startFrame: batchStart, endFrame: batchEnd + 1 },
         },
@@ -230,12 +225,14 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
    * Runs face detection on the provided input (Frame or VideoInput) and returns an array
    * of ROIs (one per frame in the original video).
    * @param input - The input Frame or VideoInput.
+   * @param fs - frequency (Hz) at which to scan frames.
    * @param ffmpeg - An FFmpegWrapper (only required if input is VideoInput).
    * @param probeInfo - Info about the input (only required if input is VideoInput).
    * @returns A promise resolving to an array of ROIs.
    */
   async detect(
     input: FaceDetectorInput,
+    fs: number,
     ffmpeg?: IFFmpegWrapper,
     probeInfo?: VideoProbeResult
   ): Promise<ROI[]> {
@@ -274,7 +271,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       const videoFps = probeInfo.fps;
       totalFrames = probeInfo.totalFrames;
       // Compute downsampling factor (dsFactor) from video fps and desired scan frequency.
-      dsFactor = Math.max(Math.round(videoFps / this.fs), 1);
+      dsFactor = Math.max(Math.round(videoFps / fs), 1);
       const scannedFramesCount = Math.ceil(totalFrames / dsFactor);
       scannedFrameIndices = Array.from(
         { length: scannedFramesCount },
@@ -289,8 +286,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
         input,
         scannedFrameIndices,
         ffmpeg,
-        probeInfo,
-        dsFactor
+        probeInfo
       );
       detectionInfos = detectionInfos.concat(batchInfos);
     } else {
@@ -309,8 +305,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
           input,
           batchFrameIndices,
           ffmpeg,
-          probeInfo,
-          dsFactor
+          probeInfo
         );
         detectionInfos = detectionInfos.concat(batchInfos);
       }

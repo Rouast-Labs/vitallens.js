@@ -33,7 +33,7 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     const frame = Frame.fromTensor(resizedImage, true, [0]);
 
     // Run face detection
-    const results: ROI[] = await faceDetector.detect(frame);
+    const results: ROI[] = await faceDetector.detect(frame, 1.0);
 
     // Validate results
     expect(results).toBeInstanceOf(Array);
@@ -71,7 +71,7 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     const frame = Frame.fromTensor(batchedImage, true, [0, 1]);
 
     // Run face detection
-    const results: ROI[] = await faceDetector.detect(frame);
+    const results: ROI[] = await faceDetector.detect(frame, 1.0);
 
     // Validate results
     expect(results).toBeInstanceOf(Array);

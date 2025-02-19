@@ -15,7 +15,7 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
   it('should detect faces in a single image', async () => {
     const frame = getTestImageFrame();
 
-    const results: ROI[] = await faceDetector.detect(frame);
+    const results: ROI[] = await faceDetector.detect(frame, 1.0);
 
     expect(results).toBeInstanceOf(Array);
     expect(results.length).toBe(1);
@@ -34,7 +34,7 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
     const batchedImage = tf.concat([singleImageBatch, singleImageBatch], 0);
     const frame = Frame.fromTensor(batchedImage, true, [0, 1]);
 
-    const results: ROI[] = await faceDetector.detect(frame);
+    const results: ROI[] = await faceDetector.detect(frame, 1.0);
 
     expect(results).toBeInstanceOf(Array);
     expect(results.length).toBe(2);

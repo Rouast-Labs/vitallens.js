@@ -59,7 +59,7 @@ describe('StreamProcessor (Browser)', () => {
     terminate: jest.fn(),
     onmessage: null,
     onmessageerror: null,
-    detectFaces: jest.fn(async (videoInput, type) => ({
+    detectFaces: jest.fn(async (videoInput, type, number) => ({
       detections: [],
       probeInfo: {
         totalFrames: 0,
@@ -139,6 +139,7 @@ describe('StreamProcessor (Browser)', () => {
         id: 0,
         data: dummyTransferable,
         dataType: 'frame',
+        fs: 1,
         timestamp: currentTime,
       });
       // The transferables array should include the rawData.

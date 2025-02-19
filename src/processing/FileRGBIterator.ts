@@ -10,6 +10,7 @@ import { FrameIteratorBase } from './FrameIterator.base';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { getROIForMethod, getUnionROI } from '../utils/faceOps';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
+import { FDET_DEFAULT_FS_FILE } from '../config/constants';
 
 /**
  * Extracts a representative RGB value from a frame's pixel data over the given ROI.
@@ -90,7 +91,11 @@ export class FileRGBIterator extends FrameIteratorBase {
     if (this.faceDetectionWorker) {
       // Run face detection
       const { detections, probeInfo } =
-        await this.faceDetectionWorker.detectFaces(this.videoInput, 'video');
+        await this.faceDetectionWorker.detectFaces(
+          this.videoInput,
+          'video',
+          this.options.fDetFs ?? FDET_DEFAULT_FS_FILE
+        );
       // Derive roi from faces
       this.probeInfo = probeInfo;
       this.roi = detections.map((det) =>
