@@ -1,4 +1,4 @@
-import tf from 'tfjs-provider';
+import tf, { Tensor } from 'tfjs-provider';
 import { Frame } from '../processing/Frame';
 import { ROI, VideoInput, VideoProbeResult } from '../types/core';
 import { IFaceDetector } from '../types/IFaceDetector';
@@ -84,6 +84,12 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
   private loaded = false;
   private loadingPromise: Promise<void> | null = null;
 
+  /**
+   * @param maxFaces The maximum number of faces to detect.
+   * @param scoreThreshold Confidence threshold.
+   * @param iouThreshold IOU threshold.
+   * @param fs Frequency (Hz) at which to scan frames.
+   */
   constructor(
     private maxFaces: number = 1,
     private scoreThreshold: number = 0.5,
@@ -110,6 +116,117 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
   }
 
   /**
+   * Processes a single batch of frames.
+   * @param input - Either a preloaded Frame or a VideoInput file.
+   * @param batchFrameIndices - An array of original frame indices to process in this batch.
+   * @param ffmpeg - The ffmpeg wrapper (required for VideoInput).
+   * @param probeInfo - Probe information about the video (required for VideoInput).
+   * @param dsFactor - Downsampling factor (required for VideoInput).
+   * @returns An array of DetectionInfo for the frames in the batch.
+   */
+  private async processBatch(
+    input: FaceDetectorInput,
+    batchFrameIndices: number[],
+    ffmpeg?: IFFmpegWrapper,
+    probeInfo?: VideoProbeResult,
+    dsFactor?: number
+  ): Promise<DetectionInfo[]> {
+    let frame: Frame;
+
+    if (input instanceof Frame) {
+      frame = input;
+    } else {
+      // For VideoInput, call ffmpeg to read only this batch's frames.
+      if (!ffmpeg || !probeInfo || dsFactor === undefined) {
+        throw new Error(
+          'ffmpeg, probeInfo, and dsFactor are required for VideoInput.'
+        );
+      }
+      // The batchFrameIndices are original frame indices.
+      // Determine the trim boundaries.
+      const batchStart = batchFrameIndices[0];
+      const batchEnd = batchFrameIndices[batchFrameIndices.length - 1];
+      const videoBuffer = await ffmpeg.readVideo(
+        input,
+        {
+          fpsTarget: this.fs,
+          scale: { width: 320, height: 240 },
+          trim: { startFrame: batchStart, endFrame: batchEnd + 1 },
+        },
+        probeInfo
+      );
+      // Create a Frame from the loaded video buffer.
+      frame = Frame.fromUint8Array(videoBuffer, [
+        batchFrameIndices.length,
+        240,
+        320,
+        3,
+      ]);
+    }
+
+    // Ensure the tensor is resized to the expected dimensions.
+    const inputs = tf.tidy(() => {
+      const frameData = frame.getTensor();
+      const x = (
+        frameData.rank === 3 ? tf.expandDims(frameData) : frameData
+      ) as tf.Tensor4D;
+      return tf.image
+        .resizeBilinear(x.toFloat(), [240, 320])
+        .sub(127.0)
+        .div(128.0);
+    });
+
+    // Run inference on the batch.
+    const outputs = (await this.model!.executeAsync(inputs)) as tf.Tensor;
+    inputs.dispose();
+
+    const detectionInfos: DetectionInfo[] = [];
+    const { allBoxesArray, allScoresArray } = tf.tidy(() => {
+      const boxes = tf.slice(outputs, [0, 0, 2], [-1, -1, 4]);
+      const scores = tf.slice(outputs, [0, 0, 1], [-1, -1, 1]).squeeze([-1]);
+      const allBoxesArray = boxes.arraySync() as number[][][];
+      const allScoresArray = scores.arraySync() as number[][];
+      return { allBoxesArray, allScoresArray };
+    });
+    outputs.dispose();
+
+    // For each frame in the batch, run NMS and record detection info.
+    for (let i = 0; i < batchFrameIndices.length; i++) {
+      const origFrameIndex = batchFrameIndices[i];
+      const frameBoxes = allBoxesArray[i]; // [N_ANCHORS, 4]
+      const frameScores = allScoresArray[i]; // [N_ANCHORS]
+
+      const nmsIndices = nms(
+        frameBoxes,
+        frameScores,
+        this.maxFaces,
+        this.iouThreshold,
+        this.scoreThreshold
+      );
+
+      let roi: ROI | null = null;
+      let confidence = 0;
+      let faceFound = false;
+      if (nmsIndices.length > 0) {
+        const selectedBox = frameBoxes[nmsIndices[0]];
+        const [xMin, yMin, xMax, yMax] = selectedBox;
+        roi = { x0: xMin, y0: yMin, x1: xMax, y1: yMax };
+        confidence = frameScores[nmsIndices[0]];
+        faceFound = true;
+      }
+      detectionInfos.push({
+        frameIndex: origFrameIndex,
+        scanned: true,
+        faceFound,
+        interpValid: false,
+        confidence,
+        roi: roi || undefined,
+      });
+    }
+    return detectionInfos;
+  }
+
+  /**
    * Runs face detection on the provided input (Frame or VideoInput) and returns an array
    * of ROIs (one per frame in the original video).
    * @param input - The input Frame or VideoInput.
@@ -128,12 +245,11 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       );
     }
 
-    // TODO: Support processing large videos in chunks
-
     // Prepare variables for inference
-    let frame: Frame;
+    const maxBatchFrames = 100;
     let totalFrames: number;
     let scannedFrameIndices: number[];
+    let dsFactor: number | undefined = undefined;
 
     if (input instanceof Frame) {
       // If a Frame is passed, use it directly.
@@ -146,7 +262,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
         // Assume that all frames in the batch should be scanned.
         scannedFrameIndices = Array.from({ length: totalFrames }, (_, i) => i);
       }
-      frame = input;
+      // frame = input;
     } else {
       // A VideoInput was passed – we must use ffmpeg to load the video.
       if (!ffmpeg || !probeInfo) {
@@ -158,100 +274,46 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       const videoFps = probeInfo.fps;
       totalFrames = probeInfo.totalFrames;
       // Compute downsampling factor (dsFactor) from video fps and desired scan frequency.
-      const dsFactor = Math.max(Math.round(videoFps / this.fs), 1);
+      dsFactor = Math.max(Math.round(videoFps / this.fs), 1);
       const scannedFramesCount = Math.ceil(totalFrames / dsFactor);
       scannedFrameIndices = Array.from(
         { length: scannedFramesCount },
-        (_, i) => i * dsFactor
+        (_, i) => i * dsFactor!
       );
-      // Read the video with the desired fps and scale.
-      const videoBuffer = await ffmpeg.readVideo(
-        input,
-        {
-          fpsTarget: this.fs,
-          scale: { width: 320, height: 240 },
-        },
-        probeInfo
-      );
-      // Construct a Frame from the video buffer.
-      frame = Frame.fromUint8Array(videoBuffer, [
-        scannedFramesCount,
-        240,
-        320,
-        3,
-      ]);
     }
 
-    // Model inputs (N_FRAMES, 240, 320, 3)
-    const inputs = tf.tidy(() => {
-      const frameData = frame.getTensor();
-      let x: tf.Tensor4D;
-      if (frameData.rank === 3) {
-        x = tf.expandDims(frameData.toFloat().sub(127.0).div(128.0), 0);
-      } else {
-        x = frameData.toFloat().sub(127.0).div(128.0);
-      }
-      // Resize (if needed) to the model's expected input size (240x320)
-      return tf.image.resizeBilinear(x as tf.Tensor4D, [240, 320]);
-    });
-
-    // Perform inference; expected output shape: (N_FRAMES, N_ANCHORS, 6)
-    const outputs = (await this.model.executeAsync(inputs)) as tf.Tensor;
-    inputs.dispose();
-
-    // Extract information from outputs and convert to arrays
-    // allBoxesArray (N_FRAMES, N_ANCHORS, 4)
-    // allScoresArray (N_FRAMES, N_ANCHORS, 1)
-    const { allBoxesArray, allScoresArray } = tf.tidy(() => {
-      const boxes = tf.slice(outputs, [0, 0, 2], [-1, -1, 4]); // Clone if needed
-      const scores = tf.slice(outputs, [0, 0, 1], [-1, -1, 1]).squeeze([-1]);
-      // Convert tensors to arrays synchronously
-      const allBoxesArray = boxes.arraySync() as number[][][];
-      const allScoresArray = scores.arraySync() as number[][];
-      return { allBoxesArray, allScoresArray };
-    });
-
-    // TODO: If disposing, will fail for subsequent detect() calls
-    // outputs.dispose();
-
-    const scannedROIs: (ROI | null)[] = [];
-    const detectionInfos: DetectionInfo[] = [];
-
-    // Process each scanned frame.
-    for (let i = 0; i < scannedFrameIndices.length; i++) {
-      const origFrameIndex = scannedFrameIndices[i];
-      const frameBoxes = allBoxesArray[i]; // Shape: [N_ANCHORS, 4]
-      const frameScores = allScoresArray[i]; // Shape: [N_ANCHORS]
-
-      // Run NMS on this frame’s detections.
-      const nmsIndices = nms(
-        frameBoxes,
-        frameScores,
-        this.maxFaces,
-        this.iouThreshold,
-        this.scoreThreshold
+    // Split the scanned frame indices into batches.
+    let detectionInfos: DetectionInfo[] = [];
+    if (scannedFrameIndices.length <= maxBatchFrames) {
+      const batchInfos = await this.processBatch(
+        input,
+        scannedFrameIndices,
+        ffmpeg,
+        probeInfo,
+        dsFactor
       );
-
-      let roi: ROI | null = null;
-      let confidence = 0;
-      let faceFound = false;
-      if (nmsIndices.length > 0) {
-        // For simplicity, choose the first detected face.
-        const selectedBox = frameBoxes[nmsIndices[0]];
-        const [xMin, yMin, xMax, yMax] = selectedBox;
-        roi = { x0: xMin, y0: yMin, x1: xMax, y1: yMax };
-        confidence = frameScores[nmsIndices[0]];
-        faceFound = true;
+      detectionInfos = detectionInfos.concat(batchInfos);
+    } else {
+      const nBatches = Math.ceil(scannedFrameIndices.length / maxBatchFrames);
+      for (let batch = 0; batch < nBatches; batch++) {
+        const startIndex = batch * maxBatchFrames;
+        const endIndex = Math.min(
+          startIndex + maxBatchFrames,
+          scannedFrameIndices.length
+        );
+        const batchFrameIndices = scannedFrameIndices.slice(
+          startIndex,
+          endIndex
+        );
+        const batchInfos = await this.processBatch(
+          input,
+          batchFrameIndices,
+          ffmpeg,
+          probeInfo,
+          dsFactor
+        );
+        detectionInfos = detectionInfos.concat(batchInfos);
       }
-      scannedROIs.push(roi);
-      detectionInfos.push({
-        frameIndex: origFrameIndex,
-        scanned: true,
-        faceFound,
-        interpValid: false,
-        confidence,
-        roi: roi || undefined,
-      });
     }
 
     // “Backfill” unscanned frames via linear interpolation.
@@ -336,18 +398,5 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       }
     }
     return finalROIs;
-  }
-
-  /**
-   * Runs detection and invokes the callback with the results.
-   * @param input - The input Frame or VideoInput for face detection.
-   * @param onFinish - Callback to handle the detection results.
-   */
-  async run(
-    input: FaceDetectorInput,
-    onFinish: (detectionResults: ROI[]) => Promise<void>
-  ): Promise<void> {
-    const detections = await this.detect(input);
-    await onFinish(detections);
   }
 }

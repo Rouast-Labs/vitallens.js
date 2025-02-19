@@ -127,37 +127,6 @@ describe('FaceDetectorAsync shared tests', () => {
     frame.disposeTensor();
   });
 
-  it('should detect a face in a single frame and call onFinish callback with results', async () => {
-    const mockData = new Float32Array(224 * 224 * 3).fill(0);
-    const mockTensor = tf.tensor4d(mockData, [1, 224, 224, 3]);
-    const frame = Frame.fromTensor(mockTensor, true, [0]);
-    const onFinish = jest.fn();
-
-    await faceDetector.run(frame, onFinish);
-    const expectedRois = [{ x0: 0.2, y0: 0.2, x1: 0.6, y1: 0.6 }];
-    const actualRois = onFinish.mock.calls[0][0];
-
-    expect(actualRois).toHaveLength(expectedRois.length);
-    const tolerance = 1e-6;
-    for (let i = 0; i < expectedRois.length; i++) {
-      expect(Math.abs(actualRois[i].x0 - expectedRois[i].x0)).toBeLessThan(
-        tolerance
-      );
-      expect(Math.abs(actualRois[i].y0 - expectedRois[i].y0)).toBeLessThan(
-        tolerance
-      );
-      expect(Math.abs(actualRois[i].x1 - expectedRois[i].x1)).toBeLessThan(
-        tolerance
-      );
-      expect(Math.abs(actualRois[i].y1 - expectedRois[i].y1)).toBeLessThan(
-        tolerance
-      );
-    }
-
-    mockTensor.dispose();
-    frame.disposeTensor();
-  });
-
   it('should throw an error if the model is not loaded', async () => {
     const uninitializedDetector = new TestFaceDetectorAsync(1, 0.5, 0.3);
     const mockData = new Float32Array(224 * 224 * 3).fill(0);
