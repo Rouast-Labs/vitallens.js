@@ -90,6 +90,7 @@ export class VitalLensWidgetBase extends HTMLElement {
   protected dropZoneElement!: HTMLElement;
   protected videoInputElement!: HTMLInputElement;
   protected spinnerElement!: HTMLElement;
+  protected progressElement!: HTMLElement;
   protected webcamModeButtonElement!: HTMLButtonElement;
   protected fileModeButtonElement!: HTMLButtonElement;
   protected controlButtonElement!: HTMLButtonElement;
@@ -136,6 +137,9 @@ export class VitalLensWidgetBase extends HTMLElement {
     ) as HTMLInputElement;
     this.spinnerElement = this.shadowRoot!.querySelector(
       '#spinner'
+    ) as HTMLElement;
+    this.progressElement = this.shadowRoot!.querySelector(
+      '#progressMessage'
     ) as HTMLElement;
     this.webcamModeButtonElement = this.shadowRoot!.querySelector(
       '#webcamModeButton'
@@ -353,18 +357,8 @@ export class VitalLensWidgetBase extends HTMLElement {
     }
   }
 
-  // New handler for progress events.
   private handleProgressEvent(event: any) {
-    const progressMessageElement = this.shadowRoot!.querySelector(
-      '#progressMessage'
-    ) as HTMLElement;
-    if (this.mode === 'file') {
-      progressMessageElement.textContent = event;
-      progressMessageElement.style.display = 'block';
-    } else {
-      progressMessageElement.textContent = '';
-      progressMessageElement.style.display = 'none';
-    }
+    this.progressElement.textContent = event;
   }
 
   private async setupWebcam() {
@@ -415,6 +409,7 @@ export class VitalLensWidgetBase extends HTMLElement {
   private async loadAndProcessFile(file: File) {
     this.dropZoneElement.style.display = 'none';
     this.spinnerElement.style.display = 'block';
+    this.progressElement.style.display = 'block';
     this.videoElement.style.display = 'block';
     this.canvasElement.style.display = 'block';
     const url = URL.createObjectURL(file);
@@ -426,6 +421,7 @@ export class VitalLensWidgetBase extends HTMLElement {
       this.videoElement.pause();
       await this.processFile(file);
       this.spinnerElement.style.display = 'none';
+      this.progressElement.style.display = 'none';
       this.videoElement.controls = true;
     };
   }
@@ -507,6 +503,7 @@ export class VitalLensWidgetBase extends HTMLElement {
     this.dropZoneElement.style.display = 'none';
     this.videoInputElement.style.display = 'none';
     this.spinnerElement.style.display = 'none';
+    this.progressElement.style.display = 'none';
     this.videoElement.style.display = 'block';
     this.canvasElement.style.display = 'block';
     this.controlButtonElement.textContent = 'Pause';
