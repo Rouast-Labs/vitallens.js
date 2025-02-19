@@ -1,4 +1,4 @@
-import tf, { Tensor } from 'tfjs-provider';
+import tf from 'tfjs-provider';
 import { Frame } from '../processing/Frame';
 import { ROI, VideoInput, VideoProbeResult } from '../types/core';
 import { IFaceDetector } from '../types/IFaceDetector';
