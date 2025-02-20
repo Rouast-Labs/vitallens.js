@@ -621,12 +621,30 @@ export class VitalLensWidgetBase extends HTMLElement {
     this.dropZoneElement.addEventListener('drop', (event) => {
       event.preventDefault();
       this.dropZoneElement.classList.remove('hover');
-      const files = (event.dataTransfer as DataTransfer).files;
-      if (files.length) this.loadAndProcessFile(files[0]);
+      const dataTransfer = event.dataTransfer;
+      if (!dataTransfer) {
+        console.error('Error: DataTransfer is null.');
+        return;
+      }
+      const files = dataTransfer.files;
+      if (files.length) {
+        const file = files[0];
+        if (!file.type.startsWith('video/')) {
+          console.error('Error: Only video files are allowed.');
+          return;
+        }
+        this.loadAndProcessFile(file);
+      }
     });
     this.videoInputElement.addEventListener('change', () => {
-      if (this.videoInputElement.files && this.videoInputElement.files.length)
-        this.loadAndProcessFile(this.videoInputElement.files[0]);
+      if (this.videoInputElement.files && this.videoInputElement.files.length) {
+        const file = this.videoInputElement.files[0];
+        if (!file.type.startsWith('video/')) {
+          console.error('Error: Only video files are allowed.');
+          return;
+        }
+        this.loadAndProcessFile(file);
+      }
     });
     this.methodSelectElement.addEventListener('change', () =>
       this.restartMode()
