@@ -25,9 +25,8 @@ Using a different language or platform? We also have a [Python client](https://g
 
 - **Multiple Estimation Methods:**
   Choose the method that fits your needs:
-  - **`vitallens`** provides *heart rate*, *respiratory rate*, *pulse waveform*, and *respiratory waveform* estimation. In addition, it returns an estimation confidence for each vital. We are working to support more vital signs in the future.
-  - **`g`**, **`chrom`**, **`pos`** provides support faster, but less accurate *heart rate* and *pulse waveform* estimation.
-  - While `vitallens` requires an API Key, `g`, `chrom`, and `pos` do not. [Register on our website to get a free API Key.](https://www.rouast.com/api/)
+  - **`vitallens`**: Provides *heart rate*, *respiratory rate*, *pulse waveform*, and *respiratory waveform* estimates with associated confidences. *(Requires an API Key - [get one for free on our website](https://www.rouast.com/api/))*
+  - **`g`**, **`chrom`**, **`pos`**: Offer faster (but less accurate) *heart rate* and *pulse waveform* estimates. *(No API Key required.)*
 
 - **Fast Face Detection & ROI Support:**  
   Perform rapid face detection when required—or optionally, pass a global region of interest (ROI) to skip detection for even faster processing.
@@ -275,6 +274,12 @@ const vl = new VitalLens({
 });
 ```
 
+Or when using one of our widgets:
+
+```html
+<vitallens-widget proxy-url="https://your-proxy-server.com/api"></vitallens-widget>
+```
+
 ### Sample Proxy Server Implementation
 
 Below is a simple Node.js/Express proxy server implementation that you can use as a starting point:
@@ -282,16 +287,23 @@ Below is a simple Node.js/Express proxy server implementation that you can use a
 ```js
 const express = require('express');
 const bodyParser = require('body-parser');
-const fetch = require('node-fetch');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Securely store your API key in an environment variable
 const API_KEY = process.env.VITALLENS_API_KEY;
-const VITALLENS_ENDPOINT = 'https://api.rouast.com/vitallens'; // Update if necessary
+const VITALLENS_ENDPOINT = 'https://api.rouast.com/vitallens-v2';
 
 app.use(bodyParser.json({ limit: '10mb' }));
+
+// Enable CORS for your allowed domain.
+app.use(cors({
+  origin: 'http://example.com', // Your allowed domain
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.post('/', async (req, res) => {
   try {
