@@ -25,8 +25,8 @@ Using a different language or platform? We also have a [Python client](https://g
 
 - **Multiple Estimation Methods:**
   Choose the method that fits your needs:
-  - **`vitallens`**: Provides *heart rate*, *respiratory rate*, *pulse waveform*, and *respiratory waveform* estimates with associated confidences. *(Requires an API Key - [get one for free on our website](https://www.rouast.com/api/))*
-  - **`g`**, **`chrom`**, **`pos`**: Offer faster (but less accurate) *heart rate* and *pulse waveform* estimates. *(No API Key required.)*
+  - **`vitallens`**: Provides *heart rate*, *respiratory rate*, *pulse waveform*, and *respiratory waveform* estimates with associated confidences. *(Requires an API key - [get one for free on our website](https://www.rouast.com/api/))*
+  - **`g`**, **`chrom`**, **`pos`**: Offer faster (but less accurate) *heart rate* and *pulse waveform* estimates. *(No API key required.)*
 
 - **Fast Face Detection & ROI Support:**  
   Perform rapid face detection when required—or optionally, pass a global region of interest (ROI) to skip detection for even faster processing.
@@ -206,63 +206,69 @@ export interface VitalLensResult {
 
 ## Examples
 
-The repository contains several ready-to-run examples:
+Before running any of the examples, make sure to build the project by executing:
+
+```bash
+npm run build
+```
+
+Also, note that each example requires an API key. Replace `YOUR_API_KEY` with your actual API key when running the examples.
 
 - **Browser Unified Widget:**  
   [examples/browser/widget.html](examples/browser/widget.html)  
   To run this example, execute:
   ```bash
-  npm run start:browser
+  API_KEY=YOUR_API_KEY npm run start:browser
   ```
 
 - **Browser File Input Widget:**  
   [examples/browser/file_widget.html](examples/browser/file_widget.html)  
   To run this example, execute:
   ```bash
-  npm run start:browser-file
+  API_KEY=YOUR_API_KEY npm run start:browser-file
   ```
 
 - **Browser File Input Minimal:**  
   [examples/browser/file_minimal.html](examples/browser/file_minimal.html)  
   To run this example, execute:
   ```bash
-  npm run start:browser-file-minimal
+  API_KEY=YOUR_API_KEY npm run start:browser-file-minimal
   ```
 
 - **Browser Webcam Input Widget:**  
   [examples/browser/webcam_widget.html](examples/browser/webcam_widget.html)  
   To run this example, execute:
   ```bash
-  npm run start:browser-webcam
+  API_KEY=YOUR_API_KEY npm run start:browser-webcam
   ```
 
 - **Browser Webcam Input Minimal:**  
   [examples/browser/webcam_minimal.html](examples/browser/webcam_minimal.html)  
   To run this example, execute:
   ```bash
-  npm run start:browser-webcam-minimal
+  API_KEY=YOUR_API_KEY npm run start:browser-webcam-minimal
   ```
 
 - **Node File Processing:**  
   [examples/node/file.js](examples/node/file.js)  
   To run this example, execute:
   ```bash
-  npm run start:node-file
+  API_KEY=YOUR_API_KEY npm run start:node-file
   ```
 
 Try opening the HTML examples in your browser or running the Node script to see `vitallens.js` in action.
 
 ## Securing your API Key
 
-For security reasons, we recommend that you do not expose your API Key directly in client-side code. There are two primary approaches to secure your API Key:
+For security reasons, we recommend that you do not expose your API key directly in client-side code. There are two primary approaches to secure your API key:
 
 ### 1. Run Everything on your Server
 
-If you are building a server-side application using Node.js, your API Key remains securely on your server. Simply call the API directly from your backend code without exposing your credentials.
+If you are building a server-side application using Node.js, your API key remains securely on your server. Simply call the API directly from your backend code without exposing your credentials.
 
 ### 2. Use a Proxy Server for Client-Side Code
 
-If you need to use `vitallens.js` in a browser, you can set up a proxy server. The proxy server receives requests from the client, attaches your API Key (stored securely on the server), and forwards the request to the VitalLens API. This way, the API key is never exposed to the client.
+If you need to use `vitallens.js` in a browser, you can set up a proxy server. The proxy server receives requests from the client, attaches your API key (stored securely on the server), and forwards the request to the VitalLens API. This way, the API key is never exposed to the client.
 
 Our client library supports this by accepting a `proxyUrl` option. For example:
 

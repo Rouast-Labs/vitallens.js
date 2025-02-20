@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 
@@ -30,7 +31,6 @@ app.use((_, res, next) => {
 });
 
 // Serve static files for examples and dist
-app.use(express.static(path.join(__dirname, '../examples')));
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // Handle dynamic example selection
@@ -42,12 +42,19 @@ app.get('/browser/:example', (req, res) => {
     'browser',
     example + '.html'
   );
-  res.sendFile(examplePath, (err) => {
+  fs.readFile(examplePath, 'utf8', (err, data) => {
     if (err) {
-      res.status(404).send('Example not found');
+      return res.status(404).send('Example not found');
     }
+    // Inject the API key into the HTML by replacing the placeholder
+    const apiKey = process.env.API_KEY || 'YOUR_API_KEY';
+    const updatedHTML = data.replace('YOUR_API_KEY', apiKey);
+    res.send(updatedHTML);
   });
 });
+
+// Serve static files for non-browser examples
+app.use(express.static(path.join(__dirname, '../examples')));
 
 // Start server and optionally open browser if EXAMPLE_TO_OPEN is set
 app.listen(PORT, () => {

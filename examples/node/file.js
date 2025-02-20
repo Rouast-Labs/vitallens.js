@@ -1,8 +1,10 @@
 import { VitalLens } from '../../dist/vitallens.esm.js';
 
+const apiKey = process.env.API_KEY || 'YOUR_API_KEY'; // Replace with your actual API key if not provided via env
+
 const options = {
   method: 'vitallens',
-  apiKey: 'YOUR_API_KEY', // Replace with actual API key
+  apiKey,
 };
 
 const vitallens = new VitalLens(options);

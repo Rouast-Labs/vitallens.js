@@ -72,7 +72,6 @@ export class StreamFrameIterator extends FrameIteratorBase {
     }
 
     const tensor = tf.tidy(() => {
-      // TODO: Does this work with WebRTC stream?
       return tf.browser.fromPixels(this.videoElement!);
     });
 
