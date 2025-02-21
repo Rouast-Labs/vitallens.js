@@ -50,10 +50,6 @@ export abstract class RestClientBase implements IRestClient {
       body: {} as VitalLensResult,
     };
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${bodyText}`);
-    }
-
     try {
       // Parse the text and cast it to VitalLensResult
       structuredResponse.body = JSON.parse(bodyText) as VitalLensResult;

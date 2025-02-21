@@ -63,20 +63,4 @@ describe('RestClient (Browser)', () => {
       'Network Error'
     );
   });
-
-  it('should handle HTTP error responses', async () => {
-    // Mock a 500 Internal Server Error response with .text() method
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      text: async () => 'Server Error',
-    });
-
-    const metadata = { test: 'data' };
-    const frames = new Uint8Array([1, 2, 3]);
-
-    await expect(client.sendFrames(metadata, frames)).rejects.toThrow(
-      'HTTP 500: Server Error'
-    );
-  });
 });

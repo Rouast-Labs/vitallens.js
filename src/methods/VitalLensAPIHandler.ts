@@ -10,7 +10,7 @@ import {
   VitalLensAPIKeyError,
   VitalLensAPIQuotaExceededError,
 } from '../utils/errors';
-import { IRestClient, isRestClient } from '../types/IRestClient';
+import { IRestClient } from '../types/IRestClient';
 import { isWebSocketClient, IWebSocketClient } from '../types/IWebSocketClient';
 import {
   adaptiveDetrend,
@@ -25,7 +25,6 @@ import { CALC_HR_MAX, CALC_HR_MIN, CALC_RR_MAX } from '../config/constants';
  */
 export class VitalLensAPIHandler extends MethodHandler {
   private client: IWebSocketClient | IRestClient;
-  private options: VitalLensOptions;
 
   constructor(
     client: IWebSocketClient | IRestClient,
@@ -33,7 +32,6 @@ export class VitalLensAPIHandler extends MethodHandler {
   ) {
     super(options);
     this.client = client;
-    this.options = options;
   }
 
   /**
@@ -93,27 +91,16 @@ export class VitalLensAPIHandler extends MethodHandler {
 
       // Store the roi.
       const roi = framesChunk.getROI();
-      const metadata = {
-        version: 'vitallens-dev',
-        origin: 'vitallens.js',
-      };
 
-      let response;
-
-      // Send the payload via the selected client
-      if (isWebSocketClient(this.client)) {
-        response = (await this.client.sendFrames(
-          metadata,
-          framesChunk.getUint8Array(),
-          state
-        )) as VitalLensAPIResponse;
-      } else if (isRestClient(this.client)) {
-        response = (await this.client.sendFrames(
-          metadata,
-          framesChunk.getUint8Array(),
-          state
-        )) as VitalLensAPIResponse;
-      }
+      // Send the payload
+      const response = (await this.client.sendFrames(
+        {
+          version: 'vitallens-dev',
+          origin: 'vitallens.js',
+        },
+        framesChunk.getUint8Array(),
+        state
+      )) as VitalLensAPIResponse;
 
       // Capture the end time and calculate the duration
       // const endTime = performance.now();

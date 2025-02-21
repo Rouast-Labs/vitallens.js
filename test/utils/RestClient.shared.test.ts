@@ -41,12 +41,6 @@ describe('RestClientBase', () => {
     expect(result).toEqual(expectedResponse);
   });
 
-  it('should throw an error for HTTP errors', async () => {
-    await expect(
-      client.sendFrames({ bad: true }, new Uint8Array([1, 2, 3]))
-    ).rejects.toThrow('HTTP 500: Internal Server Error');
-  });
-
   it('should set URL to the provided proxyUrl and omit x-api-key header when proxyUrl is used', () => {
     const proxyUrl = 'https://example.com/proxy';
     const clientWithProxy = new MockRestClient('test-api-key', proxyUrl);
