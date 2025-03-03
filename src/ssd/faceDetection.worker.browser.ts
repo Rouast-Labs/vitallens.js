@@ -12,8 +12,9 @@ let ffmpeg: IFFmpegWrapper | null = null;
 
 // Message handler. We expect the main thread to send an object with:
 //   id: a correlation id,
-//   dataType: either 'frame' or 'video',
 //   data: either a transferable representation of a Frame or a File/Blob,
+//   dataType: either 'frame' or 'video',
+//   fs: target frequency for face detection.
 //   timestamp: optional extra info.
 self.onmessage = async (event: MessageEvent) => {
   const { id, data, dataType, fs, timestamp } = event.data;
@@ -30,7 +31,7 @@ self.onmessage = async (event: MessageEvent) => {
       }
       // Load the input in ffmpeg
       await ffmpeg.loadInput(data);
-      // Probe the video to get width and height
+      // Probe the video
       probeInfo = await ffmpeg.probeVideo(data);
       input = data;
     } else if (dataType === 'frame') {

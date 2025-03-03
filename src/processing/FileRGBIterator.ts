@@ -38,11 +38,9 @@ export function extractRGBForROI(
     sumB = 0,
     count = 0;
 
-  // Loop through each pixel in the ROI.
+  // Loop through each pixel in the ROI, accumulating sums and count.
   for (let y = yStart; y < yEnd; y++) {
     for (let x = xStart; x < xEnd; x++) {
-      // Calculate the index for the pixel's red channel.
-      // Each row has `frameWidth * 3` bytes.
       const idx = (y * frameWidth + x) * 3;
       sumR += frameData[idx];
       sumG += frameData[idx + 1];
@@ -134,7 +132,6 @@ export class FileRGBIterator extends FrameIteratorBase {
       1
     );
     // Determine how many chunks we need to process the entire video.
-    // TODO: Only need to assume that the unionROI itself needs to fit?
     const videoSizeBytes =
       totalFrames * this.probeInfo!.height * this.probeInfo!.width * 3;
     const maxBytes = 1024 * 1024 * 1024 * 2; // 2GB
@@ -172,8 +169,7 @@ export class FileRGBIterator extends FrameIteratorBase {
         );
       }
       // For each frame in the chunk, extract the RGB signal from the original ROI.
-      // Here, we adjust the original ROI (which is in absolute coordinates) to be relative to the union ROI,
-      // and then extract a representative RGB value (for example, the average color) from that area.
+      // Here, we adjust the original ROI (which is in absolute coordinates) to be relative to the union ROI.
       for (let i = 0; i < chunkFrameCount; i++) {
         const frameOffset = i * totalPixelsPerFrame;
         const frameData = chunkVideoData.subarray(
@@ -235,7 +231,6 @@ export class FileRGBIterator extends FrameIteratorBase {
     }
 
     // Slice the pre-computed rgb data for the requested frames.
-    // Each frame has 3 RGB values.
     const startOffset = this.currentFrameIndex * 3;
     const endOffset = (this.currentFrameIndex + framesToRead) * 3;
     const rgbChunk = this.rgb.slice(startOffset, endOffset);

@@ -347,7 +347,6 @@ export class VitalLensWidgetBase extends HTMLElement {
         'vitals',
         this.handleVitalLensResults.bind(this)
       );
-      // Register the new progress event listener.
       this.vitalLensInstance.addEventListener(
         'progress',
         this.handleProgressEvent.bind(this)
@@ -477,7 +476,6 @@ export class VitalLensWidgetBase extends HTMLElement {
       this.isProcessingFlag = true;
       this.vitalLensInstance.startVideoStream();
     }
-    // Update tab styling.
     if (this.mode === 'webcam') {
       this.webcamModeButtonElement.classList.add('active');
       this.fileModeButtonElement.classList.remove('active');

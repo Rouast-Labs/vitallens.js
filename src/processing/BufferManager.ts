@@ -8,7 +8,7 @@ import { RGBBuffer } from './RGBBuffer';
  * Manages multiple FrameBuffers for handling different ROIs and method configurations.
  */
 export class BufferManager {
-  private buffers: Map<string, { buffer: Buffer; createdAt: number }>; // Map of buffer ID to buffer and creation timestamp
+  private buffers: Map<string, { buffer: Buffer; createdAt: number }>;
   private state: Float32Array | null = null;
 
   constructor() {
@@ -74,7 +74,6 @@ export class BufferManager {
       }
     }
 
-    // Cleanup old buffers
     this.cleanupBuffers(timestamp);
 
     return readyBuffer;
@@ -115,6 +114,7 @@ export class BufferManager {
 
   /**
    * Check if this manager has no buffers.
+   * @returns True if this manager has no buffers.
    */
   isEmpty(): boolean {
     return this.buffers.size === 0;

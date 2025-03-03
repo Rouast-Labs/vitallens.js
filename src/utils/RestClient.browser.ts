@@ -5,7 +5,6 @@ import { VitalLensAPIResponse } from '../types';
 export class RestClient extends RestClientBase {
   /**
    * Get the REST endpoint.
-   * We can't read environment variables in browser, so always the constant.
    * @returns The REST endpoint.
    */
   protected getRestEndpoint(): string {

@@ -1,9 +1,6 @@
 import tf from 'tfjs-provider';
 import { FaceDetectorAsyncBase } from './FaceDetectorAsync.base';
-
-// IMPORTANT: We import the base64-encoded files here, which Rollup will inline in the node build
-import modelJsonBase64 from '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json';
-import modelBinBase64 from '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1.bin';
+import { modelJsonBase64, modelBinBase64 } from './modelAssets';
 
 export class FaceDetectorAsync extends FaceDetectorAsyncBase {
   /**

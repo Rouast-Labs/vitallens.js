@@ -18,6 +18,7 @@ import { IFrameIterator } from '../types/IFrameIterator';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { FrameIteratorFactory } from '../processing/FrameIteratorFactory';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
+import { VitalLensAPIKeyError } from '../utils/errors';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -101,15 +102,12 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       !options.apiKey &&
       !options.proxyUrl
     ) {
-      throw new Error(
-        'An API key or proxyUrl is required to use method=vitallens, but was not provided. ' +
-          'Get one for free at https://www.rouast.com/api.'
-      );
+      throw new VitalLensAPIKeyError();
     }
     // Temporarily disable WebSocket
     if (options.requestMode === 'websocket') {
       throw new Error(
-        'WebSocket request mode is disabled for now. Please use requestMode: rest'
+        'WebSocket request mode is disabled for now. Please use requestMode=rest.'
       );
     }
     const requestMode = options.requestMode || 'rest'; // Default to REST

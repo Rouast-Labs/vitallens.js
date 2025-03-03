@@ -21,7 +21,7 @@ describe('VitalLensAPIError classes', () => {
       expect(error).toBeInstanceOf(Error);
       expect(error).toBeInstanceOf(VitalLensAPIKeyError);
       expect(error.name).toBe('VitalLensAPIKeyError');
-      expect(error.message).toMatch(/A valid API key is required/);
+      expect(error.message).toMatch(/A valid API key or proxy URL is required/);
     });
   });
 

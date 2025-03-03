@@ -24,6 +24,7 @@ export class CHROMHandler extends SimpleMethodHandler {
   /**
    * Implementation of the CHROM algorithm.
    * @param rgb - Tensor2D with rgb signals to process.
+   * @returns The estimated pulse signal.
    */
   protected algorithm(rgb: Frame): number[] {
     return tf.tidy(() => {

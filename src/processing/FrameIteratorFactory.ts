@@ -35,6 +35,8 @@ export class FrameIteratorFactory {
    * Creates a frame iterator for file-based inputs.
    * @param videoInput - The video input to process.
    * @param methodConfig - Method config.
+   * @param ffpmeg - The ffmpeg wrapper.
+   * @param faceDetectionWorker - The face detection worker.
    * @returns A file frame iterator.
    */
   createFileFrameIterator(

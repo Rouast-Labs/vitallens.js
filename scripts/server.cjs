@@ -7,7 +7,7 @@ const { exec } = require('child_process');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Middleware to set required security headers
+// Set security headers
 app.use((_, res, next) => {
   res.set({
     'Cross-Origin-Opener-Policy': 'same-origin',

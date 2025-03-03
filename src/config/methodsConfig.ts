@@ -29,7 +29,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
   },
   g: {
     method: 'g',
-    roiMethod: 'forehead',
+    roiMethod: 'face',
     fpsTarget: 30,
     minWindowLength: 64,
     maxWindowLength: 64,

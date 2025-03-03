@@ -117,6 +117,7 @@ export class Frame {
    * @param keepTensor If true, store the tf.Tensor directly
    * @param timestamp Optional timestamps
    * @param roi Optional regions of interest
+   * @returns Newly instantiated Frame
    */
   static fromTensor(
     tensor: tf.Tensor,
@@ -140,6 +141,7 @@ export class Frame {
    * @param shape The shape of the data (e.g. [nFrames, height, width, channels]).
    * @param timestamp Optional timestamps.
    * @param roi Optional regions of interest.
+   * @returns Newly instantiated Frame
    */
   static fromUint8Array(
     array: Uint8Array,
@@ -173,6 +175,7 @@ export class Frame {
    * @param shape The shape of the data (e.g. [nFrames, height, width, channels]).
    * @param timestamp Optional timestamps.
    * @param roi Optional regions of interest.
+   * @returns Newly instantiated Frame
    */
   static fromFloat32Array(
     array: Float32Array,
@@ -203,6 +206,7 @@ export class Frame {
   /**
    * Reconstructs a Frame instance from transferable data.
    * @param data The transferable data object.
+   * @returns Newly instantiated Frame
    */
   static fromTransferable(data: FrameTransferable): Frame {
     return new Frame({
@@ -218,6 +222,7 @@ export class Frame {
    * Returns a tf.Tensor. If `keepTensor` was true, this will be the same reference
    * originally passed in (unless disposed of). If `keepTensor` was false,
    * this will create a new tensor from raw data each time.
+   * @returns The Tensor
    */
   getTensor(): tf.Tensor {
     if (this.tensor) {
@@ -285,6 +290,7 @@ export class Frame {
   /**
    * Returns a plain object representation of this Frame that is transferable.
    * It includes the raw data and metadata necessary to reconstruct the Frame.
+   * @returns The transferable representation
    */
   toTransferable(): FrameTransferable {
     return {
@@ -298,6 +304,7 @@ export class Frame {
 
   /**
    * Returns the raw data as a Uint8Array.
+   * @returns Raw data as a Uint8Array
    */
   getUint8Array(): Uint8Array {
     if (!this.rawData) {
@@ -314,6 +321,7 @@ export class Frame {
 
   /**
    * Returns the raw data as a Float32Array.
+   * @returns Raw data as a Float32Array
    */
   getFloat32Array(): Float32Array {
     if (!this.rawData) {
@@ -330,6 +338,7 @@ export class Frame {
 
   /**
    * Provides access to the raw data.
+   * @returns The raw data (may be undefined)
    */
   getRawData(): ArrayBuffer | undefined {
     return this.rawData;
@@ -337,6 +346,7 @@ export class Frame {
 
   /**
    * Provides the tensor shape.
+   * @returns The tensor shape.
    */
   getShape(): number[] {
     return this.shape;
@@ -344,6 +354,7 @@ export class Frame {
 
   /**
    * Provides the tensor dtype.
+   * @returns The data type.
    */
   getDType(): tf.DataType {
     return this.dtype;
@@ -351,6 +362,7 @@ export class Frame {
 
   /**
    * Provides the tensor dtype.
+   * @returns The timestamps
    */
   getTimestamp(): number[] {
     return this.timestamp;
@@ -358,6 +370,7 @@ export class Frame {
 
   /**
    * Provides the tensor dtype.
+   * @returns The ROIs
    */
   getROI(): ROI[] {
     return this.roi;
@@ -365,6 +378,7 @@ export class Frame {
 
   /**
    * Indicates whether we are storing a tf.Tensor
+   * @returns True if a tensor is stored.
    */
   hasTensor(): boolean {
     return this.tensor !== undefined;
@@ -372,6 +386,7 @@ export class Frame {
 
   /**
    * Utility to figure out which TypedArray we need for a given dtype
+   * @returns The typed array class required for this frame's dtype.
    */
   private getTypedArrayClass():
     | typeof Uint8Array

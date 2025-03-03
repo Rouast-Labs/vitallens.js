@@ -4,6 +4,10 @@ import { ROI, VideoInput, VideoProbeResult } from '../types/core';
 import { IFaceDetector } from '../types/IFaceDetector';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 
+const DET_WIDTH = 320;
+const DET_HEIGHT = 240;
+const DET_CHANNELS = 3;
+
 /**
  * The face detector input can be either a pre-processed Frame or a VideoInput.
  */
@@ -73,11 +77,6 @@ export function nms(
 
 /**
  * Face detector class, implementing detection via a machine learning model.
- * This version supports both Frame and VideoInput types. In the case of VideoInput,
- * the video is first probed and downsampled (using the provided ffmpeg wrapper)
- * according to the desired scanning frequency (fs). After inference the detection
- * info is compiled and frames that were not scanned are “backfilled” via linear
- * interpolation between the nearest valid detections.
  */
 export abstract class FaceDetectorAsyncBase implements IFaceDetector {
   protected model: tf.GraphModel | null = null;
@@ -145,7 +144,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
         input,
         {
           fpsTarget: fs,
-          scale: { width: 320, height: 240 },
+          scale: { width: DET_WIDTH, height: DET_HEIGHT },
           trim: { startFrame: batchStart, endFrame: batchEnd + 1 },
         },
         probeInfo
@@ -153,20 +152,20 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       // Create a Frame from the loaded video buffer.
       frame = Frame.fromUint8Array(videoBuffer, [
         batchFrameIndices.length,
-        240,
-        320,
-        3,
+        DET_HEIGHT,
+        DET_WIDTH,
+        DET_CHANNELS,
       ]);
     }
 
-    // Ensure the tensor is resized to the expected dimensions.
+    // Ensure the tensor is normalized float resized to the expected dimensions.
     const inputs = tf.tidy(() => {
       const frameData = frame.getTensor();
       const x = (
         frameData.rank === 3 ? tf.expandDims(frameData) : frameData
       ) as tf.Tensor4D;
       return tf.image
-        .resizeBilinear(x.toFloat(), [240, 320])
+        .resizeBilinear(x.toFloat(), [DET_HEIGHT, DET_WIDTH])
         .sub(127.0)
         .div(128.0);
     });
@@ -175,6 +174,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
     const outputs = (await this.model!.executeAsync(inputs)) as tf.Tensor;
     inputs.dispose();
 
+    // Extract detection boxes and scores as Arrays
     const detectionInfos: DetectionInfo[] = [];
     const { allBoxesArray, allScoresArray } = tf.tidy(() => {
       const boxes = tf.slice(outputs, [0, 0, 2], [-1, -1, 4]);
@@ -188,9 +188,10 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
     // For each frame in the batch, run NMS and record detection info.
     for (let i = 0; i < batchFrameIndices.length; i++) {
       const origFrameIndex = batchFrameIndices[i];
-      const frameBoxes = allBoxesArray[i]; // [N_ANCHORS, 4]
-      const frameScores = allScoresArray[i]; // [N_ANCHORS]
+      const frameBoxes = allBoxesArray[i]; // (N_ANCHORS, 4)
+      const frameScores = allScoresArray[i]; // (N_ANCHORS,)
 
+      // Run non-max suppression.
       const nmsIndices = nms(
         frameBoxes,
         frameScores,
@@ -199,6 +200,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
         this.scoreThreshold
       );
 
+      // Compile detection info.
       let roi: ROI | null = null;
       let confidence = 0;
       let faceFound = false;
@@ -311,7 +313,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       }
     }
 
-    // “Backfill” unscanned frames via linear interpolation.
+    // "Backfill" unscanned frames via linear interpolation.
     const finalROIs = this.interpolateDetections(detectionInfos, totalFrames);
     return finalROIs;
   }

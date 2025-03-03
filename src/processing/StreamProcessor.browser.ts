@@ -48,6 +48,7 @@ export class StreamProcessor extends StreamProcessorBase {
 
   /**
    * Handles worker responses with face detection results.
+   * @param event - The detection event.
    */
   protected handleFaceDetectionResult(event: MessageEvent): void {
     const { id, detections, probeInfo, timestamp, error } = event.data;
@@ -55,7 +56,6 @@ export class StreamProcessor extends StreamProcessorBase {
       console.error(`Face detection error (id: ${id}):`, error);
       return;
     }
-    // Log for debugging.
     if (!detections || detections.length < 1) {
       // No face detected.
       this.roi = null;

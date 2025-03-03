@@ -17,9 +17,13 @@ import { VideoInput, VideoProbeResult } from '../types';
 
   let ffmpeg: IFFmpegWrapper | null = null;
 
-  // Listen for messages from the parent thread.
+  // Listen for messages from the parent thread. We expect the main thread to send an object with:
+  //   id: a correlation id,
+  //   data: either a transferable representation of a Frame or a File/Blob,
+  //   dataType: either 'frame' or 'video',
+  //   fs: target frequency for face detection.
+  //   timestamp: optional extra info.
   parentPort.on('message', async (event: unknown) => {
-    // If you're using strict types, you may cast event as needed.
     const { id, data, dataType, fs, timestamp } = event as {
       id: number;
       data: FaceDetectorInput;
@@ -40,7 +44,7 @@ import { VideoInput, VideoProbeResult } from '../types';
         }
         await ffmpeg.loadInput(data as VideoInput);
         probeInfo = await ffmpeg.probeVideo(data as VideoInput);
-        input = data; // pass the raw video input
+        input = data;
       } else if (dataType === 'frame') {
         // Data is a transferable representation of a Frame.
         input = Frame.fromTransferable(data as unknown as FrameTransferable);

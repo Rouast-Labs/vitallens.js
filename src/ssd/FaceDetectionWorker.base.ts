@@ -19,6 +19,11 @@ export abstract class FaceDetectionWorkerBase implements IFaceDetectionWorker {
 
   /**
    * Convenience method to send a detection request.
+   * @param data - The input data (may be a Frame or a File/Blob)
+   * @param dataType - Either 'frame' for Frame or 'video' for File/Blob
+   * @param fs - Target frequency for face detection
+   * @param timestamp - Optional timestamp
+   * @returns Promise resolving to detections and probeInfo
    */
   async detectFaces(
     data: FaceDetectorInput,

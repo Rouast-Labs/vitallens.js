@@ -48,6 +48,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   /**
    * Initializes the manager with the provided method configuration.
    * @param methodConfig - The method configuration.
+   * @param options - The options.
+   * @param postprocessFn - The function for signal postprocesing.
    */
   constructor(
     private methodConfig: MethodConfig,
@@ -75,8 +77,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param sourceId - The source identifier (e.g., streamId or videoId).
    * @param defaultWaveformMode - The default waveformMode to set.
    * @param light Whether to do only light processing.
-   * @param returnResult Whether a result should be returned.
-   * @returns The aggregated result.
+   * @param returnResult Whether a result should be compiled and returned.
+   * @returns The aggregated result or null.
    */
   async processIncrementalResult(
     incrementalResult: VitalLensResult,
