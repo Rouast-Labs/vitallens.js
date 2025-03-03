@@ -175,7 +175,7 @@ describe('VitalLensControllerBase', () => {
       };
       expect(() =>
         controller['createMethodHandler'](optionsWithoutApiKey)
-      ).toThrowError(/An API key or proxyUrl is required/);
+      ).toThrowError(/A valid API key or proxy URL is required/);
     });
 
     test('should throw an error if requestMode is websocket', () => {
