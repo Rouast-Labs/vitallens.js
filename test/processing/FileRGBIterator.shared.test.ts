@@ -45,7 +45,12 @@ class DummyFFmpegWrapper implements IFFmpegWrapper {
     ): Promise<Uint8Array> => {
       const startFrame: number = options.trim.startFrame;
       const endFrame: number = options.trim.endFrame;
-      const chunkFrameCount = endFrame - startFrame;
+      const fps = probeInfo.fps;
+      const dsFactor =
+        options.fpsTarget && options.fpsTarget < fps
+          ? Math.round(fps / options.fpsTarget)
+          : 1;
+      const chunkFrameCount = Math.ceil((endFrame - startFrame) / dsFactor);
       const crop = options.crop as ROI;
       const unionWidth = crop.x1 - crop.x0;
       const unionHeight = crop.y1 - crop.y0;
@@ -238,26 +243,26 @@ describe('FileRGBIterator', () => {
         expect(r).toEqual(expectedAbsoluteROI);
       });
     });
-  });
 
-  it('should initialize roi and rgb data on start()', async () => {
-    await iterator.start();
-    // With dummyOptions.globalRoi undefined, it should go through face detection.
-    const expectedAbsoluteROI = {
-      x0: Math.round(0.1 * 640),
-      y0: Math.round(0.1 * 480),
-      x1: Math.round(0.4 * 640),
-      y1: Math.round(0.4 * 480),
-    };
-    // The iterator should have one ROI per frame (20 frames).
-    expect((iterator as any)['roi'].length).toBe(20);
-    (iterator as any)['roi'].forEach((r: ROI) => {
-      expect(r).toEqual(expectedAbsoluteROI);
+    it('should initialize roi and rgb data', async () => {
+      await iterator.start();
+      // With dummyOptions.globalRoi undefined, it should go through face detection.
+      const expectedAbsoluteROI = {
+        x0: Math.round(0.1 * 640),
+        y0: Math.round(0.1 * 480),
+        x1: Math.round(0.4 * 640),
+        y1: Math.round(0.4 * 480),
+      };
+      // The iterator should have one ROI per frame (20 frames).
+      expect((iterator as any)['roi'].length).toBe(20);
+      (iterator as any)['roi'].forEach((r: ROI) => {
+        expect(r).toEqual(expectedAbsoluteROI);
+      });
+      // Also, rgb should be computed.
+      expect((iterator as any)['rgb']).not.toBeNull();
+      // Verify that readVideo was called
+      expect(ffmpegWrapper.readVideo).toHaveBeenCalled();
     });
-    // Also, rgb should be computed.
-    expect((iterator as any)['rgb']).not.toBeNull();
-    // Verify that readVideo was called
-    expect(ffmpegWrapper.readVideo).toHaveBeenCalled();
   });
 
   describe('next', () => {
@@ -267,8 +272,8 @@ describe('FileRGBIterator', () => {
       // Now call next()
       const frame = await iterator.next();
       expect(frame).not.toBeNull();
-      expect(frame!.getTimestamp().length).toEqual(6);
-      expect(frame!.getShape()).toEqual([6, 3]);
+      expect(frame!.getTimestamp().length).toEqual(3);
+      expect(frame!.getShape()).toEqual([3, 3]);
       expect(frame!.getROI().length).toEqual(frame!.getTimestamp().length);
     });
 
