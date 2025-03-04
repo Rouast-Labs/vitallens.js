@@ -163,7 +163,7 @@ export class FileFrameIterator extends FrameIteratorBase {
     // Generate timestamps for each frame in the batch
     const frameTimestamps = Array.from(
       { length: dsFramesExpected },
-      (_, i) => (startFrameIndex + i) / this.probeInfo!.fps
+      (_, i) => (startFrameIndex + i * this.dsFactor) / this.probeInfo!.fps
     );
 
     // ROI for each frame in the batch

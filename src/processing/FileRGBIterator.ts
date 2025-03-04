@@ -131,27 +131,39 @@ export class FileRGBIterator extends FrameIteratorBase {
       Math.round(this.probeInfo!.fps / this.fpsTarget),
       1
     );
+    const totalFramesDs = Math.ceil(totalFrames / this.dsFactor);
     // Determine how many chunks we need to process the entire video.
-    const videoSizeBytes =
-      totalFrames * this.probeInfo!.height * this.probeInfo!.width * 3;
+    const maxFacePercentage = 0.2;
+    const maxVideoSizeBytes =
+      totalFramesDs *
+      this.probeInfo!.height *
+      this.probeInfo!.width *
+      3 *
+      maxFacePercentage;
     const maxBytes = 1024 * 1024 * 1024 * 2; // 2GB
-    const nChunks = Math.ceil(videoSizeBytes / maxBytes);
+    const nChunks = Math.ceil(maxVideoSizeBytes / maxBytes);
     // Equally split the total frames into chunks.
-    const framesPerChunk = Math.ceil(totalFrames / nChunks);
+    const framesDsPerChunk = Math.ceil(totalFramesDs / nChunks);
     // Prepare a container to hold the RGB values for every frame (each frame: 3 values: R, G, B).
-    const rgbResult = new Float32Array(totalFrames * 3);
+    const rgbResult = new Float32Array(totalFramesDs * 3);
     // Process each chunk.
     for (let chunk = 0; chunk < nChunks; chunk++) {
-      const startIdx = chunk * framesPerChunk;
-      const endIdx = Math.min((chunk + 1) * framesPerChunk, totalFrames);
+      const startIdx = chunk * framesDsPerChunk * this.dsFactor;
+      const startIdxDs = chunk * framesDsPerChunk;
+      const endIdx = Math.min(
+        (chunk + 1) * framesDsPerChunk * this.dsFactor,
+        totalFrames
+      );
       const chunkFrameCount = endIdx - startIdx;
+      const chunkFrameCountDs = Math.ceil(chunkFrameCount / this.dsFactor);
       // Determine the union ROI for the frames in this chunk.
       const chunkROIs = this.roi.slice(startIdx, endIdx);
       const unionROI = getUnionROI(chunkROIs);
       // Read frames for this chunk from the video, cropped to the union ROI.
-      const chunkVideoData = await this.ffmpeg.readVideo(
+      const chunkVideoDataDs = await this.ffmpeg.readVideo(
         this.videoInput,
         {
+          fpsTarget: this.fpsTarget,
           trim: { startFrame: startIdx, endFrame: endIdx },
           crop: unionROI,
           pixelFormat: 'rgb24',
@@ -162,22 +174,22 @@ export class FileRGBIterator extends FrameIteratorBase {
       const unionWidth = unionROI.x1 - unionROI.x0;
       const unionHeight = unionROI.y1 - unionROI.y0;
       const totalPixelsPerFrame = unionWidth * unionHeight * 3;
-      const expectedLength = chunkFrameCount * totalPixelsPerFrame;
-      if (chunkVideoData.length !== expectedLength) {
+      const expectedLengthDs = chunkFrameCountDs * totalPixelsPerFrame;
+      if (chunkVideoDataDs.length !== expectedLengthDs) {
         throw new Error(
-          `Buffer length mismatch in chunk ${chunk}: expected ${expectedLength}, got ${chunkVideoData.length}`
+          `Buffer length mismatch in chunk ${chunk}: expected ${expectedLengthDs}, got ${chunkVideoDataDs.length}`
         );
       }
       // For each frame in the chunk, extract the RGB signal from the original ROI.
       // Here, we adjust the original ROI (which is in absolute coordinates) to be relative to the union ROI.
-      for (let i = 0; i < chunkFrameCount; i++) {
+      for (let i = 0; i < chunkFrameCountDs; i++) {
         const frameOffset = i * totalPixelsPerFrame;
-        const frameData = chunkVideoData.subarray(
+        const frameData = chunkVideoDataDs.subarray(
           frameOffset,
           frameOffset + totalPixelsPerFrame
         );
         // Get the original ROI for this frame.
-        const originalROI = this.roi[startIdx + i];
+        const originalROI = this.roi[startIdx + i * this.dsFactor];
         // Adjust ROI coordinates relative to the union ROI.
         const adjustedROI: ROI = {
           x0: originalROI.x0 - unionROI.x0,
@@ -193,10 +205,10 @@ export class FileRGBIterator extends FrameIteratorBase {
           adjustedROI
         );
         // Store the extracted RGB values.
-        const globalFrameIdx = startIdx + i;
-        rgbResult[globalFrameIdx * 3 + 0] = rgbValue[0];
-        rgbResult[globalFrameIdx * 3 + 1] = rgbValue[1];
-        rgbResult[globalFrameIdx * 3 + 2] = rgbValue[2];
+        const globalFrameIdxDs = startIdxDs + i;
+        rgbResult[globalFrameIdxDs * 3 + 0] = rgbValue[0];
+        rgbResult[globalFrameIdxDs * 3 + 1] = rgbValue[1];
+        rgbResult[globalFrameIdxDs * 3 + 2] = rgbValue[2];
       }
     }
     // Store the computed RGB signal.
@@ -214,14 +226,19 @@ export class FileRGBIterator extends FrameIteratorBase {
       );
     }
 
-    if (this.isClosed || this.currentFrameIndex >= this.probeInfo.totalFrames) {
+    const totalFramesDs = Math.ceil(this.probeInfo.totalFrames / this.dsFactor);
+
+    if (
+      this.isClosed ||
+      this.currentFrameIndex + this.methodConfig.maxWindowLength >=
+        totalFramesDs
+    ) {
       return null;
     }
 
-    // Determine how many frames to serve in this call.
     const framesToRead = Math.min(
-      this.methodConfig.maxWindowLength * this.dsFactor,
-      this.probeInfo.totalFrames - this.currentFrameIndex
+      this.methodConfig.maxWindowLength,
+      totalFramesDs - this.currentFrameIndex
     );
 
     if (!this.rgb) {
@@ -238,7 +255,8 @@ export class FileRGBIterator extends FrameIteratorBase {
     // Generate timestamps for each frame in the batch.
     const frameTimestamps = Array.from(
       { length: framesToRead },
-      (_, i) => (this.currentFrameIndex + i) / this.probeInfo!.fps
+      (_, i) =>
+        (this.currentFrameIndex + i) / (this.probeInfo!.fps / this.dsFactor)
     );
 
     // Slice the corresponding ROIs from the original coordinates.
@@ -248,9 +266,9 @@ export class FileRGBIterator extends FrameIteratorBase {
     );
 
     // Update the iterator index.
-    this.currentFrameIndex += framesToRead;
-
-    // TODO: Need to do anything if dsFactor > 1?
+    const stepSize =
+      this.methodConfig.maxWindowLength - this.methodConfig.minWindowLength + 1;
+    this.currentFrameIndex += stepSize;
 
     // Create and return a Frame. Here we assume that each frame is represented as a vector of 3 values.
     return Frame.fromFloat32Array(

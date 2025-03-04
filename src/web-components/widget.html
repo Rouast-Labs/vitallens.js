@@ -143,28 +143,40 @@
     justify-content: space-between;
   }
   #controls button {
-    width: 100px;
-    padding: 8px 16px;
+    min-width: 80px;
+    max-width: 100px;
+    padding: 8px 8px;
     font-size: 14px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
   }
   #fpsDisplay {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
     font-size: 14px;
     color: white;
-    min-width: 80px;
+    min-width: 30px;
   }
   #methodContainer {
     display: flex;
     align-items: center;
     gap: 5px;
+    margin-left: 5px;
+    margin-right: 5px;
   }
   #methodContainer label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
     font-size: 14px;
+    min-width: 50px;
   }
   #methodSelect {
-    width: 100px;
+    max-width: 100px;
     padding: 8px;
     font-size: 14px;
     background: #333;
@@ -232,6 +244,64 @@
     border-radius: 5px;
     padding: 4px 8px;
   }
+  #hintsContainer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 5px;
+  }
+  .tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    color: white;
+  }
+  .tooltip span {
+    font-size: 14px;
+  }
+  .tooltip .tooltip-icon {
+    background: #007bff;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    font-size: 10px;
+  }
+  .tooltip .tooltip-content {
+    min-width: 200px;
+    max-width: 300px;
+    white-space: normal;
+    word-wrap: break-word;
+    visibility: hidden;
+    background-color: #333;
+    color: #fff;
+    text-align: left;
+    padding: 5px;
+    border-radius: 4px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .tooltip:hover .tooltip-content {
+    visibility: visible;
+    opacity: 1;
+  }
+  .tooltip .tooltip-content ul {
+    margin: 0;
+    padding: 0;
+    list-style: disc;
+    margin-left: 20px;
+  }
+  .tooltip .tooltip-content li {
+    margin: 2px 0;
+  }
 </style>
 
 <div id="navbar">
@@ -249,7 +319,12 @@
     <button id="fileModeButton" class="tab-button">File</button>
   </div>
   <div class="download-container">
-    <button id="downloadButton">Download JSON</button>
+    <button id="downloadButton">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
+        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/>
+      </svg>
+    </button>
   </div>
 </div>
 
@@ -265,15 +340,45 @@
     <input type="file" id="videoInput" accept="video/*" style="display: none;" />
   </div>
   <div id="controls">
-    <div id="fpsDisplay">FPS: --</div>
+    <div id="fpsDisplay">
+      <span class="fps-label">FPS:</span>
+      <span class="fps-value">(N/A)</span>
+    </div>
     <div id="methodContainer">
-      <label for="methodSelect">rPPG Method:</label>
+      <label for="methodSelect">
+        <span>rPPG</span>
+        <span>Method:</span>
+      </label>
       <select id="methodSelect">
         <option value="vitallens" selected>VitalLens</option>
         <option value="pos">POS</option>
         <option value="chrom">CHROM</option>
         <option value="g">G</option>
       </select>
+    </div>
+    <div id="hintsContainer">
+      <div class="tooltip guidelines-tooltip">
+        <span class="tooltip-label">Tips</span>
+        <span class="tooltip-icon">?</span>
+        <div class="tooltip-content">
+          <ul>
+            <li>Minimize camera movement.</li>
+            <li>Keep the subject still and facing the camera.</li>
+            <li>Use bright and steady light source.</li>
+            <li>Use as little video compression as possible if using a video file.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="tooltip file-mode-tooltip" style="display: none;">
+        <span class="tooltip-label">Slow?</span>
+        <span class="tooltip-icon">?</span>
+        <div class="tooltip-content">
+          <ul>
+            <li>Video processing in the browser can take a while for large files.</li>
+            <li>For more performance, use this client in Node.js or our Python client.</li>
+          </ul>
+        </div>
+      </div>
     </div>
     <button id="controlButton">Pause</button>
   </div>  

@@ -95,7 +95,7 @@ export class VitalLensWidgetBase extends HTMLElement {
   protected fileModeButtonElement!: HTMLButtonElement;
   protected controlButtonElement!: HTMLButtonElement;
   protected methodSelectElement!: HTMLSelectElement;
-  protected fpsDisplayElement!: HTMLElement;
+  protected fpsValueElement!: HTMLElement;
   protected downloadButtonElement!: HTMLButtonElement;
   protected vitalLensInstance!: VitalLens;
   protected charts: any = {};
@@ -108,6 +108,7 @@ export class VitalLensWidgetBase extends HTMLElement {
   protected proxyUrl: string | null = null;
   protected mode: string = '';
   protected debug: boolean = false;
+  private _handleResizeBound = this.handleResize.bind(this);
 
   constructor(widgetString: string = widget.replace('__LOGO_URL__', logoUrl)) {
     super();
@@ -116,10 +117,7 @@ export class VitalLensWidgetBase extends HTMLElement {
   }
 
   disconnectedCallback() {
-    // Clean up resources.
-    if (this.vitalLensInstance) {
-      this.vitalLensInstance.close();
-    }
+    this.destroy();
   }
 
   protected getElements() {
@@ -153,8 +151,8 @@ export class VitalLensWidgetBase extends HTMLElement {
     this.methodSelectElement = this.shadowRoot!.querySelector(
       '#methodSelect'
     ) as HTMLSelectElement;
-    this.fpsDisplayElement = this.shadowRoot!.querySelector(
-      '#fpsDisplay'
+    this.fpsValueElement = this.shadowRoot!.querySelector(
+      '#fpsDisplay .fps-value'
     ) as HTMLElement;
     this.downloadButtonElement = this.shadowRoot!.querySelector(
       '#downloadButton'
@@ -321,8 +319,8 @@ export class VitalLensWidgetBase extends HTMLElement {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private updateFpsDisplay(fps: number, estFps: number) {
-    this.fpsDisplayElement.textContent = `FPS: ${fps ? fps.toFixed(1) : 'N/A'}`;
+  private updateFpsValue(fps: number, estFps: number) {
+    this.fpsValueElement.textContent = fps ? fps.toFixed(1) : 'N/A';
   }
 
   private async initVitalLensInstance() {
@@ -505,6 +503,10 @@ export class VitalLensWidgetBase extends HTMLElement {
     this.videoElement.style.display = 'block';
     this.canvasElement.style.display = 'block';
     this.controlButtonElement.textContent = 'Pause';
+    const fileTooltip = this.shadowRoot!.querySelector(
+      '.file-mode-tooltip'
+    ) as HTMLElement;
+    if (fileTooltip) fileTooltip.style.display = 'none';
   }
 
   private setupFileModeUI() {
@@ -513,6 +515,10 @@ export class VitalLensWidgetBase extends HTMLElement {
     this.canvasElement.style.display = 'none';
     this.videoInputElement.style.display = 'none';
     this.controlButtonElement.textContent = 'Reset';
+    const fileTooltip = this.shadowRoot!.querySelector(
+      '.file-mode-tooltip'
+    ) as HTMLElement;
+    if (fileTooltip) fileTooltip.style.display = 'inline-block';
   }
 
   private resetVideoStreamView() {
@@ -542,7 +548,7 @@ export class VitalLensWidgetBase extends HTMLElement {
     this.updateChart(this.charts.respChart, [], [], this.MAX_DATA_POINTS);
     this.updateStats('ppgStats', 'HR   bpm', undefined);
     this.updateStats('respStats', 'RR   bpm', undefined);
-    this.updateFpsDisplay(0, 0);
+    this.updateFpsValue(0, 0);
   }
 
   private handleVitalLensResults(result: any) {
@@ -583,14 +589,14 @@ export class VitalLensWidgetBase extends HTMLElement {
       );
     }
     const hrValue =
-      heart_rate && heart_rate.confidence >= 0.8 ? heart_rate.value : undefined;
+      heart_rate && heart_rate.confidence >= 0.7 ? heart_rate.value : undefined;
     const rrValue =
-      respiratory_rate && respiratory_rate.confidence >= 0.8
+      respiratory_rate && respiratory_rate.confidence >= 0.7
         ? respiratory_rate.value
         : undefined;
     this.updateStats('ppgStats', 'HR   bpm', hrValue);
     this.updateStats('respStats', 'RR   bpm', rrValue);
-    this.updateFpsDisplay(fps, estFps);
+    this.updateFpsValue(fps, estFps);
   }
 
   private handleResize() {
@@ -677,7 +683,7 @@ export class VitalLensWidgetBase extends HTMLElement {
         anchor.remove();
       }
     });
-    window.addEventListener('resize', () => this.handleResize());
+    window.addEventListener('resize', this._handleResizeBound);
     const webcamButton = this.shadowRoot!.querySelector(
       '#webcamModeButton'
     ) as HTMLButtonElement;
@@ -716,6 +722,25 @@ export class VitalLensWidgetBase extends HTMLElement {
         }
       }
     });
+  }
+
+  public destroy(): void {
+    window.removeEventListener('resize', this._handleResizeBound);
+
+    if (this.vitalLensInstance) {
+      try {
+        this.vitalLensInstance.close();
+      } catch (e) {
+        console.error('Error closing vitalLensInstance:', e);
+      }
+    }
+
+    this.resetVideoStreamView();
+    this.resetVideoFileView();
+
+    if (this.shadowRoot) {
+      this.shadowRoot.innerHTML = '';
+    }
   }
 }
 

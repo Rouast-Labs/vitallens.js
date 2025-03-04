@@ -82,7 +82,7 @@ For example, using **jsDelivr**:
 <script src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
 
 <!-- Or pin a specific version -->
-<script src="https://cdn.jsdelivr.net/npm/vitallens@0.0.1/dist/vitallens.browser.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vitallens@0.0.3/dist/vitallens.browser.js"></script>
 
 <!-- Use with core API -->
 <script>
