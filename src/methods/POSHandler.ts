@@ -89,7 +89,7 @@ export class POSHandler extends SimpleMethodHandler {
     // Determine the moving average window size.
     const windowSize = movingAverageSizeForHRResponse(fps);
     // Apply the moving average filter.
-    processed = movingAverage(data, windowSize);
+    processed = movingAverage(processed, windowSize);
     // Standardize the filtered signal.
     if (!light) processed = standardize(processed);
     return processed;
