@@ -236,7 +236,7 @@ describe('StreamProcessor (Browser)', () => {
         true
       );
       // The processor's ROI should be updated.
-      expect((processor as any).roi).toEqual(updatedROI);
+      expect((processor as any).pendingRoi).toEqual(updatedROI);
       // Because fakeBufferManager.isEmpty() returns true (or for vitallens), a new buffer is added.
       expect(fakeBufferManager.addBuffer).toHaveBeenCalledWith(
         updatedROI,

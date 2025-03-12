@@ -59,6 +59,7 @@ export class StreamProcessor extends StreamProcessorBase {
     if (!detections || detections.length < 1) {
       // No face detected.
       this.roi = null;
+      this.pendingRoi = null;
       this.bufferManager.cleanup();
       this.onNoFace();
       return;
@@ -73,14 +74,15 @@ export class StreamProcessor extends StreamProcessorBase {
         this.options.method !== 'vitallens');
 
     if (shouldUpdateROI) {
-      this.roi = getROIForMethod(
+      const newRoi = getROIForMethod(
         det,
         this.methodConfig,
         { height: probeInfo.height, width: probeInfo.width },
         true
       );
+      this.pendingRoi = newRoi;
       if (this.bufferManager.isEmpty() || this.options.method === 'vitallens') {
-        this.bufferManager.addBuffer(this.roi, this.methodConfig, timestamp);
+        this.bufferManager.addBuffer(newRoi, this.methodConfig, timestamp);
       }
     }
 

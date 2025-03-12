@@ -15,6 +15,7 @@ export abstract class StreamProcessorBase {
   private isPredicting = false;
   protected isDetecting = false;
   protected roi: ROI | null = null;
+  protected pendingRoi: ROI | null = null;
   private targetFps: number = 30.0;
   private fDetFs: number = 0.5;
   private lastProcessedTime: number = 0; // In seconds
@@ -83,6 +84,11 @@ export abstract class StreamProcessorBase {
 
     const processFrames = async () => {
       while (!this.isPaused) {
+        if (this.pendingRoi) {
+          this.roi = this.pendingRoi;
+          this.pendingRoi = null;
+        }
+
         const currentTime = performance.now() / 1000; // In seconds
 
         // Throttle to target FPS
