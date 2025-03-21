@@ -24,4 +24,4 @@ export const CALC_RR_MIN_WINDOW_SIZE = 4;
 export const FDET_DEFAULT_FS_FILE = 0.5;
 export const FDET_DEFAULT_FS_STREAM = 1.0;
 
-export const COMPRESSION_MODE: CompressionMode = 'none';
+export const COMPRESSION_MODE: CompressionMode = 'gzip';

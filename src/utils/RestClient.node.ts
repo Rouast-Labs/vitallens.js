@@ -44,9 +44,7 @@ export class RestClient extends RestClientBase {
         ...(isBinary
           ? { 'Content-Type': 'application/octet-stream' }
           : { 'Content-Type': 'application/json' }),
-        ...(isBinary && isCompressed
-          ? { 'Content-Encoding': COMPRESSION_MODE }
-          : {}),
+        ...(isBinary && isCompressed ? { 'X-Encoding': COMPRESSION_MODE } : {}),
       };
 
       const url = this.proxyUrl ?? this.getRestEndpoint(mode);
