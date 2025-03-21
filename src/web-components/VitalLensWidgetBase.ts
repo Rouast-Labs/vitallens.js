@@ -116,6 +116,20 @@ export class VitalLensWidgetBase extends HTMLElement {
     shadow.innerHTML = widgetString;
   }
 
+  connectedCallback() {
+    // Add preconnect link to api.rouast.com - avoids delay during first request.
+    if (
+      !document.querySelector(
+        'link[rel="preconnect"][href="https://api.rouast.com"][crossorigin]'
+      )
+    ) {
+      const preconnectLink = document.createElement('link');
+      preconnectLink.rel = 'preconnect';
+      preconnectLink.href = 'https://api.rouast.com';
+      document.head.appendChild(preconnectLink);
+    }
+  }
+
   disconnectedCallback() {
     this.destroy();
   }

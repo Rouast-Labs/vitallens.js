@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { VitalLensAPIResponse } from '../types';
+import { InferenceMode, VitalLensAPIResponse } from '../types';
 import { IWebSocketClient } from '../types/IWebSocketClient';
 import { uint8ArrayToBase64 } from './arrayOps';
 
@@ -45,12 +45,14 @@ export abstract class WebSocketClientBase<TWebSocket extends BaseWebSocket>
    * Sends a payload split into chunks and a final chunk of metadata.
    * @param metadata - The metadata object to include in the final chunk.
    * @param frames - The raw frame data as a Uint8Array.
+   * @param mode - The inference mode.
    * @param state - The state data as a Float32Array (optional).
    * @returns The server's response as a JSON-parsed object.
    */
   async sendFrames(
     metadata: Record<string, unknown>,
     frames: Uint8Array,
+    mode: InferenceMode,
     state?: Float32Array
   ): Promise<VitalLensAPIResponse> {
     if (!this.isConnected || !this.socket) {

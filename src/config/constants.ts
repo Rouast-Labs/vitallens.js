@@ -1,6 +1,11 @@
+import { CompressionMode } from '../types';
+
 export const VITALLENS_WEBSOCKET_ENDPOINT =
   'wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/';
-export const VITALLENS_REST_ENDPOINT = 'https://api.rouast.com/vitallens-v2';
+export const VITALLENS_FILE_ENDPOINT =
+  'https://api.rouast.com/vitallens-dev/file';
+export const VITALLENS_STREAM_ENDPOINT =
+  'https://api.rouast.com/vitallens-dev/stream';
 
 // Vitals estimation constraints [1/min]
 export const CALC_HR_MIN = 40;
@@ -18,3 +23,5 @@ export const CALC_RR_MIN_WINDOW_SIZE = 4;
 // Face detection defaults [Hz]
 export const FDET_DEFAULT_FS_FILE = 0.5;
 export const FDET_DEFAULT_FS_STREAM = 1.0;
+
+export const COMPRESSION_MODE: CompressionMode = 'none';

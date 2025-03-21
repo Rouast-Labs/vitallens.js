@@ -4,6 +4,11 @@
 export type VideoInput = string | File | Blob;
 
 /**
+ * Represents the possible inference modes.
+ */
+export type InferenceMode = 'stream' | 'file';
+
+/**
  * Options for configuring the VitalLens library.
  */
 export interface VitalLensOptions {
@@ -120,3 +125,8 @@ export interface ROI {
   x1: number;
   y1: number;
 }
+
+/**
+ * Represents the possible compression modes.
+ */
+export type CompressionMode = 'none' | 'gzip' | 'deflate';

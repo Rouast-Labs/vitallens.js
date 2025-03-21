@@ -5,6 +5,7 @@ class VitalLensWidgetUnified extends VitalLensWidgetBase {
     super();
   }
   connectedCallback() {
+    super.connectedCallback();
     // For unified widget, use the full template.
     this.getElements();
     this.apiKey = this.getAttribute('api-key') || '';

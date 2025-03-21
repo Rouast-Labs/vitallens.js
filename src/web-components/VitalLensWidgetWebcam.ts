@@ -5,6 +5,7 @@ class VitalLensWidgetWebcam extends VitalLensWidgetBase {
     super();
   }
   connectedCallback() {
+    super.connectedCallback();
     this.getElements();
     // Remove the tabs container for webcam-only widget.
     const navbar = this.shadowRoot!.querySelector('#tabs-container');

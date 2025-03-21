@@ -265,6 +265,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       );
       const incrementalResult = await this.methodHandler.process(
         framesChunk,
+        'file',
         this.bufferManager.getState() ?? undefined
       );
 

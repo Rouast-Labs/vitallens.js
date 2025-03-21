@@ -32,9 +32,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Set development VITALLENS_REST_ENDPOINT for non-main branches
+      - name: Set development VITALLENS_FILE_ENDPOINT for non-main branches
         if: github.ref != 'refs/heads/main'
-        run: echo "VITALLENS_REST_ENDPOINT=https://api.example.com/vitallens-dev" >> $GITHUB_ENV
+        run: echo "VITALLENS_FILE_ENDPOINT=https://api.example.com/vitallens-dev/file" >> $GITHUB_ENV
+      
+      - name: Set development VITALLENS_STREAM_ENDPOINT for non-main branches
+        if: github.ref != 'refs/heads/main'
+        run: echo "VITALLENS_STREAM_ENDPOINT=https://api.example.com/vitallens-dev/stream" >> $GITHUB_ENV
 
       - name: Set development VITALLENS_WEBSOCKET_ENDPOINT for non-main branches
         if: github.ref != 'refs/heads/main'
@@ -70,9 +74,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Set development VITALLENS_REST_ENDPOINT for non-main branches
+      - name: Set development VITALLENS_FILE_ENDPOINT for non-main branches
         if: github.ref != 'refs/heads/main'
-        run: echo "VITALLENS_REST_ENDPOINT=https://api.example.com/vitallens-dev" | Out-File -FilePath $env:GITHUB_ENV -Append
+        run: echo "VITALLENS_FILE_ENDPOINT=https://api.example.com/vitallens-dev/file" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Set development VITALLENS_STREAM_ENDPOINT for non-main branches
+        if: github.ref != 'refs/heads/main'
+        run: echo "VITALLENS_STREAM_ENDPOINT=https://api.example.com/vitallens-dev/stream" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Set development VITALLENS_WEBSOCKET_ENDPOINT for non-main branches
         if: github.ref != 'refs/heads/main'

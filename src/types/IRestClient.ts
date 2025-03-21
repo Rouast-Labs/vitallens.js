@@ -1,9 +1,10 @@
-import { VitalLensAPIResponse } from './core';
+import { InferenceMode, VitalLensAPIResponse } from './core';
 
 export interface IRestClient {
   sendFrames(
     metadata: Record<string, unknown>,
     frames: Uint8Array,
+    mode: InferenceMode,
     state?: Float32Array
   ): Promise<VitalLensAPIResponse>;
 }

@@ -1,4 +1,4 @@
-import { VitalLensAPIResponse, VitalLensResult } from '../types';
+import { InferenceMode, VitalLensAPIResponse, VitalLensResult } from '../types';
 import { IRestClient } from '../types/IRestClient';
 import { float32ArrayToBase64, uint8ArrayToBase64 } from './arrayOps';
 
@@ -6,34 +6,40 @@ import { float32ArrayToBase64, uint8ArrayToBase64 } from './arrayOps';
  * Utility class for managing REST communication.
  */
 export abstract class RestClientBase implements IRestClient {
-  protected url: string;
-  private apiKey: string;
-  protected headers: Record<string, string>;
+  protected proxyUrl: string | null = null;
+  protected apiKey: string;
 
   constructor(apiKey: string, proxyUrl?: string) {
-    this.url = proxyUrl ?? this.getRestEndpoint();
+    this.proxyUrl = proxyUrl ?? null;
     this.apiKey = apiKey;
-    this.headers = {
-      'Content-Type': 'application/json',
-      ...(proxyUrl ? {} : { 'x-api-key': this.apiKey }),
-    };
   }
 
   /**
    * Abstract method to get the REST endpoint.
+   * @param mode - The inference mode.
    * @returns The REST endpoint.
    */
-  protected abstract getRestEndpoint(): string;
+  protected abstract getRestEndpoint(mode: InferenceMode): string;
 
   /**
    * Abstract method for sending HTTP requests.
-   * Implement this in environment-specific subclasses.
-   * @param payload - The data to send in the request body.
+   * @param headers - The headers.
+   * @param body - The body.
+   * @param mode - The inference mode ('file' or 'stream').
    * @returns The server's response as a JSON-parsed object.
    */
   protected abstract postRequest(
-    payload: Record<string, unknown>
+    headers: Record<string, string>,
+    body: Record<string, unknown> | Uint8Array,
+    mode: InferenceMode
   ): Promise<VitalLensAPIResponse>;
+
+  /**
+   * Abstract method for compressing a Uint8Array.
+   * @param data - The binary data to compress.
+   * @returns A Promise that resolves with the compressed data as a Uint8Array.
+   */
+  protected abstract compress(data: Uint8Array): Promise<Uint8Array>;
 
   /**
    * Handles the HTTP response, throwing an error for non-OK status codes.
@@ -62,28 +68,56 @@ export abstract class RestClientBase implements IRestClient {
 
   /**
    * Sends frames to the VitalLens API for estimation.
-   * @param metadata - The metadata object to include in the final chunk.
+   * @param metadata - The metadata object.
    * @param frames - The raw frame data as a Uint8Array.
+   * @param mode - The inference mode ('file' or 'stream').
    * @param state - The state data as a Float32Array (optional).
    * @returns The server's response as a JSON-parsed object.
    */
   async sendFrames(
     metadata: Record<string, unknown>,
     frames: Uint8Array,
+    mode: InferenceMode,
     state?: Float32Array
   ): Promise<VitalLensAPIResponse> {
-    const base64Frames = uint8ArrayToBase64(frames);
+    // TODO: Fall back to file if stream doesn't work?
 
-    const payload: Record<string, unknown> = {
-      video: base64Frames,
-      ...metadata,
-    };
+    if (mode === 'stream') {
+      // Stream mode: binary (application/octet-stream)
+      // Put metadata and state in the headers.
+      const customHeaders: Record<string, string> = {};
 
-    if (state) {
-      const base64State = float32ArrayToBase64(state);
-      payload.state = base64State;
+      Object.entries(metadata).forEach(([key, value]) => {
+        customHeaders[`X-${key.charAt(0).toUpperCase() + key.slice(1)}`] =
+          String(value);
+      });
+
+      if (state) {
+        customHeaders['X-State'] = float32ArrayToBase64(state);
+      }
+
+      const compressedFrames = await this.compress(frames);
+
+      // Capture the start time
+      const response = await this.postRequest(
+        customHeaders,
+        compressedFrames,
+        mode
+      );
+      return response;
+    } else {
+      // File mode: JSON (base64 encoding)
+      const base64Frames = uint8ArrayToBase64(frames);
+      const payload: Record<string, unknown> = {
+        video: base64Frames,
+        ...metadata,
+      };
+
+      if (state) {
+        payload.state = float32ArrayToBase64(state);
+      }
+
+      return this.postRequest({}, payload, mode);
     }
-
-    return this.postRequest(payload);
   }
 }

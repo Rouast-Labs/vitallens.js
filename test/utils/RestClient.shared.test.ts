@@ -2,7 +2,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { RestClientBase } from '../../src/utils/RestClient.base';
-import { VITALLENS_REST_ENDPOINT } from '../../src/config/constants';
+import {
+  VITALLENS_FILE_ENDPOINT,
+  VITALLENS_STREAM_ENDPOINT,
+} from '../../src/config/constants';
 
 class MockRestClient extends RestClientBase {
   protected getRestEndpoint(): string {

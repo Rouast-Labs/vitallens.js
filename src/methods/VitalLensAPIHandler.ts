@@ -1,4 +1,5 @@
 import {
+  InferenceMode,
   VitalLensAPIResponse,
   VitalLensOptions,
   VitalLensResult,
@@ -74,11 +75,13 @@ export class VitalLensAPIHandler extends MethodHandler {
   /**
    * Sends a buffer of frames to the VitalLens API via the selected client and processes the response.
    * @param framesChunk - Frame chunk to send, already in shape (n_frames, 40, 40, 3).
+   * @param mode - The inference mode.
    * @param state - Optional recurrent state from the previous API call.
    * @returns A promise that resolves to the processed result.
    */
   async process(
     framesChunk: Frame,
+    mode: InferenceMode,
     state?: Float32Array
   ): Promise<VitalLensResult | undefined> {
     if (isWebSocketClient(this.client) && !this.client.getIsConnected()) {
@@ -86,26 +89,18 @@ export class VitalLensAPIHandler extends MethodHandler {
     }
 
     try {
-      // Capture the start time
-      // const startTime = performance.now();
-
       // Store the roi.
       const roi = framesChunk.getROI();
 
       // Send the payload
       const response = (await this.client.sendFrames(
         {
-          version: 'vitallens-dev',
           origin: 'vitallens.js',
         },
         framesChunk.getUint8Array(),
+        mode,
         state
       )) as VitalLensAPIResponse;
-
-      // Capture the end time and calculate the duration
-      // const endTime = performance.now();
-      // const duration = endTime - startTime;
-      // console.log(`API response received in ${duration.toFixed(0)} ms`);
 
       // Parse the response
       if (!response || typeof response.statusCode !== 'number') {

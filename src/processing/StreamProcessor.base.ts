@@ -136,7 +136,7 @@ export abstract class StreamProcessorBase {
               }
               const currentState = this.bufferManager.getState();
               this.methodHandler
-                .process(mergedFrame, currentState as Float32Array)
+                .process(mergedFrame, 'stream', currentState as Float32Array)
                 .then((incrementalResult) => {
                   if (incrementalResult) {
                     if (incrementalResult.state) {

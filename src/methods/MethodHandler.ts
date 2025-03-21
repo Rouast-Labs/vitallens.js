@@ -1,6 +1,11 @@
 import { METHODS_CONFIG } from '../config/methodsConfig';
 import { Frame } from '../processing/Frame';
-import { MethodConfig, VitalLensOptions, VitalLensResult } from '../types/core';
+import {
+  InferenceMode,
+  MethodConfig,
+  VitalLensOptions,
+  VitalLensResult,
+} from '../types/core';
 
 /**
  * Abstract base class for all method-specific handlers.
@@ -53,11 +58,13 @@ export abstract class MethodHandler {
   /**
    * Processes the provided buffer of frames and optionally uses the recurrent state.
    * @param framesChunk - Frame chunk to process.
+   * @param mode - The inference mode.
    * @param state - Optional recurrent state from previous processing.
    * @returns A promise that resolves to the processing result.
    */
   abstract process(
     framesChunk: Frame,
+    mode: InferenceMode,
     state?: Float32Array
   ): Promise<VitalLensResult | undefined>;
 }
