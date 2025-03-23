@@ -15,6 +15,7 @@ import FFmpegWrapper from '../utils/FFmpegWrapper.node';
 import { Worker } from 'worker_threads';
 import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.node';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
+import { BufferedResultsConsumer } from '../processing/BufferedResultsConsumer';
 
 export class VitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
@@ -47,6 +48,7 @@ export class VitalLensController extends VitalLensControllerBase {
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
     methodHandler: MethodHandler,
+    bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>
   ): IStreamProcessor {
@@ -57,6 +59,7 @@ export class VitalLensController extends VitalLensControllerBase {
       bufferManager,
       faceDetectionWorker,
       methodHandler,
+      bufferedResultsConsumer,
       onPredict,
       onNoFace
     );

@@ -197,7 +197,7 @@ export class VitalLensWidgetBase extends HTMLElement {
                 const conf1 = confArray[i] !== undefined ? confArray[i] : 1;
                 const conf2 =
                   confArray[i + 1] !== undefined ? confArray[i + 1] : conf1;
-                const avgConf = Math.min((conf1 + conf2) / 2 + 0.1, 1);
+                const avgConf = Math.min((conf1 + conf2) / 2 + 0.3, 1);
                 return `rgba(${baseColor},${avgConf})`;
               },
             },
@@ -350,6 +350,7 @@ export class VitalLensWidgetBase extends HTMLElement {
     this.currentMethod = selectedMethod as any;
     const options: VitalLensOptions = {
       method: this.currentMethod,
+      bufferOffset: 2,
       ...(this.apiKey ? { apiKey: this.apiKey } : {}),
       ...(this.proxyUrl ? { proxyUrl: this.proxyUrl } : {}),
     };

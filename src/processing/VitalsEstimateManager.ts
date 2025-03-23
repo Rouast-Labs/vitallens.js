@@ -170,11 +170,82 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         light,
         overlap,
         incrementalResult,
-        estFps
+        estFps,
+        incrementalResult.displayTime
       );
     } else {
       return null;
     }
+  }
+
+  /**
+   * Returns an array of buffered results, one for each time step in the incremental result.
+   * @param incrementalResult - The incremental result to process.
+   * @param sourceId - The source identifier (e.g., streamId or videoId).
+   * @param defaultWaveformMode - The default waveformMode to set.
+   * @returns The aggregated result or null.
+   */
+  async produceBufferedResults(
+    incrementalResult: VitalLensResult,
+    sourceId: string,
+    defaultWaveformMode: string
+  ): Promise<Array<VitalLensResult> | null> {
+    const offset = this.options.bufferOffset ?? 2;
+    const timesteps = incrementalResult.time;
+    const ppgWaveformData = incrementalResult.vital_signs?.ppg_waveform?.data;
+    const ppgWaveformConf =
+      incrementalResult.vital_signs?.ppg_waveform?.confidence;
+    const respiratoryWaveformData =
+      incrementalResult.vital_signs?.respiratory_waveform?.data;
+    const respiratoryWaveformConf =
+      incrementalResult.vital_signs?.respiratory_waveform?.confidence;
+    const waveformMode = this.options.waveformMode || defaultWaveformMode;
+
+    if (!timesteps) return [];
+
+    const results: VitalLensResult[] = [];
+    for (let i = 0; i < timesteps.length; i++) {
+      // Create a new VitalLensResult for the current time step
+      const singleResult: VitalLensResult = {
+        face: {},
+        vital_signs: {},
+        time: [timesteps[i]],
+        message: incrementalResult.message,
+      };
+      // Add a new property displayTime (only used in streaming mode)
+      singleResult.displayTime = timesteps[i] + offset;
+      // Set PPG waveform data for this frame, if available
+      if (ppgWaveformData && ppgWaveformConf) {
+        singleResult.vital_signs.ppg_waveform = {
+          data: [ppgWaveformData[i]],
+          confidence: [ppgWaveformConf[i]],
+          unit: incrementalResult.vital_signs.ppg_waveform?.unit ?? '',
+          note: incrementalResult.vital_signs.ppg_waveform?.note ?? '',
+        };
+      }
+      // Set respiratory waveform data for this frame, if available
+      if (respiratoryWaveformData && respiratoryWaveformConf) {
+        singleResult.vital_signs.respiratory_waveform = {
+          data: [respiratoryWaveformData[i]],
+          confidence: [respiratoryWaveformConf[i]],
+          unit: incrementalResult.vital_signs.respiratory_waveform?.unit ?? '',
+          note: incrementalResult.vital_signs.respiratory_waveform?.note ?? '',
+        };
+      }
+      // Call processIncrementalResult for the per-frame result
+      const processedResult = await this.processIncrementalResult(
+        singleResult,
+        sourceId,
+        waveformMode,
+        true,
+        true
+      );
+      if (processedResult) {
+        results.push(processedResult);
+      }
+    }
+
+    return results;
   }
 
   /**
@@ -424,6 +495,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param overlap - The overlap.
    * @param incrementalResult - The latest incremental result - pass if returning incrementally
    * @param estFps - The rate at which estimates are being computed.
+   * @param displayTime - Optional display time for result.
    * @returns The aggregated VitalLensResult.
    */
   private async assembleResult(
@@ -432,7 +504,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     light: boolean,
     overlap?: number,
     incrementalResult?: VitalLensResult,
-    estFps?: number
+    estFps?: number,
+    displayTime?: number
   ): Promise<VitalLensResult> {
     const waveforms = this.waveforms.get(sourceId)!;
     const waveformNotes = this.waveformNotes.get(sourceId)!;
@@ -670,6 +743,10 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
     if (message) {
       result.message = message;
+    }
+
+    if (displayTime) {
+      result.displayTime = displayTime;
     }
 
     return result;

@@ -20,6 +20,8 @@ export interface VitalLensOptions {
   overrideFpsTarget?: number;
   globalRoi?: ROI;
   fDetFs?: number;
+  bufferResults?: boolean;
+  bufferOffset?: number;
 }
 
 /**
@@ -72,6 +74,7 @@ export interface VitalLensResult {
     };
   };
   time: number[];
+  displayTime?: number;
   state?: {
     data: Float32Array;
     note: string;
