@@ -190,8 +190,9 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     sourceId: string,
     defaultWaveformMode: string
   ): Promise<Array<VitalLensResult> | null> {
-    const offset = this.options.bufferOffset ?? 2;
-    const timesteps = incrementalResult.time;
+    // Read values
+    const currentTimestamps: number[] = this.timestamps.get(sourceId) ?? [];
+    const newTimestamps: number[] = incrementalResult.time;
     const ppgWaveformData = incrementalResult.vital_signs?.ppg_waveform?.data;
     const ppgWaveformConf =
       incrementalResult.vital_signs?.ppg_waveform?.confidence;
@@ -200,20 +201,26 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     const respiratoryWaveformConf =
       incrementalResult.vital_signs?.respiratory_waveform?.confidence;
     const waveformMode = this.options.waveformMode || defaultWaveformMode;
-
-    if (!timesteps) return [];
-
+    // Determine overlap
+    const overlap = Math.min(
+      currentTimestamps.length,
+      Math.max(
+        0,
+        newTimestamps.findIndex((ts) => !currentTimestamps.includes(ts))
+      )
+    );
     const results: VitalLensResult[] = [];
-    for (let i = 0; i < timesteps.length; i++) {
+    for (let i = overlap; i < newTimestamps.length; i++) {
       // Create a new VitalLensResult for the current time step
       const singleResult: VitalLensResult = {
         face: {},
         vital_signs: {},
-        time: [timesteps[i]],
+        time: [newTimestamps[i]],
         message: incrementalResult.message,
       };
       // Add a new property displayTime (only used in streaming mode)
-      singleResult.displayTime = timesteps[i] + offset;
+      singleResult.displayTime =
+        newTimestamps[i] + (this.options.bufferOffset ?? 2);
       // Set PPG waveform data for this frame, if available
       if (ppgWaveformData && ppgWaveformConf) {
         singleResult.vital_signs.ppg_waveform = {

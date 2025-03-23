@@ -15,11 +15,6 @@ export class BufferedResultsConsumer {
    *                property. These results are added to the consumer's queue.
    */
   addResults(results: VitalLensResult[]) {
-    const latestTime = results[0].displayTime!;
-    const now = performance.now() / 1000;
-    if (now - latestTime > 0) {
-      console.log('Warning: diff', now - latestTime);
-    }
     this.resultQueue.push(...results);
   }
 
