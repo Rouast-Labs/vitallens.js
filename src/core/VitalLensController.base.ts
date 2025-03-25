@@ -155,12 +155,9 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       );
     }
 
-    const useBuffer = this.options.bufferResults ?? true;
-    const bufferedResultsConsumer = useBuffer
-      ? new BufferedResultsConsumer((result: VitalLensResult) =>
-          this.dispatchEvent('vitals', result)
-        )
-      : null;
+    const bufferedResultsConsumer = new BufferedResultsConsumer(
+      (result: VitalLensResult) => this.dispatchEvent('vitals', result)
+    );
     const frameIterator = this.frameIteratorFactory.createStreamFrameIterator(
       stream,
       videoElement
@@ -177,29 +174,16 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       async (incrementalResult) => {
         // onPredict - process and dispatch incremental result unless paused
         if (this.isProcessing()) {
-          if (useBuffer) {
-            // Buffer results; Produce one result for each frame and deliver with buffer offset.
-            const bufferedResults =
-              await this.vitalsEstimateManager.produceBufferedResults(
-                incrementalResult,
-                frameIterator.getId(),
-                'windowed'
-              );
-            // Send the results to be delivered
-            if (bufferedResults && bufferedResults.length) {
-              bufferedResultsConsumer?.addResults(bufferedResults);
-            }
-          } else {
-            // Do not buffer results; Return a single result for all frames.
-            const result =
-              await this.vitalsEstimateManager.processIncrementalResult(
-                incrementalResult,
-                frameIterator.getId(),
-                'windowed',
-                true,
-                true
-              );
-            this.dispatchEvent('vitals', result);
+          // Buffer results; Produce one result for each frame and deliver with buffer offset.
+          const bufferedResults =
+            await this.vitalsEstimateManager.produceBufferedResults(
+              incrementalResult,
+              frameIterator.getId(),
+              'windowed'
+            );
+          // Send the results to be delivered
+          if (bufferedResults && bufferedResults.length) {
+            bufferedResultsConsumer?.addResults(bufferedResults);
           }
         }
       },
@@ -267,7 +251,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.faceDetectionWorker
     );
 
-    this.dispatchEvent('progress', 'Detecting faces...');
+    this.dispatchEvent('fileProgress', 'Detecting faces...');
 
     await frameIterator.start();
 
@@ -277,14 +261,14 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       this.dispatchEvent(
-        'progress',
+        'fileProgress',
         `Loading video for chunk ${chunkCounter}...`
       );
       const { value: framesChunk, done } = await iterator.next();
       if (done) break;
 
       this.dispatchEvent(
-        'progress',
+        'fileProgress',
         `Estimating vitals for chunk ${chunkCounter}...`
       );
       const incrementalResult = await this.methodHandler.process(

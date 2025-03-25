@@ -20,8 +20,6 @@ export interface VitalLensOptions {
   overrideFpsTarget?: number;
   globalRoi?: ROI;
   fDetFs?: number;
-  bufferResults?: boolean;
-  bufferOffset?: number;
 }
 
 /**
@@ -36,6 +34,7 @@ export interface MethodConfig {
   minWindowLengthState?: number;
   maxWindowLength: number;
   requiresState: boolean;
+  bufferOffset: number;
 }
 
 /**

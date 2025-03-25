@@ -10,6 +10,7 @@
     color: white;
     font-family: Arial, sans-serif;
     box-sizing: border-box;
+    /* position: relative; */
   }
   /* Navbar area */
   #navbar {
@@ -70,23 +71,21 @@
   .download-container {
     flex: 0 0 auto;
   }
-  /* Main content area (video + charts) */
+  /* Main content area (video + vitals charts) */
   #main-content {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
   }
   #video-container,
-  #charts-container {
+  #vitals-container {
     flex: 1 1 0;
     width: 100%;
     overflow: hidden;
-  }
-  /* Video container */
-  #video-container {
     position: relative;
     background: black;
   }
+  /* Video container */
   #video-container video,
   #video-container canvas {
     position: absolute;
@@ -99,9 +98,32 @@
   #video-container canvas {
     pointer-events: none;
   }
-  /* Charts container */
-  #charts-container {
-    background: black;
+  #dropZone {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+    border: 2px dashed #007bff;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 14px;
+    color: #007bff;
+    background: rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+    box-sizing: border-box;
+    padding: 20px;
+    z-index: 3;
+    display: none;
+  }
+  #dropZone.hover {
+    background: rgba(0, 123, 255, 0.2);
+  }
+  /* Vitals container */
+  #vitals-container {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -141,9 +163,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    /* position: relative; */
   }
   #controls button {
-    min-width: 80px;
+    min-width: 65px;
     max-width: 100px;
     padding: 8px 8px;
     font-size: 14px;
@@ -164,8 +187,9 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    margin-left: 5px;
-    margin-right: 5px;
+    margin: 0 5px;
+    display: flex;
+    flex-wrap: wrap;
   }
   #methodContainer label {
     display: flex;
@@ -177,7 +201,7 @@
   }
   #methodSelect {
     max-width: 100px;
-    padding: 8px;
+    padding: 2px;
     font-size: 14px;
     background: #333;
     color: white;
@@ -191,58 +215,6 @@
     border-radius: 5px;
     color: white;
     cursor: pointer;
-  }
-  /* Drop zone for file mode */
-  #dropZone {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    width: calc(100% - 16px);
-    height: calc(100% - 16px);
-    border: 2px dashed #007bff;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-size: 14px;
-    color: #007bff;
-    background: rgba(0, 0, 0, 0.8);
-    cursor: pointer;
-    box-sizing: border-box;
-    padding: 20px;
-  }
-  #dropZone.hover {
-    background: rgba(0, 123, 255, 0.2);
-  }
-  /* Spinner */
-  .spinner {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 40px;
-    height: 40px;
-    transform: translate(-50%, -50%);
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    border-top: 4px solid #fff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-  @keyframes spin {
-    0% { transform: translate(-50%, -50%) rotate(0deg); }
-    100% { transform: translate(-50%, -50%) rotate(360deg); }
-  }
-  #progressMessage {
-    position: absolute;
-    top: calc(50% + 50px);
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 14px;
-    color: white;
-    text-align: center;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
-    padding: 4px 8px;
   }
   #hintsContainer {
     display: flex;
@@ -302,7 +274,92 @@
   .tooltip .tooltip-content li {
     margin: 2px 0;
   }
+  #ecoModeButton {
+    display: inline-flex;
+    width: auto;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none;
+    background: none;
+    font-size: 14px;
+  }
+  #ecoModeButton .eco-icon {
+    width: 16px;
+    height: 16px;
+    fill: grey;
+    transition: fill 0.3s;
+  }
+  #ecoModeButton.eco-enabled .eco-icon {
+    fill: green;
+  }
+  #ecoModeButton .eco-title {
+    margin-left: 6px;
+  }
+  #ecoModeButton.eco-enabled {
+    color: white;
+  }
+  #ecoModeButton.eco-disabled {
+    color: grey;
+  }
+  /* Overlay elements: Spinner, Dimmer, Progress message */
+  .spinner {
+    position: absolute;
+    z-index: 3;
+    display: none;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+  .dim-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 2;
+    display: none;
+  }
+  .progressMessage {
+    position: absolute;
+    z-index: 3;
+    display: none;
+    top: calc(50% + 50px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: white;
+    text-align: center;
+  }
+  /* Error popup styling */
+  #errorPopup {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #b71c1c;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 1000;
+    display: none;
+  }
 </style>
+
+<div id="errorPopup">Error message goes here</div>
 
 <div id="navbar">
   <a href="https://www.rouast.com/api/" target="_blank" class="logo-link">
@@ -332,11 +389,12 @@
   <div id="video-container">
     <video id="video" autoplay muted playsinline style="display: none;"></video>
     <canvas id="canvas" style="display: none;"></canvas>
-    <div id="dropZone" style="display: none;">
+    <div id="dropZone">
       Drag &amp; drop a video file here or click to select one
     </div>
-    <div id="spinner" class="spinner" style="display: none;"></div>
-    <div id="progressMessage"></div>
+    <div id="videoDimmer" class="dim-overlay"></div>
+    <div id="videoSpinner" class="spinner"></div>
+    <div id="videoProgressMessage" class="progressMessage"></div>
     <input type="file" id="videoInput" accept="video/*" style="display: none;" />
   </div>
   <div id="controls">
@@ -345,16 +403,15 @@
       <span class="fps-value">(N/A)</span>
     </div>
     <div id="methodContainer">
-      <label for="methodSelect">
-        <span>rPPG</span>
-        <span>Method:</span>
-      </label>
-      <select id="methodSelect">
-        <option value="vitallens" selected>VitalLens</option>
-        <option value="pos">POS</option>
-        <option value="chrom">CHROM</option>
-        <option value="g">G</option>
-      </select>
+      <span><label for="methodSelect">Method:</label></span>
+      <span>
+        <select id="methodSelect">
+          <option value="vitallens" selected>VitalLens</option>
+          <option value="pos">POS</option>
+          <option value="chrom">CHROM</option>
+          <option value="g">G</option>
+        </select>
+      </span>
     </div>
     <div id="hintsContainer">
       <div class="tooltip guidelines-tooltip">
@@ -380,9 +437,16 @@
         </div>
       </div>
     </div>
+    <button id="ecoModeButton" class="eco-enabled">
+      <svg xmlns="http://www.w3.org/2000/svg" class="eco-icon" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;"><path d="M0.004,2.018c-0,0 3.845,-0.848 6.317,-0.745c2.473,0.103 5.363,0.932 6.932,2.595c1.371,1.455 2.181,3.357 2.513,5.295c0.399,2.33 0.167,4.591 0.167,4.591c-0,-0 -1.278,-2.833 -2.991,-4.61c-2.549,-2.643 -6.431,-4.037 -6.431,-4.037c0,0 3.377,2.399 5.03,4.131c2.252,2.357 3.373,4.947 3.373,4.947c-0,0 -2.196,0.851 -5.65,0.437c-1.639,-0.196 -4.155,-1.186 -6.493,-4.654c-1.996,-2.96 -2.836,-6.909 -2.767,-7.95Z"/></svg>
+      <div class="eco-title">Eco mode</div>
+    </button>
     <button id="controlButton">Pause</button>
-  </div>  
-  <div id="charts-container">
+  </div>
+  <div id="vitals-container">
+    <div id="vitalsDimmer" class="dim-overlay"></div>
+    <div id="vitalsSpinner" class="spinner"></div>
+    <div id="vitalsProgressMessage" class="progressMessage"></div>
     <div class="chart-wrapper">
       <div class="chart-container">
         <canvas id="ppgChart"></canvas>

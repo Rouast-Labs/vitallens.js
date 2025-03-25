@@ -220,7 +220,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       };
       // Add a new property displayTime (only used in streaming mode)
       singleResult.displayTime =
-        newTimestamps[i] + (this.options.bufferOffset ?? 2);
+        newTimestamps[i] + this.methodConfig.bufferOffset;
       // Set PPG waveform data for this frame, if available
       if (ppgWaveformData && ppgWaveformConf) {
         singleResult.vital_signs.ppg_waveform = {
