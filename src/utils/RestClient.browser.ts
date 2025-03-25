@@ -47,15 +47,15 @@ export class RestClient extends RestClientBase {
 
       const url = this.proxyUrl ?? this.getRestEndpoint(mode);
 
-      const startTime = performance.now();
+      // const startTime = performance.now();
       const response = await fetch(url, {
         method: 'POST',
         headers: headers_,
         body: isBinary ? (body as Uint8Array) : JSON.stringify(body),
       });
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      console.log(`fetch finished in ${duration.toFixed(0)} ms`);
+      // const endTime = performance.now();
+      // const duration = endTime - startTime;
+      // console.log(`fetch finished in ${duration.toFixed(0)} ms`);
 
       return this.handleResponse(response);
     } catch (error) {

@@ -538,6 +538,7 @@ export class VitalLensWidgetBase extends HTMLElement {
       this.isProcessingFlag = true;
       this.vitalLensInstance.startVideoStream();
       this.setBufferingTimeout();
+      this.controlButtonElement.textContent = 'Pause';
     }
     if (this.mode === 'webcam') {
       this.webcamModeButtonElement.classList.add('active');
