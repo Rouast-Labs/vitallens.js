@@ -5,6 +5,7 @@ class VitalLensWidgetFile extends VitalLensWidgetBase {
     super();
   }
   connectedCallback() {
+    super.connectedCallback();
     this.getElements();
     // Remove the tabs container for file-only widget.
     const navbar = this.shadowRoot!.querySelector('#tabs-container');

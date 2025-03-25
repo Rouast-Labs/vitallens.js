@@ -5,10 +5,8 @@ import { GHandler } from './GHandler';
 import { CHROMHandler } from './CHROMHandler';
 import { VitalLensOptions } from '../types/core';
 import { IRestClient } from '../types/IRestClient';
-import { IWebSocketClient } from '../types/IWebSocketClient';
 
 interface MethodHandlerDependencies {
-  webSocketClient?: IWebSocketClient; // Optional dependency for handlers like VitalLensAPIHandler
   restClient?: IRestClient;
 }
 
@@ -28,13 +26,11 @@ export class MethodHandlerFactory {
   ): MethodHandler {
     switch (options.method) {
       case 'vitallens': {
-        if (!dependencies.webSocketClient && !dependencies.restClient) {
-          throw new Error(
-            'Either WebSocketClient or RestClient is required for VitalLensAPIHandler'
-          );
+        if (!dependencies.restClient) {
+          throw new Error('RestClient is required for VitalLensAPIHandler');
         }
         // Prefer REST if both clients are provided
-        const client = dependencies.restClient || dependencies.webSocketClient;
+        const client = dependencies.restClient;
         return new VitalLensAPIHandler(client!, options);
       }
       case 'pos':

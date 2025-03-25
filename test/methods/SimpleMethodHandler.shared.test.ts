@@ -63,7 +63,7 @@ describe('SimpleMethodHandler', () => {
   it('should process a frame and return the correct result', async () => {
     const handler = new MockSimpleMethodHandler(mockOptions);
 
-    const result: VitalLensResult = await handler.process(mockFrame);
+    const result: VitalLensResult = await handler.process(mockFrame, 'file');
 
     expect(result).toEqual({
       face: {

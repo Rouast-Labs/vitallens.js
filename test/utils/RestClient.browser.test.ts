@@ -28,7 +28,7 @@ describe('RestClient (Browser)', () => {
     const metadata = { test: 'data' };
     const frames = new Uint8Array([1, 2, 3]);
 
-    const result = await client.sendFrames(metadata, frames);
+    const result = await client.sendFrames(metadata, frames, 'file');
 
     // Verify fetch was called with correct arguments
     expect(global.fetch).toHaveBeenCalledWith(
@@ -59,7 +59,7 @@ describe('RestClient (Browser)', () => {
     const metadata = { test: 'data' };
     const frames = new Uint8Array([1, 2, 3]);
 
-    await expect(client.sendFrames(metadata, frames)).rejects.toThrow(
+    await expect(client.sendFrames(metadata, frames, 'file')).rejects.toThrow(
       'Network Error'
     );
   });

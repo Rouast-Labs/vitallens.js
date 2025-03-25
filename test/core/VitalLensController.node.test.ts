@@ -3,14 +3,12 @@
 import { VitalLensController } from '../../src/core/VitalLensController.node';
 import { VitalLensOptions } from '../../src/types';
 import { RestClient } from '../../src/utils/RestClient.node';
-import { WebSocketClient } from '../../src/utils/WebSocketClient.node';
 import FFmpegWrapper from '../../src/utils/FFmpegWrapper.node';
 import { StreamProcessor } from '../../src/processing/StreamProcessor.node';
 import { FaceDetectionWorker } from '../../src/ssd/FaceDetectionWorker.node';
 import { Worker } from 'worker_threads';
 
 jest.mock('../../src/utils/RestClient.node');
-jest.mock('../../src/utils/WebSocketClient.node');
 jest.mock('../../src/utils/FFmpegWrapper.node');
 jest.mock('../../src/processing/StreamProcessor.node');
 jest.mock('../../src/ssd/FaceDetectionWorker.node');
@@ -59,28 +57,6 @@ describe('VitalLensController (Node)', () => {
     });
   });
 
-  describe('createWebSocketClient', () => {
-    test('should create a WebSocketClient when API key provided', () => {
-      const wsClient = (controller as any).createWebSocketClient(
-        mockOptions.apiKey
-      );
-      expect(WebSocketClient).toHaveBeenCalledWith(
-        mockOptions.apiKey,
-        undefined
-      );
-      expect(wsClient).toBeInstanceOf(WebSocketClient);
-    });
-
-    test('should create a WebSocketClient when proxyUrl provided', () => {
-      const wsClient = (controller as any).createWebSocketClient(
-        '',
-        mockOptions.proxyUrl
-      );
-      expect(WebSocketClient).toHaveBeenCalledWith('', mockOptions.proxyUrl);
-      expect(wsClient).toBeInstanceOf(WebSocketClient);
-    });
-  });
-
   describe('createFFmpegWrapper', () => {
     test('should create an FFmpegWrapper', () => {
       const ffmpeg = (controller as any).createFFmpegWrapper();
@@ -110,6 +86,7 @@ describe('VitalLensController (Node)', () => {
       const dummyBufferManager = {} as any;
       const dummyFaceDetectionWorker = {} as any;
       const dummyMethodHandler = {} as any;
+      const dummyBufferedResultsConsumer = {} as any;
       const dummyOnPredict = jest.fn();
       const dummyOnNoFace = jest.fn();
 
@@ -120,6 +97,7 @@ describe('VitalLensController (Node)', () => {
         dummyBufferManager,
         dummyFaceDetectionWorker,
         dummyMethodHandler,
+        dummyBufferedResultsConsumer,
         dummyOnPredict,
         dummyOnNoFace
       );
@@ -130,6 +108,7 @@ describe('VitalLensController (Node)', () => {
         dummyBufferManager,
         dummyFaceDetectionWorker,
         dummyMethodHandler,
+        dummyBufferedResultsConsumer,
         dummyOnPredict,
         dummyOnNoFace
       );

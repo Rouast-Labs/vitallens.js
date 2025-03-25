@@ -19,6 +19,7 @@ describe('FrameBuffer', () => {
       minWindowLength: 3,
       maxWindowLength: 5,
       requiresState: false,
+      bufferOffset: 1,
     });
   });
 

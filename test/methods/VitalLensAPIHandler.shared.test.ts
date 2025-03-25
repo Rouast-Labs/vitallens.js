@@ -1,7 +1,10 @@
 import { VitalLensAPIHandler } from '../../src/methods/VitalLensAPIHandler';
-import { IWebSocketClient } from '../../src/types/IWebSocketClient';
 import { IRestClient } from '../../src/types/IRestClient';
-import { VitalLensAPIResponse, VitalLensOptions } from '../../src/types/core';
+import {
+  InferenceMode,
+  VitalLensAPIResponse,
+  VitalLensOptions,
+} from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
 import {
   VitalLensAPIError,
@@ -9,21 +12,6 @@ import {
   VitalLensAPIQuotaExceededError,
 } from '../../src/utils/errors';
 import { jest } from '@jest/globals';
-
-// Mock implementations
-const mockWebSocketClient: Partial<IWebSocketClient> = {
-  connect: jest.fn<() => Promise<void>>(),
-  close: jest.fn<() => void>(),
-  getIsConnected: jest.fn<() => boolean>().mockReturnValue(true),
-  sendFrames:
-    jest.fn<
-      (
-        metadata: Record<string, unknown>,
-        frames: Uint8Array,
-        state?: Float32Array
-      ) => Promise<VitalLensAPIResponse>
-    >(),
-};
 
 const mockResponse: VitalLensAPIResponse = {
   statusCode: 200,
@@ -55,6 +43,7 @@ const mockRestClient: Partial<IRestClient> = {
       (
         metadata: Record<string, unknown>,
         frames: Uint8Array,
+        mode: InferenceMode,
         state?: Float32Array
       ) => Promise<VitalLensAPIResponse>
     >(),
@@ -65,11 +54,6 @@ describe('VitalLensAPIHandler', () => {
     apiKey: 'test-key',
     method: 'vitallens',
     requestMode: 'rest',
-  };
-  const mockOptionsWS: VitalLensOptions = {
-    apiKey: 'test-key',
-    method: 'vitallens',
-    requestMode: 'websocket',
   };
   const mockFrame = {
     getUint8Array: jest.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
@@ -85,32 +69,6 @@ describe('VitalLensAPIHandler', () => {
     jest.clearAllMocks();
   });
 
-  it('should initialize and connect a WebSocket client', async () => {
-    const handler = new VitalLensAPIHandler(
-      mockWebSocketClient as IWebSocketClient,
-      mockOptionsWS
-    );
-    await handler.init();
-    expect(mockWebSocketClient.connect).toHaveBeenCalled();
-  });
-
-  it('should clean up and close a WebSocket client', async () => {
-    const handler = new VitalLensAPIHandler(
-      mockWebSocketClient as IWebSocketClient,
-      mockOptionsWS
-    );
-    await handler.cleanup();
-    expect(mockWebSocketClient.close).toHaveBeenCalled();
-  });
-
-  it('should return true if WebSocket client is connected', () => {
-    const handler = new VitalLensAPIHandler(
-      mockWebSocketClient as IWebSocketClient,
-      mockOptionsWS
-    );
-    expect(handler.getReady()).toBe(true);
-  });
-
   it('should return true for REST client readiness', () => {
     const handler = new VitalLensAPIHandler(
       mockRestClient as IRestClient,
@@ -119,22 +77,23 @@ describe('VitalLensAPIHandler', () => {
     expect(handler.getReady()).toBe(true);
   });
 
-  it('should process frames and return a valid result for WebSocket client', async () => {
-    mockWebSocketClient.sendFrames = jest
+  it('should process frames and return a valid result for REST client', async () => {
+    mockRestClient.sendFrames = jest
       .fn<
         (
           metadata: Record<string, unknown>,
           frames: Uint8Array,
+          mode: InferenceMode,
           state?: Float32Array
         ) => Promise<VitalLensAPIResponse>
       >()
       .mockResolvedValue(mockResponse);
 
     const handler = new VitalLensAPIHandler(
-      mockWebSocketClient as IWebSocketClient,
-      mockOptionsWS
+      mockRestClient as IRestClient,
+      mockOptionsREST
     );
-    const result = await handler.process(mockFrame);
+    const result = await handler.process(mockFrame, 'file');
 
     expect(result).toEqual({
       face: {
@@ -152,19 +111,21 @@ describe('VitalLensAPIHandler', () => {
       message:
         'The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes.',
     });
-    expect(mockWebSocketClient.sendFrames).toHaveBeenCalledWith(
+    expect(mockRestClient.sendFrames).toHaveBeenCalledWith(
       expect.any(Object),
       expect.any(Uint8Array),
+      'file',
       undefined
     );
   });
 
   it('should throw an error for invalid response format', async () => {
-    mockWebSocketClient.sendFrames = jest
+    mockRestClient.sendFrames = jest
       .fn<
         (
           metadata: Record<string, unknown>,
           frames: Uint8Array,
+          mode: InferenceMode,
           state?: Float32Array
         ) => Promise<VitalLensAPIResponse>
       >()
@@ -174,10 +135,12 @@ describe('VitalLensAPIHandler', () => {
       });
 
     const handler = new VitalLensAPIHandler(
-      mockWebSocketClient as IWebSocketClient,
-      mockOptionsWS
+      mockRestClient as IRestClient,
+      mockOptionsREST
     );
-    await expect(handler.process(mockFrame)).rejects.toThrow(VitalLensAPIError);
+    await expect(handler.process(mockFrame, 'file')).rejects.toThrow(
+      VitalLensAPIError
+    );
   });
 
   it('should handle API key errors', async () => {
@@ -185,20 +148,21 @@ describe('VitalLensAPIHandler', () => {
       statusCode: 403,
       body: { face: {}, vital_signs: {}, time: [], message: 'Invalid API Key' },
     };
-    mockWebSocketClient.sendFrames = jest
+    mockRestClient.sendFrames = jest
       .fn<
         (
           metadata: Record<string, unknown>,
           frames: Uint8Array,
+          mode: InferenceMode,
           state?: Float32Array
         ) => Promise<VitalLensAPIResponse>
       >()
       .mockResolvedValue(mockErrorResponse);
     const handler = new VitalLensAPIHandler(
-      mockWebSocketClient as IWebSocketClient,
-      mockOptionsWS
+      mockRestClient as IRestClient,
+      mockOptionsREST
     );
-    await expect(handler.process(mockFrame)).rejects.toThrow(
+    await expect(handler.process(mockFrame, 'file')).rejects.toThrow(
       VitalLensAPIKeyError
     );
   });
@@ -208,20 +172,21 @@ describe('VitalLensAPIHandler', () => {
       statusCode: 429,
       body: { face: {}, vital_signs: {}, time: [], message: 'Quota exceeded' },
     };
-    mockWebSocketClient.sendFrames = jest
+    mockRestClient.sendFrames = jest
       .fn<
         (
           metadata: Record<string, unknown>,
           frames: Uint8Array,
+          mode: InferenceMode,
           state?: Float32Array
         ) => Promise<VitalLensAPIResponse>
       >()
       .mockResolvedValue(mockErrorResponse);
     const handler = new VitalLensAPIHandler(
-      mockWebSocketClient as IWebSocketClient,
-      mockOptionsWS
+      mockRestClient as IRestClient,
+      mockOptionsREST
     );
-    await expect(handler.process(mockFrame)).rejects.toThrow(
+    await expect(handler.process(mockFrame, 'file')).rejects.toThrow(
       VitalLensAPIQuotaExceededError
     );
   });

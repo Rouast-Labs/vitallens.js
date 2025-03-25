@@ -1,4 +1,5 @@
 import {
+  InferenceMode,
   VitalLensAPIResponse,
   VitalLensOptions,
   VitalLensResult,
@@ -11,7 +12,6 @@ import {
   VitalLensAPIQuotaExceededError,
 } from '../utils/errors';
 import { IRestClient } from '../types/IRestClient';
-import { isWebSocketClient, IWebSocketClient } from '../types/IWebSocketClient';
 import {
   adaptiveDetrend,
   movingAverage,
@@ -21,15 +21,12 @@ import {
 import { CALC_HR_MAX, CALC_HR_MIN, CALC_RR_MAX } from '../config/constants';
 
 /**
- * Handler for processing frames using the VitalLens API via WebSocket or REST.
+ * Handler for processing frames using the VitalLens API via REST.
  */
 export class VitalLensAPIHandler extends MethodHandler {
-  private client: IWebSocketClient | IRestClient;
+  private client: IRestClient;
 
-  constructor(
-    client: IWebSocketClient | IRestClient,
-    options: VitalLensOptions
-  ) {
+  constructor(client: IRestClient, options: VitalLensOptions) {
     super(options);
     this.client = client;
   }
@@ -38,18 +35,14 @@ export class VitalLensAPIHandler extends MethodHandler {
    * Initialise the method.
    */
   async init(): Promise<void> {
-    if (isWebSocketClient(this.client)) {
-      await this.client.connect();
-    }
+    // Nothing to do
   }
 
   /**
    * Cleanup the method.
    */
   async cleanup(): Promise<void> {
-    if (isWebSocketClient(this.client)) {
-      this.client.close();
-    }
+    // Nothing to do
   }
 
   /**
@@ -57,9 +50,6 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @returns Whether the method is ready for prediction.
    */
   getReady(): boolean {
-    if (isWebSocketClient(this.client)) {
-      return this.client.getIsConnected();
-    }
     return true; // REST client is always ready
   }
 
@@ -74,38 +64,28 @@ export class VitalLensAPIHandler extends MethodHandler {
   /**
    * Sends a buffer of frames to the VitalLens API via the selected client and processes the response.
    * @param framesChunk - Frame chunk to send, already in shape (n_frames, 40, 40, 3).
+   * @param mode - The inference mode.
    * @param state - Optional recurrent state from the previous API call.
    * @returns A promise that resolves to the processed result.
    */
   async process(
     framesChunk: Frame,
+    mode: InferenceMode,
     state?: Float32Array
   ): Promise<VitalLensResult | undefined> {
-    if (isWebSocketClient(this.client) && !this.client.getIsConnected()) {
-      return undefined;
-    }
-
     try {
-      // Capture the start time
-      // const startTime = performance.now();
-
       // Store the roi.
       const roi = framesChunk.getROI();
 
       // Send the payload
       const response = (await this.client.sendFrames(
         {
-          version: 'vitallens-dev',
           origin: 'vitallens.js',
         },
         framesChunk.getUint8Array(),
+        mode,
         state
       )) as VitalLensAPIResponse;
-
-      // Capture the end time and calculate the duration
-      // const endTime = performance.now();
-      // const duration = endTime - startTime;
-      // console.log(`API response received in ${duration.toFixed(0)} ms`);
 
       // Parse the response
       if (!response || typeof response.statusCode !== 'number') {

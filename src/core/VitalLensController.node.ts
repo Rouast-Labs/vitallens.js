@@ -2,8 +2,6 @@ import { VitalLensControllerBase } from './VitalLensController.base';
 import { MethodConfig, VitalLensOptions, VitalLensResult } from '../types/core';
 import { IRestClient } from '../types/IRestClient';
 import { RestClient } from '../utils/RestClient.node';
-import { IWebSocketClient } from '../types/IWebSocketClient';
-import { WebSocketClient } from '../utils/WebSocketClient.node';
 import { MethodHandler } from '../methods/MethodHandler';
 import { BufferManager } from '../processing/BufferManager';
 import { IFrameIterator } from '../types/IFrameIterator';
@@ -15,16 +13,11 @@ import FFmpegWrapper from '../utils/FFmpegWrapper.node';
 import { Worker } from 'worker_threads';
 import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.node';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
+import { BufferedResultsConsumer } from '../processing/BufferedResultsConsumer';
 
 export class VitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
     return new RestClient(apiKey, proxyUrl);
-  }
-  protected createWebSocketClient(
-    apiKey: string,
-    proxyUrl?: string
-  ): IWebSocketClient {
-    return new WebSocketClient(apiKey, proxyUrl);
   }
   protected createFFmpegWrapper(): IFFmpegWrapper {
     return new FFmpegWrapper();
@@ -47,6 +40,7 @@ export class VitalLensController extends VitalLensControllerBase {
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
     methodHandler: MethodHandler,
+    bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>
   ): IStreamProcessor {
@@ -57,6 +51,7 @@ export class VitalLensController extends VitalLensControllerBase {
       bufferManager,
       faceDetectionWorker,
       methodHandler,
+      bufferedResultsConsumer,
       onPredict,
       onNoFace
     );

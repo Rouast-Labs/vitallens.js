@@ -4,6 +4,11 @@
 export type VideoInput = string | File | Blob;
 
 /**
+ * Represents the possible inference modes.
+ */
+export type InferenceMode = 'stream' | 'file';
+
+/**
  * Options for configuring the VitalLens library.
  */
 export interface VitalLensOptions {
@@ -11,7 +16,7 @@ export interface VitalLensOptions {
   apiKey?: string;
   proxyUrl?: string;
   waveformMode?: 'incremental' | 'windowed' | 'complete';
-  requestMode?: 'websocket' | 'rest';
+  requestMode?: 'rest';
   overrideFpsTarget?: number;
   globalRoi?: ROI;
   fDetFs?: number;
@@ -29,6 +34,7 @@ export interface MethodConfig {
   minWindowLengthState?: number;
   maxWindowLength: number;
   requiresState: boolean;
+  bufferOffset: number;
 }
 
 /**
@@ -67,6 +73,7 @@ export interface VitalLensResult {
     };
   };
   time: number[];
+  displayTime?: number;
   state?: {
     data: Float32Array;
     note: string;
@@ -120,3 +127,8 @@ export interface ROI {
   x1: number;
   y1: number;
 }
+
+/**
+ * Represents the possible compression modes.
+ */
+export type CompressionMode = 'none' | 'gzip' | 'deflate';

@@ -20,11 +20,11 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
       try {
         // Await and log each Blob URL
         const coreURL = await toBlobURL(
-          'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
+          'https://unpkg.com/@ffmpeg/core@0.12.3/dist/esm/ffmpeg-core.js',
           'text/javascript'
         );
         const wasmURL = await toBlobURL(
-          'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm',
+          'https://unpkg.com/@ffmpeg/core@0.12.3/dist/esm/ffmpeg-core.wasm',
           'application/wasm'
         );
         // Passing worker bundle to avoid issues: https://github.com/ffmpegwasm/ffmpeg.wasm/issues/532

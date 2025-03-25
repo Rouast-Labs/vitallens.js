@@ -13,6 +13,8 @@ import {
   LineElement,
   ScriptableLineSegmentContext,
 } from 'chart.js';
+import { AGG_WINDOW_SIZE } from '../config/constants';
+import { METHODS_CONFIG } from '../config/methodsConfig';
 
 // Register plugins.
 const playbackDotPlugin = {
@@ -89,31 +91,58 @@ export class VitalLensWidgetBase extends HTMLElement {
   protected canvasElement!: HTMLCanvasElement;
   protected dropZoneElement!: HTMLElement;
   protected videoInputElement!: HTMLInputElement;
-  protected spinnerElement!: HTMLElement;
-  protected progressElement!: HTMLElement;
+  protected videoDimmerElement!: HTMLElement;
+  protected videoSpinnerElement!: HTMLElement;
+  protected videoProgressElement!: HTMLElement;
   protected webcamModeButtonElement!: HTMLButtonElement;
   protected fileModeButtonElement!: HTMLButtonElement;
   protected controlButtonElement!: HTMLButtonElement;
   protected methodSelectElement!: HTMLSelectElement;
   protected fpsValueElement!: HTMLElement;
   protected downloadButtonElement!: HTMLButtonElement;
+  protected ecoModeButtonElement!: HTMLButtonElement;
+  protected vitalsDimmerElement!: HTMLElement;
+  protected vitalsSpinnerElement!: HTMLElement;
+  protected vitalsProgressElement!: HTMLElement;
+  protected errorPopupElement!: HTMLElement;
   protected vitalLensInstance!: VitalLens;
   protected charts: any = {};
   protected videoFileLoaded: File | null = null;
   protected currentMethod: 'vitallens' | 'pos' | 'chrom' | 'g' = 'vitallens';
   protected latestResult: any = null;
   protected isProcessingFlag: boolean = false;
-  protected MAX_DATA_POINTS: number = 300;
   protected apiKey: string | null = null;
   protected proxyUrl: string | null = null;
   protected mode: string = '';
   protected debug: boolean = false;
+  protected ecoMode: boolean = true;
+  protected ecoModeFps: number = 15;
+  protected bufferingTimeout: number | null = null;
   private _handleResizeBound = this.handleResize.bind(this);
 
   constructor(widgetString: string = widget.replace('__LOGO_URL__', logoUrl)) {
     super();
     const shadow = this.attachShadow({ mode: 'open' });
     shadow.innerHTML = widgetString;
+    const originalConsoleError = console.error.bind(console);
+    console.error = (...args: any[]) => {
+      originalConsoleError(...args);
+      this.showError(args.join(' '));
+    };
+  }
+
+  connectedCallback() {
+    // Add preconnect link to api.rouast.com - avoids delay during first request.
+    if (
+      !document.querySelector(
+        'link[rel="preconnect"][href="https://api.rouast.com"][crossorigin]'
+      )
+    ) {
+      const preconnectLink = document.createElement('link');
+      preconnectLink.rel = 'preconnect';
+      preconnectLink.href = 'https://api.rouast.com';
+      document.head.appendChild(preconnectLink);
+    }
   }
 
   disconnectedCallback() {
@@ -133,11 +162,14 @@ export class VitalLensWidgetBase extends HTMLElement {
     this.videoInputElement = this.shadowRoot!.querySelector(
       '#videoInput'
     ) as HTMLInputElement;
-    this.spinnerElement = this.shadowRoot!.querySelector(
-      '#spinner'
+    this.videoDimmerElement = this.shadowRoot!.querySelector(
+      '#videoDimmer'
     ) as HTMLElement;
-    this.progressElement = this.shadowRoot!.querySelector(
-      '#progressMessage'
+    this.videoSpinnerElement = this.shadowRoot!.querySelector(
+      '#videoSpinner'
+    ) as HTMLElement;
+    this.videoProgressElement = this.shadowRoot!.querySelector(
+      '#videoProgressMessage'
     ) as HTMLElement;
     this.webcamModeButtonElement = this.shadowRoot!.querySelector(
       '#webcamModeButton'
@@ -157,6 +189,21 @@ export class VitalLensWidgetBase extends HTMLElement {
     this.downloadButtonElement = this.shadowRoot!.querySelector(
       '#downloadButton'
     ) as HTMLButtonElement;
+    this.ecoModeButtonElement = this.shadowRoot!.querySelector(
+      '#ecoModeButton'
+    ) as HTMLButtonElement;
+    this.vitalsDimmerElement = this.shadowRoot!.querySelector(
+      '#vitalsDimmer'
+    ) as HTMLElement;
+    this.vitalsSpinnerElement = this.shadowRoot!.querySelector(
+      '#vitalsSpinner'
+    ) as HTMLElement;
+    this.vitalsProgressElement = this.shadowRoot!.querySelector(
+      '#vitalsProgressMessage'
+    ) as HTMLElement;
+    this.errorPopupElement = this.shadowRoot!.querySelector(
+      '#errorPopup'
+    ) as HTMLElement;
   }
 
   protected createChart(elementId: string, label: string, baseColor: string) {
@@ -183,7 +230,7 @@ export class VitalLensWidgetBase extends HTMLElement {
                 const conf1 = confArray[i] !== undefined ? confArray[i] : 1;
                 const conf2 =
                   confArray[i + 1] !== undefined ? confArray[i + 1] : conf1;
-                const avgConf = Math.min((conf1 + conf2) / 2 + 0.1, 1);
+                const avgConf = Math.min((conf1 + conf2) / 2 + 0.3, 1);
                 return `rgba(${baseColor},${avgConf})`;
               },
             },
@@ -325,7 +372,14 @@ export class VitalLensWidgetBase extends HTMLElement {
 
   private async initVitalLensInstance() {
     const selectedMethod = this.methodSelectElement.value || 'vitallens';
-    if (this.vitalLensInstance && this.currentMethod === selectedMethod) return;
+    const selectedEcoMode =
+      this.ecoModeButtonElement.classList.contains('eco-enabled');
+    if (
+      this.vitalLensInstance &&
+      this.currentMethod === selectedMethod &&
+      this.ecoMode === selectedEcoMode
+    )
+      return;
     if (this.vitalLensInstance) {
       try {
         await this.vitalLensInstance.close();
@@ -334,8 +388,10 @@ export class VitalLensWidgetBase extends HTMLElement {
       }
     }
     this.currentMethod = selectedMethod as any;
+    this.ecoMode = selectedEcoMode;
     const options: VitalLensOptions = {
       method: this.currentMethod,
+      ...(this.ecoMode ? { overrideFpsTarget: this.ecoModeFps } : {}),
       ...(this.apiKey ? { apiKey: this.apiKey } : {}),
       ...(this.proxyUrl ? { proxyUrl: this.proxyUrl } : {}),
     };
@@ -346,17 +402,22 @@ export class VitalLensWidgetBase extends HTMLElement {
         this.handleVitalLensResults.bind(this)
       );
       this.vitalLensInstance.addEventListener(
-        'progress',
-        this.handleProgressEvent.bind(this)
+        'fileProgress',
+        this.handleVideoProgressEvent.bind(this)
       );
     } catch (e) {
       console.error(e);
     }
   }
 
-  private handleProgressEvent(event: any) {
-    this.progressElement.textContent = event;
+  private handleVideoProgressEvent(event: any) {
+    console.log(event);
+    this.showVideoLoader(event);
   }
+
+  // private handleVitalsProgressEvent(event: any) {
+  //   this.vitalsProgressElement.textContent = event;
+  // }
 
   private async setupWebcam() {
     try {
@@ -405,8 +466,7 @@ export class VitalLensWidgetBase extends HTMLElement {
 
   private async loadAndProcessFile(file: File) {
     this.dropZoneElement.style.display = 'none';
-    this.spinnerElement.style.display = 'block';
-    this.progressElement.style.display = 'block';
+    this.showVideoLoader('');
     this.videoElement.style.display = 'block';
     this.canvasElement.style.display = 'block';
     const url = URL.createObjectURL(file);
@@ -417,8 +477,7 @@ export class VitalLensWidgetBase extends HTMLElement {
       this.setCanvasDimensions();
       this.videoElement.pause();
       await this.processFile(file);
-      this.spinnerElement.style.display = 'none';
-      this.progressElement.style.display = 'none';
+      this.hideVideoLoader();
       this.videoElement.controls = true;
     };
   }
@@ -428,12 +487,6 @@ export class VitalLensWidgetBase extends HTMLElement {
       const result = await this.vitalLensInstance.processVideoFile(file);
       this.enablePlaybackDotPlugin();
       this.handleVitalLensResults(result);
-      const progressMessageElement = this.shadowRoot!.querySelector(
-        '#progressMessage'
-      ) as HTMLElement;
-      if (progressMessageElement) {
-        progressMessageElement.textContent = '';
-      }
     } catch (e) {
       console.error(e);
     }
@@ -445,12 +498,22 @@ export class VitalLensWidgetBase extends HTMLElement {
       this.vitalLensInstance.stopVideoStream();
       this.isProcessingFlag = false;
       this.resetVideoStreamView();
+      if (this.bufferingTimeout) {
+        clearTimeout(this.bufferingTimeout);
+        this.bufferingTimeout = null;
+      }
+      this.hideVitalsLoader();
     }
     if (this.mode === 'file') {
       this.resetVideoFileView();
     }
-    this.resetVitalsView();
     await this.startMode(newMode, true, false);
+  }
+
+  protected toggleEcoMode() {
+    this.ecoModeButtonElement.classList.toggle('eco-enabled');
+    this.ecoModeButtonElement.classList.toggle('eco-disabled');
+    this.restartMode();
   }
 
   private async startMode(
@@ -469,10 +532,13 @@ export class VitalLensWidgetBase extends HTMLElement {
         this.setupFileModeUI();
       }
     }
+    this.resetVitalsView();
     if (this.mode === 'webcam') {
       await this.setupWebcam();
       this.isProcessingFlag = true;
       this.vitalLensInstance.startVideoStream();
+      this.setBufferingTimeout();
+      this.controlButtonElement.textContent = 'Pause';
     }
     if (this.mode === 'webcam') {
       this.webcamModeButtonElement.classList.add('active');
@@ -497,9 +563,8 @@ export class VitalLensWidgetBase extends HTMLElement {
 
   private setupWebcamUI() {
     this.dropZoneElement.style.display = 'none';
+    this.hideVideoLoader();
     this.videoInputElement.style.display = 'none';
-    this.spinnerElement.style.display = 'none';
-    this.progressElement.style.display = 'none';
     this.videoElement.style.display = 'block';
     this.canvasElement.style.display = 'block';
     this.controlButtonElement.textContent = 'Pause';
@@ -544,14 +609,18 @@ export class VitalLensWidgetBase extends HTMLElement {
   }
 
   private resetVitalsView() {
-    this.updateChart(this.charts.ppgChart, [], [], this.MAX_DATA_POINTS);
-    this.updateChart(this.charts.respChart, [], [], this.MAX_DATA_POINTS);
+    const methodConfig = METHODS_CONFIG[this.currentMethod];
+    const fpsTarget = this.ecoMode ? this.ecoModeFps : methodConfig.fpsTarget;
+    const maxDataPoints = AGG_WINDOW_SIZE * fpsTarget;
+    this.updateChart(this.charts.ppgChart, [], [], maxDataPoints);
+    this.updateChart(this.charts.respChart, [], [], maxDataPoints);
     this.updateStats('ppgStats', 'HR   bpm', undefined);
     this.updateStats('respStats', 'RR   bpm', undefined);
     this.updateFpsValue(0, 0);
   }
 
   private handleVitalLensResults(result: any) {
+    this.clearBufferingTimeout();
     this.latestResult = result;
     const { face, vital_signs, fps, estFps } = result;
     if (!face?.coordinates) {
@@ -564,18 +633,22 @@ export class VitalLensWidgetBase extends HTMLElement {
     const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate } =
       vital_signs;
     if (this.mode === 'webcam') {
+      const methodConfig = METHODS_CONFIG[this.currentMethod];
+      const fpsTarget = this.ecoMode ? this.ecoModeFps : methodConfig.fpsTarget;
+      const maxDataPoints = AGG_WINDOW_SIZE * fpsTarget;
       this.updateChart(
         this.charts.ppgChart,
         ppg_waveform?.data || [],
         ppg_waveform?.confidence || [],
-        this.MAX_DATA_POINTS
+        maxDataPoints
       );
       this.updateChart(
         this.charts.respChart,
         respiratory_waveform?.data || [],
         respiratory_waveform?.confidence || [],
-        this.MAX_DATA_POINTS
+        maxDataPoints
       );
+      this.setBufferingTimeout();
     } else {
       this.updateChart(
         this.charts.ppgChart,
@@ -659,10 +732,12 @@ export class VitalLensWidgetBase extends HTMLElement {
           this.vitalLensInstance.pauseVideoStream();
           this.controlButtonElement.textContent = 'Resume';
           this.isProcessingFlag = false;
+          this.clearBufferingTimeout();
         } else {
           this.vitalLensInstance.startVideoStream();
           this.controlButtonElement.textContent = 'Pause';
           this.isProcessingFlag = true;
+          this.setBufferingTimeout();
         }
       } else if (this.mode === 'file') {
         this.resetVideoFileView();
@@ -682,6 +757,9 @@ export class VitalLensWidgetBase extends HTMLElement {
         anchor.click();
         anchor.remove();
       }
+    });
+    this.ecoModeButtonElement.addEventListener('click', () => {
+      this.toggleEcoMode();
     });
     window.addEventListener('resize', this._handleResizeBound);
     const webcamButton = this.shadowRoot!.querySelector(
@@ -722,6 +800,61 @@ export class VitalLensWidgetBase extends HTMLElement {
         }
       }
     });
+  }
+
+  private showVideoLoader(message: string) {
+    this.videoDimmerElement.style.display = 'block';
+    this.videoSpinnerElement.style.display = 'block';
+    this.videoProgressElement.style.display = 'block';
+    this.videoProgressElement.textContent = message;
+  }
+
+  private hideVideoLoader() {
+    this.videoDimmerElement.style.display = 'none';
+    this.videoSpinnerElement.style.display = 'none';
+    this.videoProgressElement.style.display = 'none';
+    this.videoProgressElement.textContent = '';
+  }
+
+  private clearBufferingTimeout() {
+    if (this.bufferingTimeout) {
+      clearTimeout(this.bufferingTimeout);
+      this.bufferingTimeout = null;
+    }
+    this.hideVitalsLoader();
+  }
+
+  private setBufferingTimeout() {
+    const buffering = this.currentMethod === 'vitallens';
+    this.bufferingTimeout = window.setTimeout(() => {
+      this.showVitalsLoader(
+        buffering
+          ? 'Make sure your internet connection is stable. Buffering...'
+          : 'Loading...'
+      );
+    }, 500);
+  }
+
+  private showVitalsLoader(message: string) {
+    this.vitalsDimmerElement.style.display = 'block';
+    this.vitalsSpinnerElement.style.display = 'block';
+    this.vitalsProgressElement.style.display = 'block';
+    this.vitalsProgressElement.textContent = message;
+  }
+
+  private hideVitalsLoader() {
+    this.vitalsDimmerElement.style.display = 'none';
+    this.vitalsSpinnerElement.style.display = 'none';
+    this.vitalsProgressElement.style.display = 'none';
+    this.vitalsProgressElement.textContent = '';
+  }
+
+  private showError(message: string) {
+    this.errorPopupElement.textContent = message;
+    this.errorPopupElement.style.display = 'block';
+    setTimeout(() => {
+      this.errorPopupElement.style.display = 'none';
+    }, 10000);
   }
 
   public destroy(): void {

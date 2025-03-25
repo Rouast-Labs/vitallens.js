@@ -6,18 +6,10 @@ import { VitalLensAPIHandler } from '../../src/methods/VitalLensAPIHandler';
 import { POSHandler } from '../../src/methods/POSHandler';
 import { GHandler } from '../../src/methods/GHandler';
 import { CHROMHandler } from '../../src/methods/CHROMHandler';
-import { IWebSocketClient } from '../../src/types/IWebSocketClient';
 import { IRestClient } from '../../src/types/IRestClient';
 import { VitalLensOptions } from '../../src/types/core';
 
 describe('MethodHandlerFactory', () => {
-  const mockWebSocketClient: Partial<IWebSocketClient> = {
-    connect: jest.fn(),
-    close: jest.fn(),
-    getIsConnected: jest.fn().mockReturnValue(true),
-    sendFrames: jest.fn(),
-  };
-
   const mockRestClient: Partial<IRestClient> = {
     sendFrames: jest.fn(),
   };
@@ -46,14 +38,6 @@ describe('MethodHandlerFactory', () => {
     requestMode: 'rest',
   };
 
-  it('should create a VitalLensAPIHandler when method is "vitallens" and WebSocketClient is provided', () => {
-    const handler = MethodHandlerFactory.createHandler(mockOptionsAPI, {
-      webSocketClient: mockWebSocketClient as IWebSocketClient,
-    });
-
-    expect(handler).toBeInstanceOf(VitalLensAPIHandler);
-  });
-
   it('should create a VitalLensAPIHandler when method is "vitallens" and RestClient is provided', () => {
     const handler = MethodHandlerFactory.createHandler(mockOptionsAPI, {
       restClient: mockRestClient as IRestClient,
@@ -61,21 +45,10 @@ describe('MethodHandlerFactory', () => {
     expect(handler).toBeInstanceOf(VitalLensAPIHandler);
   });
 
-  it('should prefer RestClient over WebSocketClient for VitalLensAPIHandler if both are provided', () => {
-    const handler = MethodHandlerFactory.createHandler(mockOptionsAPI, {
-      webSocketClient: mockWebSocketClient as IWebSocketClient,
-      restClient: mockRestClient as IRestClient,
-    });
-    expect(handler).toBeInstanceOf(VitalLensAPIHandler);
-    expect((handler as VitalLensAPIHandler)['client']).toBe(mockRestClient);
-  });
-
-  it('should throw an error if neither WebSocketClient nor RestClient is provided for VitalLensAPIHandler', () => {
+  it('should throw an error if RestClient is not provided for VitalLensAPIHandler', () => {
     expect(() => {
       MethodHandlerFactory.createHandler(mockOptionsAPI);
-    }).toThrow(
-      'Either WebSocketClient or RestClient is required for VitalLensAPIHandler'
-    );
+    }).toThrow('RestClient is required for VitalLensAPIHandler');
   });
 
   it('should create a POSHandler when method is "pos"', () => {

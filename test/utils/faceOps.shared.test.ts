@@ -83,6 +83,7 @@ describe('getROIForMethod', () => {
       minWindowLength: 0,
       maxWindowLength: 10,
       requiresState: false,
+      bufferOffset: 1,
     };
     const clipDims = { width: 200, height: 200 };
     const result = getROIForMethod(det, methodConfig, clipDims);
@@ -98,6 +99,7 @@ describe('getROIForMethod', () => {
       minWindowLength: 0,
       maxWindowLength: 10,
       requiresState: false,
+      bufferOffset: 1,
     };
     const clipDims = { width: 200, height: 200 };
     const result = getROIForMethod(det, methodConfig, clipDims);

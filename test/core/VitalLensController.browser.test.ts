@@ -3,13 +3,11 @@
 import { VitalLensController } from '../../src/core/VitalLensController.browser';
 import { VitalLensOptions } from '../../src/types';
 import { RestClient } from '../../src/utils/RestClient.browser';
-import { WebSocketClient } from '../../src/utils/WebSocketClient.browser';
 import FFmpegWrapper from '../../src/utils/FFmpegWrapper.browser';
 import { StreamProcessor } from '../../src/processing/StreamProcessor.browser';
 import { FaceDetectionWorker } from '../../src/ssd/FaceDetectionWorker.browser';
 
 jest.mock('../../src/utils/RestClient.browser');
-jest.mock('../../src/utils/WebSocketClient.browser');
 jest.mock('../../src/utils/FFmpegWrapper.browser');
 jest.mock('../../src/processing/StreamProcessor.browser');
 jest.mock('../../src/ssd/FaceDetectionWorker.browser');
@@ -91,28 +89,6 @@ describe('VitalLensController (Browser)', () => {
       expect(RestClient).toHaveBeenCalledWith('', mockOptions.proxyUrl);
       // Since RestClient is a mock constructor, we can also check that the returned value is an instance.
       expect(restClient).toBeInstanceOf(RestClient);
-    });
-  });
-
-  describe('createWebSocketClient', () => {
-    test('should create a WebSocketClient when API key provided', () => {
-      const wsClient = (controller as any).createWebSocketClient(
-        mockOptions.apiKey
-      );
-      expect(WebSocketClient).toHaveBeenCalledWith(
-        mockOptions.apiKey,
-        undefined
-      );
-      expect(wsClient).toBeInstanceOf(WebSocketClient);
-    });
-
-    test('should create a WebSocketClient when proxyUrl provided', () => {
-      const wsClient = (controller as any).createWebSocketClient(
-        '',
-        mockOptions.proxyUrl
-      );
-      expect(WebSocketClient).toHaveBeenCalledWith('', mockOptions.proxyUrl);
-      expect(wsClient).toBeInstanceOf(WebSocketClient);
     });
   });
 

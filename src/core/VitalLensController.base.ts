@@ -12,13 +12,13 @@ import { METHODS_CONFIG } from '../config/methodsConfig';
 import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
 import { isBrowser } from '../utils/env';
 import { IRestClient } from '../types/IRestClient';
-import { IWebSocketClient } from '../types/IWebSocketClient';
 import { IStreamProcessor } from '../types/IStreamProcessor';
 import { IFrameIterator } from '../types/IFrameIterator';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { FrameIteratorFactory } from '../processing/FrameIteratorFactory';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 import { VitalLensAPIKeyError } from '../utils/errors';
+import { BufferedResultsConsumer } from '../processing/BufferedResultsConsumer';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -60,14 +60,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   ): IRestClient;
 
   /**
-   * Subclasses must return the appropriate WebSocketClient instance.
-   */
-  protected abstract createWebSocketClient(
-    apiKey: string,
-    proxyUrl?: string
-  ): IWebSocketClient;
-
-  /**
    * Subclasses must return the appropriate FFmpegWrapper instance.
    */
   protected abstract createFFmpegWrapper(): IFFmpegWrapper;
@@ -87,6 +79,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
     methodHandler: MethodHandler,
+    bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>
   ): IStreamProcessor;
@@ -104,21 +97,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     ) {
       throw new VitalLensAPIKeyError();
     }
-    // Temporarily disable WebSocket
-    if (options.requestMode === 'websocket') {
-      throw new Error(
-        'WebSocket request mode is disabled for now. Please use requestMode=rest.'
-      );
-    }
     const requestMode = options.requestMode || 'rest'; // Default to REST
     const dependencies = {
-      // webSocketClient:
-      //   options.method === 'vitallens' && requestMode === 'websocket'
-      //     ? this.createWebSocketClient(
-      //         this.options.apiKey ?? '',
-      //         this.options.proxyUrl
-      //       )
-      //     : undefined,
       restClient:
         options.method === 'vitallens' && requestMode === 'rest'
           ? this.createRestClient(
@@ -153,6 +133,9 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       );
     }
 
+    const bufferedResultsConsumer = new BufferedResultsConsumer(
+      (result: VitalLensResult) => this.dispatchEvent('vitals', result)
+    );
     const frameIterator = this.frameIteratorFactory.createStreamFrameIterator(
       stream,
       videoElement
@@ -165,18 +148,21 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.bufferManager,
       this.faceDetectionWorker,
       this.methodHandler,
+      bufferedResultsConsumer,
       async (incrementalResult) => {
         // onPredict - process and dispatch incremental result unless paused
         if (this.isProcessing()) {
-          const result =
-            await this.vitalsEstimateManager.processIncrementalResult(
+          // Buffer results; Produce one result for each frame and deliver with buffer offset.
+          const bufferedResults =
+            await this.vitalsEstimateManager.produceBufferedResults(
               incrementalResult,
               frameIterator.getId(),
-              'windowed',
-              true,
-              true
+              'windowed'
             );
-          this.dispatchEvent('vitals', result);
+          // Send the results to be delivered
+          if (bufferedResults && bufferedResults.length) {
+            bufferedResultsConsumer?.addResults(bufferedResults);
+          }
         }
       },
       async () => {
@@ -243,7 +229,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.faceDetectionWorker
     );
 
-    this.dispatchEvent('progress', 'Detecting faces...');
+    this.dispatchEvent('fileProgress', 'Detecting faces...');
 
     await frameIterator.start();
 
@@ -253,18 +239,19 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       this.dispatchEvent(
-        'progress',
+        'fileProgress',
         `Loading video for chunk ${chunkCounter}...`
       );
       const { value: framesChunk, done } = await iterator.next();
       if (done) break;
 
       this.dispatchEvent(
-        'progress',
+        'fileProgress',
         `Estimating vitals for chunk ${chunkCounter}...`
       );
       const incrementalResult = await this.methodHandler.process(
         framesChunk,
+        'file',
         this.bufferManager.getState() ?? undefined
       );
 

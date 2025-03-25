@@ -1,5 +1,9 @@
 import { MethodHandler } from './MethodHandler';
-import { VitalLensOptions, VitalLensResult } from '../types/core';
+import {
+  InferenceMode,
+  VitalLensOptions,
+  VitalLensResult,
+} from '../types/core';
 import { Frame } from '../processing/Frame';
 
 /**
@@ -36,9 +40,11 @@ export abstract class SimpleMethodHandler extends MethodHandler {
   /**
    * Processes a chunk of rgb signals to compute vitals.
    * @param rgb - Frame of rgb signals to process.
+   * @param mode - The inference mode.
    * @returns A promise that resolves to the processed result.
    */
-  async process(rgb: Frame): Promise<VitalLensResult> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async process(rgb: Frame, mode: InferenceMode): Promise<VitalLensResult> {
     const ppg = this.algorithm(rgb);
     return {
       face: {

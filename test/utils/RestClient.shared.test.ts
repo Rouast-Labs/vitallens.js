@@ -2,16 +2,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { RestClientBase } from '../../src/utils/RestClient.base';
-import { VITALLENS_REST_ENDPOINT } from '../../src/config/constants';
+import {
+  VITALLENS_FILE_ENDPOINT,
+  VITALLENS_STREAM_ENDPOINT,
+} from '../../src/config/constants';
+import { InferenceMode } from '../../src/types';
 
 class MockRestClient extends RestClientBase {
   protected getRestEndpoint(): string {
-    return VITALLENS_REST_ENDPOINT;
+    return VITALLENS_FILE_ENDPOINT;
   }
-  async postRequest(payload: Record<string, any>): Promise<any> {
+  async postRequest(
+    headers: Record<string, string>,
+    body: Record<string, any> | Uint8Array,
+    mode: InferenceMode
+  ): Promise<any> {
+    // If body is a JSON object (for 'file' mode), inspect its 'bad' property
+    const payload = !(body instanceof Uint8Array)
+      ? (body as Record<string, any>)
+      : {};
     if (payload.bad === false) {
       // Simulate a successful response
-      return { status: 200 } as Response;
+      return { status: 200 };
     } else {
       // Simulate a 500 Internal Server Error
       const errorResponse = {
@@ -21,6 +33,9 @@ class MockRestClient extends RestClientBase {
       } as Response;
       return this.handleResponse(errorResponse);
     }
+  }
+  protected async compress(data: Uint8Array): Promise<any> {
+    return data;
   }
 }
 
@@ -36,24 +51,22 @@ describe('RestClientBase', () => {
     const expectedResponse = { status: 200 };
     const result = await client.sendFrames(
       { bad: false },
-      new Uint8Array([1, 2, 3])
+      new Uint8Array([1, 2, 3]),
+      'file'
     );
     expect(result).toEqual(expectedResponse);
   });
 
-  it('should set URL to the provided proxyUrl and omit x-api-key header when proxyUrl is used', () => {
+  it('should set provided proxyUrl and x-api-key', () => {
     const proxyUrl = 'https://example.com/proxy';
     const clientWithProxy = new MockRestClient('test-api-key', proxyUrl);
-    expect((clientWithProxy as any).url).toEqual(proxyUrl);
-    expect((clientWithProxy as any).headers).not.toHaveProperty('x-api-key');
+    expect((clientWithProxy as any).proxyUrl).toEqual(proxyUrl);
+    expect((clientWithProxy as any).apiKey).toEqual('test-api-key');
   });
 
-  it('should set URL to default endpoint and include x-api-key header when no proxyUrl is provided', () => {
+  it('should set x-api-key', () => {
     const clientNoProxy = new MockRestClient('test-api-key');
-    expect((clientNoProxy as any).url).toEqual(VITALLENS_REST_ENDPOINT);
-    expect((clientNoProxy as any).headers).toHaveProperty(
-      'x-api-key',
-      'test-api-key'
-    );
+    expect((clientNoProxy as any).proxyUrl).toBeNull();
+    expect((clientNoProxy as any).apiKey).toEqual('test-api-key');
   });
 });
