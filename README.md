@@ -300,7 +300,7 @@ const PORT = process.env.PORT || 3000;
 
 // Securely store your API key in an environment variable
 const API_KEY = process.env.VITALLENS_API_KEY;
-const VITALLENS_ENDPOINT = 'https://api.rouast.com/vitallens-v2';
+const VITALLENS_ENDPOINT = 'https://api.rouast.com/vitallens-v3/file';
 
 app.use(bodyParser.json({ limit: '10mb' }));
 

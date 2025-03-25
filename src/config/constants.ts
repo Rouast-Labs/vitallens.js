@@ -3,9 +3,9 @@ import { CompressionMode } from '../types';
 export const VITALLENS_WEBSOCKET_ENDPOINT =
   'wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/';
 export const VITALLENS_FILE_ENDPOINT =
-  'https://api.rouast.com/vitallens-dev/file';
+  'https://api.rouast.com/vitallens-v3/file';
 export const VITALLENS_STREAM_ENDPOINT =
-  'https://api.rouast.com/vitallens-dev/stream';
+  'https://api.rouast.com/vitallens-v3/stream';
 
 // Vitals estimation constraints [1/min]
 export const CALC_HR_MIN = 40;
