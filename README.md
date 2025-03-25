@@ -365,6 +365,12 @@ npm run test:browser-integration
 npm run test:node-integration
 ```
 
+Run specific tests:
+
+```bash
+npx jest test/core/VitalLens.browser.test.ts
+```
+
 ### Linting
 
 Lint the code using:

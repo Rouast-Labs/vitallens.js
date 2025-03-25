@@ -11,13 +11,13 @@ import {
   VitalLensResult,
 } from '../../src/types/core';
 import { IRestClient } from '../../src/types/IRestClient';
-import { IWebSocketClient } from '../../src/types/IWebSocketClient';
 import { IFFmpegWrapper } from '../../src/types/IFFmpegWrapper';
 import { IFaceDetectionWorker } from '../../src/types/IFaceDetectionWorker';
 import { IFrameIterator } from '../../src/types/IFrameIterator';
 import { MethodHandler } from '../../src/methods/MethodHandler';
 import { IStreamProcessor } from '../../src/types/IStreamProcessor';
 import { FrameIteratorFactory } from '../../src/processing/FrameIteratorFactory';
+import { BufferedResultsConsumer } from '../../src/processing/BufferedResultsConsumer';
 
 jest.mock('../../src/processing/BufferManager');
 jest.mock('../../src/processing/FrameIteratorFactory');
@@ -28,14 +28,6 @@ jest.mock('../../src/processing/VitalsEstimateManager');
 class TestVitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
     return { sendFrames: jest.fn() };
-  }
-  protected createWebSocketClient(apiKey: string): IWebSocketClient {
-    return {
-      connect: jest.fn(),
-      sendFrames: jest.fn(),
-      getIsConnected: jest.fn(),
-      close: jest.fn(),
-    };
   }
   protected createFFmpegWrapper(): IFFmpegWrapper {
     return {
@@ -65,6 +57,7 @@ class TestVitalLensController extends VitalLensControllerBase {
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
     methodHandler: MethodHandler,
+    bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>
   ): IStreamProcessor {
@@ -132,24 +125,6 @@ describe('VitalLensControllerBase', () => {
   });
 
   describe('createMethodHandler', () => {
-    // test('should create a MethodHandler with correct dependencies (WebSocket)', () => {
-    //   const optionsWithWebSocket: VitalLensOptions = {
-    //     apiKey: 'test-key',
-    //     method: 'vitallens',
-    //     requestMode: 'websocket',
-    //   };
-    //   const methodHandlerWithWebSocket =
-    //     controller['createMethodHandler'](optionsWithWebSocket);
-    //   expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
-    //     optionsWithWebSocket,
-    //     {
-    //       webSocketClient: expect.any(Object),
-    //       restClient: undefined,
-    //     }
-    //   );
-    //   expect(methodHandlerWithWebSocket).toBeDefined();
-    // });
-
     test('should create a MethodHandler with correct dependencies (REST)', () => {
       const optionsWithRest: VitalLensOptions = {
         apiKey: 'test-key',
@@ -161,7 +136,6 @@ describe('VitalLensControllerBase', () => {
       expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
         optionsWithRest,
         {
-          webSocketClient: undefined,
           restClient: expect.any(Object),
         }
       );
@@ -178,17 +152,6 @@ describe('VitalLensControllerBase', () => {
       ).toThrowError(/A valid API key or proxy URL is required/);
     });
 
-    test('should throw an error if requestMode is websocket', () => {
-      const optionsWithWebSocket: VitalLensOptions = {
-        method: 'vitallens',
-        apiKey: 'test-key',
-        requestMode: 'websocket',
-      };
-      expect(() =>
-        controller['createMethodHandler'](optionsWithWebSocket)
-      ).toThrowError(/WebSocket request mode is disabled for now/);
-    });
-
     test('should create a MethodHandler without requiring an apiKey for non-vitallens methods', () => {
       const optionsForOtherMethod: VitalLensOptions = { method: 'pos' };
       const methodHandler = controller['createMethodHandler'](
@@ -197,7 +160,6 @@ describe('VitalLensControllerBase', () => {
       expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
         optionsForOtherMethod,
         {
-          webSocketClient: undefined,
           restClient: undefined,
         }
       );
@@ -345,10 +307,12 @@ describe('VitalLensControllerBase', () => {
       expect(controller['methodHandler'].process).toHaveBeenCalledTimes(2);
       expect(controller['methodHandler'].process).toHaveBeenCalledWith(
         { frames: [new Uint8Array([1, 2, 3])], timestamp: 0 },
+        'file',
         controller['bufferManager'].getState()
       );
       expect(controller['methodHandler'].process).toHaveBeenCalledWith(
         { frames: [new Uint8Array([4, 5, 6])], timestamp: 1 },
+        'file',
         controller['bufferManager'].getState()
       );
 

@@ -32,11 +32,13 @@ describe('StreamProcessor (Browser)', () => {
     minWindowLength: 5,
     maxWindowLength: 10,
     requiresState: false,
+    bufferOffset: 1,
   };
 
   // Dummy stubs for parameters not used in these tests.
   const dummyFrameIterator = {} as any;
   const dummyMethodHandler = {} as any;
+  const dummyBufferedResultsConsumer = {} as any;
   const dummyOnPredict = jest.fn(async (result) => {});
   const dummyOnNoFace = jest.fn(async () => {});
 
@@ -99,6 +101,7 @@ describe('StreamProcessor (Browser)', () => {
       fakeBufferManager,
       mockFaceDetectionWorker,
       dummyMethodHandler,
+      dummyBufferedResultsConsumer,
       dummyOnPredict,
       dummyOnNoFace
     );
@@ -113,6 +116,7 @@ describe('StreamProcessor (Browser)', () => {
         fakeBufferManager,
         null, // No face detection worker provided.
         dummyMethodHandler,
+        dummyBufferedResultsConsumer,
         dummyOnPredict,
         dummyOnNoFace
       );

@@ -42,6 +42,7 @@ describe('VitalsEstimateManager', () => {
       minWindowLength: 10,
       maxWindowLength: 10,
       requiresState: false,
+      bufferOffset: 1,
     };
     options = {
       method: 'g',
@@ -231,6 +232,8 @@ describe('VitalsEstimateManager', () => {
       );
     });
   });
+
+  // TODO: Test produceBufferedResults
 
   describe('getUpdatedValues', () => {
     it('should append new values when there is no overlap', () => {

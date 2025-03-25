@@ -2,8 +2,6 @@ import { VitalLensControllerBase } from './VitalLensController.base';
 import { MethodConfig, VitalLensOptions, VitalLensResult } from '../types/core';
 import { IRestClient } from '../types/IRestClient';
 import { RestClient } from '../utils/RestClient.browser';
-import { IWebSocketClient } from '../types/IWebSocketClient';
-import { WebSocketClient } from '../utils/WebSocketClient.browser';
 import { MethodHandler } from '../methods/MethodHandler';
 import { BufferManager } from '../processing/BufferManager';
 import { IFrameIterator } from '../types/IFrameIterator';
@@ -20,12 +18,6 @@ import { BufferedResultsConsumer } from '../processing/BufferedResultsConsumer';
 export class VitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
     return new RestClient(apiKey, proxyUrl);
-  }
-  protected createWebSocketClient(
-    apiKey: string,
-    proxyUrl?: string
-  ): IWebSocketClient {
-    return new WebSocketClient(apiKey, proxyUrl);
   }
   protected createFFmpegWrapper(): IFFmpegWrapper {
     return new FFmpegWrapper();

@@ -1,5 +1,7 @@
 import { VitalLensResult } from '../types';
 
+// TODO: Write tests
+
 export class BufferedResultsConsumer {
   private resultQueue: VitalLensResult[] = [];
   private isRunning = false;

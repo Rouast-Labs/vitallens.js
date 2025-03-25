@@ -1,7 +1,5 @@
 import { CompressionMode } from '../types';
 
-export const VITALLENS_WEBSOCKET_ENDPOINT =
-  'wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/';
 export const VITALLENS_FILE_ENDPOINT =
   'https://api.rouast.com/vitallens-v3/file';
 export const VITALLENS_STREAM_ENDPOINT =

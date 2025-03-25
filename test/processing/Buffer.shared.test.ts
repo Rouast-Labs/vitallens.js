@@ -31,6 +31,7 @@ describe('Buffer', () => {
       minWindowLength: 3,
       maxWindowLength: 5,
       requiresState: false,
+      bufferOffset: 1,
     };
     buffer = new MockBuffer(roi, methodConfig);
   });

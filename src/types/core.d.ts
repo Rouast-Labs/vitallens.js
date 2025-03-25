@@ -16,7 +16,7 @@ export interface VitalLensOptions {
   apiKey?: string;
   proxyUrl?: string;
   waveformMode?: 'incremental' | 'windowed' | 'complete';
-  requestMode?: 'websocket' | 'rest';
+  requestMode?: 'rest';
   overrideFpsTarget?: number;
   globalRoi?: ROI;
   fDetFs?: number;

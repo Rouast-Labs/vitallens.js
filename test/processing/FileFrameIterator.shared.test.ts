@@ -111,6 +111,7 @@ const dummyMethodConfig: MethodConfig = {
   minWindowLength: 1,
   inputSize: 224,
   requiresState: false,
+  bufferOffset: 1,
 };
 
 const dummyVideoInput: VideoInput = 'test.mp4';

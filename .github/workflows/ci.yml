@@ -40,10 +40,6 @@ jobs:
         if: github.ref != 'refs/heads/main'
         run: echo "VITALLENS_STREAM_ENDPOINT=https://api.example.com/vitallens-dev/stream" >> $GITHUB_ENV
 
-      - name: Set development VITALLENS_WEBSOCKET_ENDPOINT for non-main branches
-        if: github.ref != 'refs/heads/main'
-        run: echo "VITALLENS_WEBSOCKET_ENDPOINT=wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/" >> $GITHUB_ENV    
-
       - name: Lint code
         run: npm run lint
 
@@ -81,10 +77,6 @@ jobs:
       - name: Set development VITALLENS_STREAM_ENDPOINT for non-main branches
         if: github.ref != 'refs/heads/main'
         run: echo "VITALLENS_STREAM_ENDPOINT=https://api.example.com/vitallens-dev/stream" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-      - name: Set development VITALLENS_WEBSOCKET_ENDPOINT for non-main branches
-        if: github.ref != 'refs/heads/main'
-        run: echo "VITALLENS_WEBSOCKET_ENDPOINT=wss://slkzjh1zz5.execute-api.us-east-1.amazonaws.com/dev/" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Lint code
         run: npm run lint

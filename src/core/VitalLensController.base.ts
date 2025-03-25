@@ -12,7 +12,6 @@ import { METHODS_CONFIG } from '../config/methodsConfig';
 import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
 import { isBrowser } from '../utils/env';
 import { IRestClient } from '../types/IRestClient';
-import { IWebSocketClient } from '../types/IWebSocketClient';
 import { IStreamProcessor } from '../types/IStreamProcessor';
 import { IFrameIterator } from '../types/IFrameIterator';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
@@ -61,14 +60,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   ): IRestClient;
 
   /**
-   * Subclasses must return the appropriate WebSocketClient instance.
-   */
-  protected abstract createWebSocketClient(
-    apiKey: string,
-    proxyUrl?: string
-  ): IWebSocketClient;
-
-  /**
    * Subclasses must return the appropriate FFmpegWrapper instance.
    */
   protected abstract createFFmpegWrapper(): IFFmpegWrapper;
@@ -106,21 +97,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     ) {
       throw new VitalLensAPIKeyError();
     }
-    // Temporarily disable WebSocket
-    if (options.requestMode === 'websocket') {
-      throw new Error(
-        'WebSocket request mode is disabled for now. Please use requestMode=rest.'
-      );
-    }
     const requestMode = options.requestMode || 'rest'; // Default to REST
     const dependencies = {
-      // webSocketClient:
-      //   options.method === 'vitallens' && requestMode === 'websocket'
-      //     ? this.createWebSocketClient(
-      //         this.options.apiKey ?? '',
-      //         this.options.proxyUrl
-      //       )
-      //     : undefined,
       restClient:
         options.method === 'vitallens' && requestMode === 'rest'
           ? this.createRestClient(

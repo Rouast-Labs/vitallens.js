@@ -26,6 +26,7 @@ const methodConfig: MethodConfig = {
   minWindowLength: 5,
   maxWindowLength: 10,
   requiresState: false,
+  bufferOffset: 1,
 };
 
 describe('FrameIteratorFactory', () => {

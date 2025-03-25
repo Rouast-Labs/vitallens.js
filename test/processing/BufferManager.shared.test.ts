@@ -39,6 +39,7 @@ const mockMethodConfigVitalLens: MethodConfig = {
   minWindowLength: 5,
   maxWindowLength: 10,
   requiresState: false,
+  bufferOffset: 1,
 };
 const mockMethodConfigPOS: MethodConfig = {
   method: 'pos',
@@ -48,6 +49,7 @@ const mockMethodConfigPOS: MethodConfig = {
   minWindowLength: 5,
   maxWindowLength: 10,
   requiresState: false,
+  bufferOffset: 0,
 };
 const mockTimestamp = Date.now();
 
