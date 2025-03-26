@@ -21,7 +21,7 @@ class VitalLensWidgetUnified extends VitalLensWidgetBase {
       'Respiratory Waveform',
       '0,123,255'
     );
-    this.switchMode('file');
+    this.switchMode('webcam');
   }
 }
 

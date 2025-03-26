@@ -24,7 +24,7 @@ app.use((_, res, next) => {
       "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/ https://cdn.jsdelivr.net; " +
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/ https://cdn.jsdelivr.net; " +
       "worker-src 'self' blob:; " +
-      "connect-src 'self' blob: data: https://unpkg.com/ https://api.rouast.com; " +
+      "connect-src 'self' blob: data: https://unpkg.com/ https://cdn.jsdelivr.net https://api.rouast.com; " +
       "style-src 'self' 'unsafe-inline';",
   });
   next();
