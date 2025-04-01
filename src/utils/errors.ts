@@ -7,7 +7,7 @@ export class VitalLensAPIError extends Error {
 
 export class VitalLensAPIKeyError extends Error {
   constructor(
-    message = 'A valid API key or proxy URL is required to use method=vitallens. Get one for free at https://www.rouast.com/api.'
+    message = 'A valid API key or proxy URL is required to use VitalLens. If you signed up recently, please try again in a minute to allow your API key to become active. Otherwise, head to https://www.rouast.com/api to your free API key.'
   ) {
     super(message);
     this.name = 'VitalLensAPIKeyError';
