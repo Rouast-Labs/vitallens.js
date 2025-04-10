@@ -206,7 +206,7 @@ const browserConfig = {
       emitFiles: false,
     }),
     url({
-      include: ['**/*.png'],
+      include: ['**/*.svg'],
       limit: Infinity,
       emitFiles: true,
       fileName: '[dirname][hash][extname]',

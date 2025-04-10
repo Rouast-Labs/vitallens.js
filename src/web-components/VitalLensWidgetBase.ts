@@ -2,7 +2,7 @@
 import { VitalLens } from '../core/VitalLens.browser';
 import { VitalLensOptions } from '../types';
 import widget from './widget.html';
-import logoUrl from '../../assets/vitallens_api.png';
+import logoUrl from '../../assets/logo.svg';
 import {
   Chart,
   ChartDataset,
