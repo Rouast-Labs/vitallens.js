@@ -21,7 +21,7 @@ This library works both in browser environments and in Node.js, and comes with a
 
 Using a different language or platform? We also have a [Python client](https://github.com/Rouast-Labs/vitallens-python).
 
-## Features
+### Features
 
 - **Cross-Platform Compatibility:**  
   Use vitallens.js in the browser or Node.js.
@@ -46,13 +46,13 @@ Using a different language or platform? We also have a [Python client](https://g
 - **TypeScript-Ready:**  
   Written in TypeScript with complete type definitions for enhanced developer experience.
   
-### Disclaimer
+#### Disclaimer
 
 **Important:** vitallens.js provides vital sign estimates for general wellness purposes only. It is **not intended for medical use**. Always consult a healthcare professional for any medical concerns or precise clinical measurements.
 
 Please review our [Terms of Service](https://www.rouast.com/api/terms) and [Privacy Policy](https://www.rouast.com/privacy) for more details.
 
-## Installation
+### Installation
 
 ### Node.js
 
@@ -73,7 +73,7 @@ const result = await vl.processVideoFile(myVideoFile);
 console.log(result);
 ```
 
-### Browser
+#### Browser
 
 For browser usage, you can either bundle `vitallens.js` with your project or load it directly from a CDN. In addition to the core API, `vitallens.js` also provides pre-built web component widgets. We offer three variants:
 
@@ -126,7 +126,7 @@ Or **Skypack** if you prefer ES modules:
 </script>
 ```
 
-## Configuration Options
+### Configuration Options
 
 When creating a new `VitalLens` instance, you can configure various options:
 
@@ -139,7 +139,7 @@ When creating a new `VitalLens` instance, you can configure various options:
 
 The default value for `waveformMode` is `windowed` if a stream is being analyzed, and `complete` if a file is being processed. Additional options (e.g., face detection settings, buffering) are available. See [docs](https://docs.rouast.com/) for details.
 
-## Understanding the Estimation Results
+### Understanding the Estimation Results
 
 When you process a video or a MediaStream with `vitallens.js`, the library returns vital sign estimates in a structured object. **vitallens.js is designed to process only a single face** — so you always receive a single result object with the following structure:
 
@@ -210,7 +210,7 @@ export interface VitalLensResult {
 }
 ```
 
-## Examples
+### Examples
 
 Before running any of the examples, make sure to build the project by executing:
 
@@ -264,15 +264,15 @@ Also, note that each example requires an API key. Replace `YOUR_API_KEY` with yo
 
 Try opening the HTML examples in your browser or running the Node script to see `vitallens.js` in action.
 
-## Securing your API Key
+### Securing your API Key
 
 For security reasons, we recommend that you do not expose your API key directly in client-side code. There are two primary approaches to secure your API key:
 
-### 1. Run Everything on your Server
+#### 1. Run Everything on your Server
 
 If you are building a server-side application using Node.js, your API key remains securely on your server. Simply call the API directly from your backend code without exposing your credentials.
 
-### 2. Use a Proxy Server for Client-Side Code
+#### 2. Use a Proxy Server for Client-Side Code
 
 If you need to use `vitallens.js` in a browser, you can set up a proxy server. The proxy server receives requests from the client, attaches your API key (stored securely on the server), and forwards the request to the VitalLens API. This way, the API key is never exposed to the client.
 
@@ -292,7 +292,7 @@ Or when using one of our widgets:
 <vitallens-widget proxy-url="https://your-proxy-server.com/api"></vitallens-widget>
 ```
 
-### Sample Proxy Server Implementation
+#### Sample Proxy Server Implementation
 
 Below is a simple Node.js/Express proxy server implementation that you can use as a starting point:
 
@@ -342,9 +342,9 @@ app.listen(PORT, () => {
 
 You can deploy this proxy server on any Node.js hosting platform (such as Heroku, Vercel, or your own server) and then set the URL as the `proxyUrl` in your VitalLens client configuration.
 
-## Development
+### Development
 
-### Building the Library
+#### Building the Library
 
 To build the project from source, run:
 
@@ -354,7 +354,7 @@ npm run build
 
 This compiles the TypeScript source and bundles the output for Node (both ESM and CommonJS), and the browser.
 
-### Running Tests
+#### Running Tests
 
 Execute the test suite with:
 
@@ -377,7 +377,7 @@ Run specific tests:
 npx jest test/core/VitalLens.browser.test.ts
 ```
 
-### Linting
+#### Linting
 
 Lint the code using:
 
@@ -385,6 +385,6 @@ Lint the code using:
 npm run lint
 ```
 
-## License
+### License
 
 This project is licensed under the [MIT License](LICENSE).
