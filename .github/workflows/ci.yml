@@ -30,7 +30,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Security audit
+        run: npm audit --audit-level=high
 
       - name: Set development VITALLENS_FILE_ENDPOINT for non-main branches
         if: github.ref != 'refs/heads/main'
@@ -68,7 +71,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Security audit
+        run: npm audit --audit-level=high
 
       - name: Set development VITALLENS_FILE_ENDPOINT for non-main branches
         if: github.ref != 'refs/heads/main'
