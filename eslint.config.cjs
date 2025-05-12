@@ -1,25 +1,23 @@
-import { FlatCompat } from '@eslint/eslintrc'
-const compat = new FlatCompat({ baseDirectory: __dirname })
+const { FlatCompat } = require('@eslint/eslintrc')
+const globals = require('globals')
+const js = require('@eslint/js')
 
-export default [
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended
+})
+
+module.exports = [
+  js.configs.recommended,
   ...compat.extends(
-    'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:prettier/recommended'
   ),
   {
     files: ['src/**/*.ts'],
     languageOptions: {
-      parser: '@typescript-eslint/parser',
-      parserOptions: {
-        ecmaVersion: 2020,
-        sourceType: 'module',
-      },
-    },
-    env: {
-      browser: true,
-      node: true,
-      es6: true,
-    },
-  },
+      parserOptions: { ecmaVersion: 2020, sourceType: 'module' },
+      globals: { ...globals.browser, ...globals.node }
+    }
+  }
 ]
