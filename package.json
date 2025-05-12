@@ -109,8 +109,8 @@
     "@types/node-fetch": "^2.6.12",
     "@types/puppeteer": "^7.0.4",
     "@types/ws": "^8.5.14",
-    "@typescript-eslint/eslint-plugin": "^8.23.0",
-    "@typescript-eslint/parser": "^8.23.0",
+    "@typescript-eslint/eslint-plugin": "^8.32.0",
+    "@typescript-eslint/parser": "^8.32.0",
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -128,7 +128,7 @@
     "rollup-plugin-string": "^3.0.0",
     "rollup-plugin-terser": "^7.0.2",
     "ts-jest": "^29.2.5",
-    "typescript": "^5.5.3"
+    "typescript": "^5.8.3"
   },
   "engines": {
     "node": ">=18.0.0"
