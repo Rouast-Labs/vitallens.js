@@ -236,7 +236,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     let chunkCounter = 1;
     const iterator = frameIterator[Symbol.asyncIterator]();
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       this.dispatchEvent(
         'fileProgress',
