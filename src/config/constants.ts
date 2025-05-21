@@ -14,9 +14,9 @@ export const CALC_RR_MAX = 60;
 // Vitals estimation window sizes [s]
 export const AGG_WINDOW_SIZE = 10; // Must be smaller or equal to smallest CALC_WINDOW_SIZE
 export const CALC_HR_WINDOW_SIZE = 10;
-export const CALC_HR_MIN_WINDOW_SIZE = 2;
+export const CALC_HR_MIN_WINDOW_SIZE = 5;
 export const CALC_RR_WINDOW_SIZE = 30;
-export const CALC_RR_MIN_WINDOW_SIZE = 4;
+export const CALC_RR_MIN_WINDOW_SIZE = 10;
 
 // Face detection defaults [Hz]
 export const FDET_DEFAULT_FS_FILE = 0.5;
