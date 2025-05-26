@@ -83,7 +83,6 @@
     "fft.js": "^4.0.4",
     "fluent-ffmpeg": "^2.1.3",
     "mathjs": "^14.2.0",
-    "node-fetch": "^3.3.2",
     "semver": "^7.7.1",
     "uuid": "^11.0.5",
     "ws": "^8.18.0"
@@ -111,7 +110,6 @@
     "@tensorflow/tfjs-node": "^4.22.0",
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/jest": "^29.5.14",
-    "@types/node-fetch": "^2.6.12",
     "@types/puppeteer": "^7.0.4",
     "@types/ws": "^8.5.14",
     "@typescript-eslint/eslint-plugin": "^8.32.0",
