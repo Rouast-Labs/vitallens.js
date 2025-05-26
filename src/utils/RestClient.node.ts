@@ -4,6 +4,7 @@ import {
   VITALLENS_FILE_ENDPOINT,
   VITALLENS_STREAM_ENDPOINT,
 } from '../config/constants';
+import { Buffer } from 'buffer';
 import fetch from 'node-fetch';
 import { promisify } from 'util';
 import { deflate, gzip } from 'zlib';
@@ -49,10 +50,14 @@ export class RestClient extends RestClientBase {
 
       const url = this.proxyUrl ?? this.getRestEndpoint(mode);
 
+      const payload: BodyInit = isBinary
+        ? Buffer.from(body as Uint8Array)
+        : JSON.stringify(body);
+
       const response = (await fetch(url, {
         method: 'POST',
         headers: headers_,
-        body: isBinary ? (body as Uint8Array) : JSON.stringify(body),
+        body: payload,
       })) as unknown as Response;
       return this.handleResponse(response);
     } catch (error) {
