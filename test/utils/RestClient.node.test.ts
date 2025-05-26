@@ -11,8 +11,8 @@ describe('RestClient (Node)', () => {
   let client: RestClient;
 
   beforeEach(() => {
-    jest.clearAllMocks()
-    client = new RestClient('test-api-key')
+    jest.clearAllMocks();
+    client = new RestClient('test-api-key');
   });
 
   it('should send frames and return JSON response', async () => {
