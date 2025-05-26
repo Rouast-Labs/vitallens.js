@@ -5,7 +5,6 @@ import {
   VITALLENS_STREAM_ENDPOINT,
 } from '../config/constants';
 import { Buffer } from 'buffer';
-import fetch from 'node-fetch';
 import { promisify } from 'util';
 import { deflate, gzip } from 'zlib';
 import { InferenceMode, VitalLensAPIResponse } from '../types';
@@ -24,7 +23,7 @@ export class RestClient extends RestClientBase {
   }
 
   /**
-   * Sends an HTTP POST request using node-fetch.
+   * Sends an HTTP POST request.
    * @param headers - The headers.
    * @param body - The body.
    * @param mode - The inference mode ('file' or 'stream').
@@ -54,7 +53,7 @@ export class RestClient extends RestClientBase {
         ? Buffer.from(body as Uint8Array)
         : JSON.stringify(body);
 
-      const response = (await fetch(url, {
+      const response = (await global.fetch(url, {
         method: 'POST',
         headers: headers_,
         body: payload,

@@ -1,24 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import fetch from 'node-fetch';
 import { RestClient } from '../../src/utils/RestClient.node';
 
-jest.mock('node-fetch', () => jest.fn());
-
-const { Response } = jest.requireActual('node-fetch');
+const mockedFetch = jest.fn();
+global.fetch = mockedFetch;
+const { Response } = globalThis;
 
 describe('RestClient (Node)', () => {
   let client: RestClient;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    client = new RestClient('test-api-key');
+    jest.clearAllMocks()
+    client = new RestClient('test-api-key')
   });
 
   it('should send frames and return JSON response', async () => {
     // Mock a successful API response
-    const mockedFetch = fetch as jest.MockedFunction<typeof fetch>;
     mockedFetch.mockResolvedValueOnce(
       new Response(JSON.stringify({ success: true }), { status: 200 })
     );
