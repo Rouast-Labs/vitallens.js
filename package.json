@@ -85,7 +85,7 @@
     "mathjs": "^14.5.2",
     "semver": "^7.7.1",
     "uuid": "^11.0.5",
-    "ws": "^8.18.0"
+    "ws": "^8.18.2"
   },
   "peerDependencies": {
     "@tensorflow/tfjs": "^4.22.0",
@@ -111,7 +111,7 @@
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/jest": "^29.5.14",
     "@types/puppeteer": "^7.0.4",
-    "@types/ws": "^8.5.14",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.32.0",
     "@typescript-eslint/parser": "^8.32.0",
     "child_process": "^1.0.2",
