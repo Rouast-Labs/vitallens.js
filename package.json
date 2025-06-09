@@ -112,7 +112,7 @@
     "@types/jest": "^29.5.14",
     "@types/puppeteer": "^7.0.4",
     "@types/ws": "^8.18.1",
-    "@typescript-eslint/eslint-plugin": "^8.32.0",
+    "@typescript-eslint/eslint-plugin": "^8.33.1",
     "@typescript-eslint/parser": "^8.32.0",
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
