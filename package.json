@@ -127,7 +127,7 @@
     "jest-puppeteer": "^11.0.0",
     "nodemon": "^3.1.9",
     "prettier": "^3.5.3",
-    "puppeteer": "^24.10.2",
+    "puppeteer": "^24.17.0",
     "rollup": "^4.44.0",
     "rollup-plugin-string": "^3.0.0",
     "ts-jest": "^29.2.5",
