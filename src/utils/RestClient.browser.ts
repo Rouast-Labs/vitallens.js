@@ -51,7 +51,9 @@ export class RestClient extends RestClientBase {
       const response = await fetch(url, {
         method: 'POST',
         headers: headers_,
-        body: isBinary ? (body as Uint8Array) : JSON.stringify(body),
+        body: isBinary
+          ? ((body as Uint8Array).buffer as ArrayBuffer)
+          : JSON.stringify(body),
       });
       // const endTime = performance.now();
       // const duration = endTime - startTime;
@@ -73,7 +75,7 @@ export class RestClient extends RestClientBase {
     if (COMPRESSION_MODE === 'deflate' || COMPRESSION_MODE === 'gzip') {
       const stream = new CompressionStream(COMPRESSION_MODE);
       const writer = stream.writable.getWriter();
-      writer.write(data);
+      writer.write(data.buffer as ArrayBuffer);
       writer.close();
 
       const compressedStream = await new Response(
