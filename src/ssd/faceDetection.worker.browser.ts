@@ -9,15 +9,19 @@ const faceDetector = new FaceDetectorAsync();
 await faceDetector.load();
 
 let ffmpeg: IFFmpegWrapper | null = null;
+let ffmpegCoreURL: string | undefined;
+let ffmpegWasmURL: string | undefined;
 
-// Message handler. We expect the main thread to send an object with:
-//   id: a correlation id,
-//   data: either a transferable representation of a Frame or a File/Blob,
-//   dataType: either 'frame' or 'video',
-//   fs: target frequency for face detection.
-//   timestamp: optional extra info.
+// Message handler.
 self.onmessage = async (event: MessageEvent) => {
-  const { id, data, dataType, fs, timestamp } = event.data;
+  const { id, data, dataType, fs, timestamp, type } = event.data;
+
+  // Handle the initialization message for self-contained builds
+  if (type === 'init') {
+    ffmpegCoreURL = event.data.coreURL;
+    ffmpegWasmURL = event.data.wasmURL;
+    return;
+  }
 
   try {
     let input: FaceDetectorInput;
@@ -26,7 +30,8 @@ self.onmessage = async (event: MessageEvent) => {
     if (dataType === 'video') {
       // Data is a File or Blob. We need to use ffmpeg - init if not already done.
       if (!ffmpeg) {
-        ffmpeg = new FFmpegWrapper();
+        // Pass the received URLs to the wrapper's constructor
+        ffmpeg = new FFmpegWrapper(ffmpegCoreURL, ffmpegWasmURL);
         await ffmpeg.init();
       }
       // Load the input in ffmpeg
