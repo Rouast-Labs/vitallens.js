@@ -7,12 +7,6 @@ import { createWorkerBlobURL } from './workerOps';
 // Import the worker bundle as a URL (which will be inlined as a data URI)
 import workerBundleDataURI from '../../dist/ffmpeg.worker.bundle.js';
 
-// These global variables will be defined by Rollup's replace plugin during the build process.
-declare const SELF_CONTAINED_BUILD: boolean;
-declare const IS_WORKER_CONTEXT: boolean;
-declare const __FFMPEG_CORE_URL__: string;
-declare const __FFMPEG_WASM_URL__: string;
-
 export default class FFmpegWrapper extends FFmpegWrapperBase {
   private ffmpeg?: unknown;
   private loadedFileName: string | null = null;
@@ -21,8 +15,8 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
 
   constructor(coreURL?: string, wasmURL?: string) {
     super();
-    this.coreURL = coreURL;
-    this.wasmURL = wasmURL;
+    if (coreURL) this.coreURL = coreURL;
+    if (wasmURL) this.wasmURL = wasmURL;
   }
 
   /**
@@ -34,15 +28,8 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
       try {
         const workerURL = createWorkerBlobURL(workerBundleDataURI);
 
-        // Determine the correct asset URLs based on the build flags and constructor arguments.
-        if (this.coreURL && this.wasmURL) {
-          // URLs were provided to the constructor (worker in self-contained build). Do nothing.
-        } else if (!IS_WORKER_CONTEXT && SELF_CONTAINED_BUILD) {
-          // Main thread in a self-contained build: use the injected global variables.
-          this.coreURL = __FFMPEG_CORE_URL__;
-          this.wasmURL = __FFMPEG_WASM_URL__;
-        } else {
-          // Standard build (main thread or worker): fetch from CDN.
+        // If URLs were not provided via the constructor, fetch them from the CDN.
+        if (!this.coreURL || !this.wasmURL) {
           this.coreURL = await toBlobURL(
             'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
             'text/javascript'

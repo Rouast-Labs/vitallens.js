@@ -14,18 +14,19 @@ import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.browser';
 import { createWorkerBlobURL } from '../utils/workerOps';
 import { BufferedResultsConsumer } from '../processing/BufferedResultsConsumer';
+import {
+  FFMPEG_CORE_URL,
+  FFMPEG_WASM_URL,
+} from '../utils/FFmpegAssets.browser';
 
-// These global variables will be defined by Rollup's replace plugin during the build process.
 declare const SELF_CONTAINED_BUILD: boolean;
-declare const __FFMPEG_CORE_URL__: string;
-declare const __FFMPEG_WASM_URL__: string;
 
 export class VitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
     return new RestClient(apiKey, proxyUrl);
   }
   protected createFFmpegWrapper(): IFFmpegWrapper {
-    return new FFmpegWrapper();
+    return new FFmpegWrapper(FFMPEG_CORE_URL, FFMPEG_WASM_URL);
   }
   protected createFaceDetectionWorker(): IFaceDetectionWorker {
     // Convert the inlined data URI to a Blob URL.
@@ -38,8 +39,8 @@ export class VitalLensController extends VitalLensControllerBase {
     if (SELF_CONTAINED_BUILD) {
       worker.postMessage({
         type: 'init',
-        coreURL: __FFMPEG_CORE_URL__,
-        wasmURL: __FFMPEG_WASM_URL__,
+        coreURL: FFMPEG_CORE_URL,
+        wasmURL: FFMPEG_WASM_URL,
       });
     }
 
