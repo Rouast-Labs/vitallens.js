@@ -25,14 +25,6 @@ const toDataURI = (filePath, mimeType) => {
 function onwarn(warning, defaultHandler) {
   if (warning.code === 'THIS_IS_UNDEFINED') return;
   if (warning.code === 'CIRCULAR_DEPENDENCY') return;
-  if (
-    warning.code === 'UNRESOLVED_IMPORT' &&
-    warning.source &&
-    (warning.source.includes('ffmpeg-core-js') ||
-      warning.source.includes('ffmpeg-core-wasm'))
-  ) {
-    return;
-  }
   defaultHandler(warning);
 }
 
@@ -106,9 +98,6 @@ const faceDetectionWorkerBrowserConfig = {
     replace({
       preventAssignment: true,
       values: {
-        // This flag tells FFmpegWrapper it's inside a worker
-        IS_WORKER_CONTEXT: JSON.stringify(true),
-        // These are not used in the worker but need to be defined
         SELF_CONTAINED_BUILD: JSON.stringify(false),
         __FFMPEG_CORE_URL__: JSON.stringify(''),
         __FFMPEG_WASM_URL__: JSON.stringify(''),
@@ -219,7 +208,6 @@ const browserConfig = {
       preventAssignment: true,
       values: {
         SELF_CONTAINED_BUILD: JSON.stringify(false),
-        IS_WORKER_CONTEXT: JSON.stringify(false),
         __FFMPEG_CORE_URL__: JSON.stringify(''),
         __FFMPEG_WASM_URL__: JSON.stringify(''),
       },
@@ -272,7 +260,6 @@ const browserSelfContainedConfig = {
       preventAssignment: true,
       values: {
         SELF_CONTAINED_BUILD: JSON.stringify(true),
-        IS_WORKER_CONTEXT: JSON.stringify(false),
         __FFMPEG_CORE_URL__: JSON.stringify(
           toDataURI(
             path.resolve(
