@@ -90,9 +90,6 @@ For example, using **jsDelivr**:
 <!-- Or pin a specific version -->
 <script src="https://cdn.jsdelivr.net/npm/vitallens@0.1.3/dist/vitallens.browser.js"></script>
 
-<!-- If you encounter browser errors related to network requests being blocked try the self-contained version -->
-<script src="https://cdn.jsdelivr.net/npm/vitallens@0.1.3/dist/vitallens.browser.selfcontained.js"></script>
-
 <!-- Use with core API -->
 <script>
   // vitallens.js is exposed as a global, for example as window.VitalLens.
@@ -266,6 +263,22 @@ Also, note that each example requires an API key. Replace `YOUR_API_KEY` with yo
   ```
 
 Try opening the HTML examples in your browser or running the Node script to see `vitallens.js` in action.
+
+## Troubleshooting
+
+* **Error in Chrome: `Refused to cross-origin redirects...`** This error occurs for some browsers when opening the HTML file directly from your computer, because browser security policies prevent advanced features from running in HTML files opened directly from your computer.
+  **Solution:** Serve your HTML file from a local web server. In your file's directory, run:
+
+  ```bash
+  npx serve
+  ```
+
+* **When to Use the Self-Contained Library** Use the self-contained library if your app must run in an environment that blocks requests to public CDNs (like an offline app or behind a corporate firewall).
+  **Warning:** This file is large and will significantly slow initial page load.
+
+  ```html
+  <script src="https://cdn.jsdelivr.net/npm/vitallens@0.1.3/dist/vitallens.browser.selfcontained.js"></script>
+  ```
 
 ## Securing your API Key
 
