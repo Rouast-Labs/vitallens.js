@@ -36,7 +36,7 @@ export class VitalLensController extends VitalLensControllerBase {
     const worker = new Worker(blobURL, { type: 'module' });
 
     // For the self-contained build, send the asset URLs to the worker.
-    if (SELF_CONTAINED_BUILD) {
+    if (typeof SELF_CONTAINED_BUILD !== 'undefined' && SELF_CONTAINED_BUILD) {
       worker.postMessage({
         type: 'init',
         coreURL: FFMPEG_CORE_URL,

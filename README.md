@@ -88,7 +88,10 @@ For example, using **jsDelivr**:
 <script src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
 
 <!-- Or pin a specific version -->
-<script src="https://cdn.jsdelivr.net/npm/vitallens@0.0.3/dist/vitallens.browser.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vitallens@0.1.3/dist/vitallens.browser.js"></script>
+
+<!-- If you encounter browser errors related to network requests being blocked try the self-contained version -->
+<script src="https://cdn.jsdelivr.net/npm/vitallens@0.1.3/dist/vitallens.browser.selfcontained.js"></script>
 
 <!-- Use with core API -->
 <script>
