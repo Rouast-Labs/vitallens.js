@@ -7,9 +7,23 @@ import { createWorkerBlobURL } from './workerOps';
 // Import the worker bundle as a URL (which will be inlined as a data URI)
 import workerBundleDataURI from '../../dist/ffmpeg.worker.bundle.js';
 
+// These global variables will be defined by Rollup's replace plugin during the build process.
+declare const SELF_CONTAINED_BUILD: boolean;
+declare const IS_WORKER_CONTEXT: boolean;
+declare const __FFMPEG_CORE_URL__: string;
+declare const __FFMPEG_WASM_URL__: string;
+
 export default class FFmpegWrapper extends FFmpegWrapperBase {
   private ffmpeg?: unknown;
   private loadedFileName: string | null = null;
+  private coreURL?: string;
+  private wasmURL?: string;
+
+  constructor(coreURL?: string, wasmURL?: string) {
+    super();
+    this.coreURL = coreURL;
+    this.wasmURL = wasmURL;
+  }
 
   /**
    * Initialize the FFmpeg instance for the appropriate environment.
@@ -18,21 +32,31 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
     if (!this.ffmpeg) {
       this.ffmpeg = new FFmpeg();
       try {
-        // Await and log each Blob URL
-        const coreURL = await toBlobURL(
-          'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
-          'text/javascript'
-        );
-        const wasmURL = await toBlobURL(
-          'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm',
-          'application/wasm'
-        );
-        // Passing worker bundle to avoid issues: https://github.com/ffmpegwasm/ffmpeg.wasm/issues/532
         const workerURL = createWorkerBlobURL(workerBundleDataURI);
-        // Now load FFmpeg with the obtained Blob URLs
+
+        // Determine the correct asset URLs based on the build flags and constructor arguments.
+        if (this.coreURL && this.wasmURL) {
+          // URLs were provided to the constructor (worker in self-contained build). Do nothing.
+        } else if (!IS_WORKER_CONTEXT && SELF_CONTAINED_BUILD) {
+          // Main thread in a self-contained build: use the injected global variables.
+          this.coreURL = __FFMPEG_CORE_URL__;
+          this.wasmURL = __FFMPEG_WASM_URL__;
+        } else {
+          // Standard build (main thread or worker): fetch from CDN.
+          this.coreURL = await toBlobURL(
+            'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
+            'text/javascript'
+          );
+          this.wasmURL = await toBlobURL(
+            'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm',
+            'application/wasm'
+          );
+        }
+
+        // Now load FFmpeg with the obtained URLs
         await (this.ffmpeg as FFmpeg).load({
-          coreURL: coreURL,
-          wasmURL: wasmURL,
+          coreURL: this.coreURL,
+          wasmURL: this.wasmURL,
           classWorkerURL: workerURL,
         });
       } catch (err) {
