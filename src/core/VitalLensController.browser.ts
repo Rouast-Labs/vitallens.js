@@ -15,6 +15,11 @@ import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.browser';
 import { createWorkerBlobURL } from '../utils/workerOps';
 import { BufferedResultsConsumer } from '../processing/BufferedResultsConsumer';
 
+// These global variables will be defined by Rollup's replace plugin during the build process.
+declare const SELF_CONTAINED_BUILD: boolean;
+declare const __FFMPEG_CORE_URL__: string;
+declare const __FFMPEG_WASM_URL__: string;
+
 export class VitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
     return new RestClient(apiKey, proxyUrl);
@@ -28,6 +33,15 @@ export class VitalLensController extends VitalLensControllerBase {
 
     // Create the browser Worker using the blob URL.
     const worker = new Worker(blobURL, { type: 'module' });
+
+    // For the self-contained build, send the asset URLs to the worker.
+    if (SELF_CONTAINED_BUILD) {
+      worker.postMessage({
+        type: 'init',
+        coreURL: __FFMPEG_CORE_URL__,
+        wasmURL: __FFMPEG_WASM_URL__,
+      });
+    }
 
     // Wrap the worker with your interface wrapper.
     return new FaceDetectionWorker(worker);

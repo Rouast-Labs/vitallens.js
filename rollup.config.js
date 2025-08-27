@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs';
 import typescript from '@rollup/plugin-typescript';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
@@ -15,9 +16,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const bundleDir = path.resolve(__dirname, 'dist');
 
+// Helper function to read a file and convert to a data URI
+const toDataURI = (filePath, mimeType) => {
+  const data = fs.readFileSync(filePath);
+  return `data:${mimeType};base64,${data.toString('base64')}`;
+};
+
 function onwarn(warning, defaultHandler) {
   if (warning.code === 'THIS_IS_UNDEFINED') return;
   if (warning.code === 'CIRCULAR_DEPENDENCY') return;
+  if (
+    warning.code === 'UNRESOLVED_IMPORT' &&
+    warning.source &&
+    (warning.source.includes('ffmpeg-core-js') ||
+      warning.source.includes('ffmpeg-core-wasm'))
+  ) {
+    return;
+  }
   defaultHandler(warning);
 }
 
@@ -88,6 +103,17 @@ const faceDetectionWorkerBrowserConfig = {
   },
   onwarn,
   plugins: [
+    replace({
+      preventAssignment: true,
+      values: {
+        // This flag tells FFmpegWrapper it's inside a worker
+        IS_WORKER_CONTEXT: JSON.stringify(true),
+        // These are not used in the worker but need to be defined
+        SELF_CONTAINED_BUILD: JSON.stringify(false),
+        __FFMPEG_CORE_URL__: JSON.stringify(''),
+        __FFMPEG_WASM_URL__: JSON.stringify(''),
+      },
+    }),
     alias({
       entries: [
         {
@@ -189,6 +215,15 @@ const browserConfig = {
   },
   onwarn,
   plugins: [
+    replace({
+      preventAssignment: true,
+      values: {
+        SELF_CONTAINED_BUILD: JSON.stringify(false),
+        IS_WORKER_CONTEXT: JSON.stringify(false),
+        __FFMPEG_CORE_URL__: JSON.stringify(''),
+        __FFMPEG_WASM_URL__: JSON.stringify(''),
+      },
+    }),
     alias({
       entries: [
         {
@@ -210,6 +245,70 @@ const browserConfig = {
       limit: Infinity,
       emitFiles: true,
       fileName: '[dirname][hash][extname]',
+    }),
+    string({
+      include: '**/web-components/*.html',
+    }),
+    typescript(),
+    nodeResolve({
+      browser: true,
+      preferBuiltins: false,
+    }),
+    commonjs(),
+    terser(),
+  ],
+};
+
+const browserSelfContainedConfig = {
+  input: 'src/index.browser.ts',
+  output: {
+    file: 'dist/vitallens.browser.selfcontained.js',
+    format: 'esm',
+    inlineDynamicImports: true,
+  },
+  onwarn,
+  plugins: [
+    replace({
+      preventAssignment: true,
+      values: {
+        SELF_CONTAINED_BUILD: JSON.stringify(true),
+        IS_WORKER_CONTEXT: JSON.stringify(false),
+        __FFMPEG_CORE_URL__: JSON.stringify(
+          toDataURI(
+            path.resolve(
+              __dirname,
+              'node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js'
+            ),
+            'text/javascript'
+          )
+        ),
+        __FFMPEG_WASM_URL__: JSON.stringify(
+          toDataURI(
+            path.resolve(
+              __dirname,
+              'node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm'
+            ),
+            'application/wasm'
+          )
+        ),
+      },
+    }),
+    alias({
+      entries: [
+        {
+          find: 'tfjs-provider',
+          replacement: path.resolve(__dirname, 'src/tfjs-provider.browser.ts'),
+        },
+      ],
+    }),
+    url({
+      include: [
+        '**/ffmpeg.worker.bundle.js',
+        '**/faceDetection.worker.browser.bundle.js',
+        '**/*.svg',
+      ],
+      limit: Infinity,
+      emitFiles: false,
     }),
     string({
       include: '**/web-components/*.html',
@@ -267,6 +366,7 @@ const config = process.env.BUILD_INTEGRATION
       nodeEsmConfig,
       nodeCjsConfig,
       browserConfig,
+      browserSelfContainedConfig,
     ];
 
 export default config;
