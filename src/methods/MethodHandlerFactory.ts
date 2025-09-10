@@ -25,13 +25,13 @@ export class MethodHandlerFactory {
     dependencies: MethodHandlerDependencies = {}
   ): MethodHandler {
     switch (options.method) {
-      case 'vitallens': {
+      case 'vitallens':
+      case 'vitallens-1.0':
+      case 'vitallens-2.0': {
         if (!dependencies.restClient) {
           throw new Error('RestClient is required for VitalLensAPIHandler');
         }
-        // Prefer REST if both clients are provided
-        const client = dependencies.restClient;
-        return new VitalLensAPIHandler(client!, options);
+        return new VitalLensAPIHandler(dependencies.restClient, options);
       }
       case 'pos':
         return new POSHandler(options);

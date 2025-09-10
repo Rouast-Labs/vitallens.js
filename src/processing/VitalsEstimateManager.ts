@@ -2,16 +2,15 @@ import { MethodConfig, VitalLensOptions, VitalLensResult } from '../types/core';
 import { IVitalsEstimateManager } from '../types/IVitalsEstimateManager';
 import {
   AGG_WINDOW_SIZE,
-  CALC_HR_MAX,
-  CALC_HR_MIN,
   CALC_HR_MIN_WINDOW_SIZE,
   CALC_HR_WINDOW_SIZE,
-  CALC_RR_MAX,
-  CALC_RR_MIN,
+  CALC_HRV_SDNN_MIN_T,
+  CALC_HRV_RMSSD_MIN_T,
+  CALC_HRV_LFHF_MIN_T,
   CALC_RR_MIN_WINDOW_SIZE,
   CALC_RR_WINDOW_SIZE,
 } from '../config/constants';
-import FFT from 'fft.js';
+import * as physio from '../utils/physio';
 
 export class VitalsEstimateManager implements IVitalsEstimateManager {
   private waveforms: Map<
@@ -32,28 +31,48 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   private faceNote: Map<string, string> = new Map();
   private message: Map<string, string> = new Map();
   private lastEstimateTimestamps: Map<string, number> = new Map();
-  private fpsTarget: number;
-  private bufferSizeAgg: number;
-  private bufferSizePpg: number;
-  private bufferSizeResp: number;
-  private minBufferSizePpg: number;
-  private minBufferSizeResp: number;
+
   private postprocessFn: (
     signalType: 'ppg' | 'resp',
     data: number[],
     fps: number,
     light: boolean
   ) => number[];
+  private getConfig: () => MethodConfig;
+  private options: VitalLensOptions;
+
+  private get methodConfig(): MethodConfig {
+    return this.getConfig();
+  }
+
+  private get fpsTarget(): number {
+    return this.options.overrideFpsTarget ?? this.methodConfig.fpsTarget;
+  }
+  private get bufferSizeAgg(): number {
+    return this.fpsTarget * AGG_WINDOW_SIZE;
+  }
+  private get bufferSizePpg(): number {
+    return this.fpsTarget * CALC_HR_WINDOW_SIZE;
+  }
+  private get bufferSizeResp(): number {
+    return this.fpsTarget * CALC_RR_WINDOW_SIZE;
+  }
+  private get minBufferSizePpg(): number {
+    return this.fpsTarget * CALC_HR_MIN_WINDOW_SIZE;
+  }
+  private get minBufferSizeResp(): number {
+    return this.fpsTarget * CALC_RR_MIN_WINDOW_SIZE;
+  }
 
   /**
    * Initializes the manager with the provided method configuration.
-   * @param methodConfig - The method configuration.
+   * @param getConfig - A function that returns the config.
    * @param options - The options.
    * @param postprocessFn - The function for signal postprocesing.
    */
   constructor(
-    private methodConfig: MethodConfig,
-    private options: VitalLensOptions,
+    getConfig: () => MethodConfig,
+    options: VitalLensOptions,
     postprocessFn: (
       signalType: 'ppg' | 'resp',
       data: number[],
@@ -61,13 +80,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       light: boolean
     ) => number[]
   ) {
-    this.fpsTarget =
-      this.options.overrideFpsTarget ?? this.methodConfig.fpsTarget;
-    this.bufferSizeAgg = this.fpsTarget * AGG_WINDOW_SIZE;
-    this.bufferSizePpg = this.fpsTarget * CALC_HR_WINDOW_SIZE;
-    this.bufferSizeResp = this.fpsTarget * CALC_RR_WINDOW_SIZE;
-    this.minBufferSizePpg = this.fpsTarget * CALC_HR_MIN_WINDOW_SIZE;
-    this.minBufferSizeResp = this.fpsTarget * CALC_RR_MIN_WINDOW_SIZE;
+    this.getConfig = getConfig;
+    this.options = options;
     this.postprocessFn = postprocessFn;
   }
 
@@ -645,12 +659,53 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             light
           );
           const hrPpgConf = averagedPpgConf.slice(-hrPpgSize);
-          result.vital_signs.heart_rate = {
-            value: this.estimateHeartRate(hrPpgData, fpsHr),
-            confidence: hrPpgConf.reduce((a, b) => a + b, 0) / hrPpgConf.length,
-            unit: 'bpm',
-            note: 'Estimate of the heart rate.',
-          };
+          const hrValue = physio.estimateHeartRate(hrPpgData, fpsHr);
+          if (hrValue !== null) {
+            result.vital_signs.heart_rate = {
+              value: hrValue,
+              confidence:
+                hrPpgConf.reduce((a, b) => a + b, 0) / hrPpgConf.length,
+              unit: 'bpm',
+              note: 'Estimate of the heart rate.',
+            };
+          }
+        }
+      }
+
+      // HRV
+      const ppgDataForHrv = averagedPpgData;
+      const ppgConfForHrv = averagedPpgConf;
+      const fpsForHrv = this.getCurrentFps(sourceId, ppgDataForHrv.length);
+      if (fpsForHrv) {
+        if (
+          this.methodConfig.supportedVitals?.includes('hrv_sdnn') &&
+          ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_SDNN_MIN_T
+        ) {
+          result.vital_signs.hrv_sdnn = physio.estimateHrvSdnn(
+            ppgDataForHrv,
+            ppgConfForHrv,
+            fpsForHrv
+          );
+        }
+        if (
+          this.methodConfig.supportedVitals?.includes('hrv_rmssd') &&
+          ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_RMSSD_MIN_T
+        ) {
+          result.vital_signs.hrv_rmssd = physio.estimateHrvRmssd(
+            ppgDataForHrv,
+            ppgConfForHrv,
+            fpsForHrv
+          );
+        }
+        if (
+          this.methodConfig.supportedVitals?.includes('hrv_lfhf') &&
+          ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_LFHF_MIN_T
+        ) {
+          result.vital_signs.hrv_lfhf = physio.estimateHrvLfHf(
+            ppgDataForHrv,
+            ppgConfForHrv,
+            fpsForHrv
+          );
         }
       }
 
@@ -728,13 +783,16 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             light
           );
           const rrRespConf = averagedRespConf.slice(-rrRespSize);
-          result.vital_signs.respiratory_rate = {
-            value: this.estimateRespiratoryRate(rrRespData, fpsRr),
-            confidence:
-              rrRespConf.reduce((a, b) => a + b, 0) / rrRespConf.length,
-            unit: 'bpm',
-            note: 'Estimate of the respiratory rate.',
-          };
+          const rrValue = physio.estimateRespiratoryRate(rrRespData, fpsRr);
+          if (rrValue !== null) {
+            result.vital_signs.respiratory_rate = {
+              value: rrValue,
+              confidence:
+                rrRespConf.reduce((a, b) => a + b, 0) / rrRespConf.length,
+              unit: 'bpm',
+              note: 'Estimate of the respiratory rate.',
+            };
+          }
         }
       }
     }
@@ -774,122 +832,6 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     const avgTimeDiff =
       timeDiffs.reduce((acc, val) => acc + val, 0) / timeDiffs.length;
     return avgTimeDiff > 0 ? 1 / avgTimeDiff : null;
-  }
-
-  /**
-   * Estimates heart rate from the PPG waveform using FFT.
-   * @param ppgWaveform - The PPG waveform tensor.
-   * @param fs - The sampling rate of the waveform tensor (cycles per second)
-   * @returns The estimated heart rate in beats per minute.
-   */
-  private estimateHeartRate(ppgWaveform: number[], fs: number): number {
-    const heartRate = this.estimateRateFromFFT(
-      ppgWaveform,
-      fs,
-      CALC_HR_MIN / 60,
-      CALC_HR_MAX / 60
-    );
-    if (heartRate === null) throw new Error('Failed to estimate heart rate.');
-    return heartRate;
-  }
-
-  /**
-   * Estimates respiratory rate from the respiratory waveform using FFT.
-   * @param respiratoryWaveform - The respiratory waveform tensor.
-   * @param fs - The sampling rate of the waveform tensor (cycles per second)
-   * @returns The estimated respiratory rate in breaths per minute.
-   */
-  private estimateRespiratoryRate(
-    respiratoryWaveform: number[],
-    fs: number
-  ): number {
-    const respiratoryRate = this.estimateRateFromFFT(
-      respiratoryWaveform,
-      fs,
-      CALC_RR_MIN / 60,
-      CALC_RR_MAX / 60
-    );
-    if (respiratoryRate === null)
-      throw new Error('Failed to estimate respiratory rate.');
-    return respiratoryRate;
-  }
-
-  /**
-   * Estimates a rate (e.g., heart rate or respiratory rate in 1/min) from a waveform using FFT,
-   * constrained by min and max frequencies.
-   *
-   * @param waveform - The input waveform as a number array.
-   * @param samplingFrequency - The sampling rate of the waveform (Hz).
-   * @param minFrequency - The minimum frequency of interest (Hz).
-   * @param maxFrequency - The maximum frequency of interest (Hz).
-   * @param desiredResolutionHz - (Optional) Desired frequency resolution in Hz.
-   * @returns The estimated rate in cycles per minute, or null if no dominant frequency is found.
-   */
-  private estimateRateFromFFT(
-    waveform: number[],
-    samplingFrequency: number,
-    minFrequency: number,
-    maxFrequency: number,
-    desiredResolutionHz?: number
-  ): number | null {
-    if (
-      waveform.length === 0 ||
-      samplingFrequency <= 0 ||
-      minFrequency >= maxFrequency
-    ) {
-      throw new Error(
-        'Invalid waveform data, sampling frequency, or frequency range.'
-      );
-    }
-
-    // Calculate the required FFT size to achieve the desired resolution
-    let fftSize: number = Math.pow(2, Math.ceil(Math.log2(waveform.length)));
-    if (desiredResolutionHz) {
-      const desiredFftSize = Math.ceil(samplingFrequency / desiredResolutionHz);
-      fftSize = Math.max(
-        fftSize,
-        Math.pow(2, Math.ceil(Math.log2(desiredFftSize)))
-      );
-    }
-
-    const paddedSignal: number[] = [
-      ...waveform,
-      ...Array(fftSize - waveform.length).fill(0),
-    ];
-    const fft = new FFT(fftSize);
-
-    const complexArray: number[] = fft.createComplexArray();
-    const outputArray: number[] = fft.createComplexArray();
-    fft.toComplexArray(paddedSignal, complexArray);
-
-    fft.realTransform(outputArray, paddedSignal);
-
-    const magnitudes: number[] = [];
-    for (let i = 0; i < fftSize / 2; i++) {
-      const real = outputArray[2 * i];
-      const imag = outputArray[2 * i + 1];
-      magnitudes.push(Math.sqrt(real ** 2 + imag ** 2));
-    }
-
-    const nyquist: number = samplingFrequency / 2;
-    const frequencies: number[] = Array.from(
-      { length: magnitudes.length },
-      (_, i) => (i / magnitudes.length) * nyquist
-    );
-
-    const filtered = frequencies
-      .map((freq, index) => ({ freq, magnitude: magnitudes[index] }))
-      .filter(({ freq }) => freq >= minFrequency && freq <= maxFrequency);
-
-    if (filtered.length === 0) {
-      return null;
-    }
-
-    const { freq: dominantFrequency } = filtered.reduce((max, current) =>
-      current.magnitude > max.magnitude ? current : max
-    );
-
-    return dominantFrequency * 60;
   }
 
   /**

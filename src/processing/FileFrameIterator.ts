@@ -19,14 +19,23 @@ import { FDET_DEFAULT_FS_FILE } from '../config/constants';
 export class FileFrameIterator extends FrameIteratorBase {
   private currentFrameIndex: number = 0;
   private probeInfo: VideoProbeResult | null = null;
-  private fpsTarget: number = 0;
-  private dsFactor: number = 0;
   private roi: ROI[] = [];
+
+  private get methodConfig(): MethodConfig {
+    return this.getConfig();
+  }
+  private get fpsTarget(): number {
+    return this.options.overrideFpsTarget ?? this.methodConfig.fpsTarget;
+  }
+  private get dsFactor(): number {
+    if (!this.probeInfo) return 1;
+    return Math.max(Math.round(this.probeInfo.fps / this.fpsTarget), 1);
+  }
 
   constructor(
     private videoInput: VideoInput,
     private options: VitalLensOptions,
-    private methodConfig: MethodConfig,
+    private getConfig: () => MethodConfig,
     private faceDetectionWorker: IFaceDetectionWorker | null,
     private ffmpeg: IFFmpegWrapper
   ) {
@@ -73,15 +82,6 @@ export class FileFrameIterator extends FrameIteratorBase {
       // Use global ROI
       this.roi = Array(this.probeInfo.totalFrames).fill(this.options.globalRoi);
     }
-
-    // Derive fps target and downsampling factor
-    this.fpsTarget = this.options.overrideFpsTarget
-      ? this.options.overrideFpsTarget
-      : this.methodConfig.fpsTarget;
-    this.dsFactor = Math.max(
-      Math.round(this.probeInfo!.fps / this.fpsTarget),
-      1
-    );
   }
 
   /**

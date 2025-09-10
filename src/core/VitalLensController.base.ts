@@ -40,9 +40,11 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     this.methodConfig = METHODS_CONFIG[this.options.method];
     this.bufferManager = new BufferManager();
     this.methodHandler = this.createMethodHandler(options);
-    this.frameIteratorFactory = new FrameIteratorFactory(options);
+    this.frameIteratorFactory = new FrameIteratorFactory(options, () =>
+      this.methodHandler.getConfig()
+    );
     this.vitalsEstimateManager = new VitalsEstimateManager(
-      this.methodConfig,
+      () => this.methodHandler.getConfig(),
       this.options,
       this.methodHandler.postprocess.bind(this.methodHandler)
     );
@@ -74,7 +76,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   protected abstract createStreamProcessor(
     options: VitalLensOptions,
-    methodConfig: MethodConfig,
+    getConfig: () => MethodConfig,
     frameIterator: IFrameIterator,
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
@@ -91,7 +93,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   protected createMethodHandler(options: VitalLensOptions): MethodHandler {
     if (
-      options.method === 'vitallens' &&
+      options.method.startsWith('vitallens') &&
       !options.apiKey &&
       !options.proxyUrl
     ) {
@@ -100,7 +102,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     const requestMode = options.requestMode || 'rest'; // Default to REST
     const dependencies = {
       restClient:
-        options.method === 'vitallens' && requestMode === 'rest'
+        options.method.startsWith('vitallens') && requestMode === 'rest'
           ? this.createRestClient(
               this.options.apiKey ?? '',
               this.options.proxyUrl
@@ -143,7 +145,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
 
     this.streamProcessor = this.createStreamProcessor(
       this.options,
-      this.methodConfig,
+      () => this.methodHandler.getConfig(),
       frameIterator,
       this.bufferManager,
       this.faceDetectionWorker,
@@ -224,7 +226,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
 
     const frameIterator = this.frameIteratorFactory.createFileFrameIterator(
       videoInput,
-      this.methodConfig,
       this.ffmpeg,
       this.faceDetectionWorker
     );

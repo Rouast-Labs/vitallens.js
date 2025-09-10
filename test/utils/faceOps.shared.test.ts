@@ -90,10 +90,10 @@ describe('getROIForMethod', () => {
     expect(result).toEqual(getFaceROI(det, clipDims));
   });
 
-  it("returns upper body ROI when roiMethod is 'upper_body'", () => {
+  it("returns upper body ROI when roiMethod is 'upper_body_cropped'", () => {
     const det = { x0: 50, y0: 50, x1: 150, y1: 150 };
     const methodConfig: MethodConfig = {
-      roiMethod: 'upper_body',
+      roiMethod: 'upper_body_cropped',
       method: 'vitallens',
       fpsTarget: 1,
       minWindowLength: 0,
