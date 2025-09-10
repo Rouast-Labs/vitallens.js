@@ -9,10 +9,33 @@ export type VideoInput = string | File | Blob;
 export type InferenceMode = 'stream' | 'file';
 
 /**
+ * Represents the vital signs that can be estimated.
+ */
+export type Vital =
+  | 'ppg_waveform'
+  | 'heart_rate'
+  | 'respiratory_waveform'
+  | 'respiratory_rate'
+  | 'hrv_sdnn'
+  | 'hrv_rmssd'
+  | 'hrv_lfhf';
+
+/**
+ * Represents the rPPG methods.
+ */
+export type Method =
+  | 'vitallens' // Dynamic model selection
+  | 'vitallens-1.0' // Force VitalLens 1.0
+  | 'vitallens-2.0' // Force VitalLens 2.0
+  | 'pos'
+  | 'chrom'
+  | 'g';
+
+/**
  * Options for configuring the VitalLens library.
  */
 export interface VitalLensOptions {
-  method: 'vitallens' | 'pos' | 'chrom' | 'g';
+  method: Method;
   apiKey?: string;
   proxyUrl?: string;
   waveformMode?: 'incremental' | 'windowed' | 'complete';
@@ -26,15 +49,16 @@ export interface VitalLensOptions {
  * Options for configuring a method.
  */
 export interface MethodConfig {
-  method: 'vitallens' | 'pos' | 'chrom' | 'g';
+  method: Method;
   fpsTarget: number;
-  roiMethod: 'face' | 'upper_body' | 'forehead';
+  roiMethod: 'face' | 'upper_body_cropped' | 'forehead';
   inputSize?: number;
   minWindowLength: number;
   minWindowLengthState?: number;
   maxWindowLength: number;
   requiresState: boolean;
   bufferOffset: number;
+  supportedVitals: Vital[];
 }
 
 /**
@@ -48,13 +72,13 @@ export interface VitalLensResult {
   };
   vital_signs: {
     heart_rate?: {
-      value: number;
+      value: number | null;
       unit: string;
       confidence: number;
       note: string;
     };
     respiratory_rate?: {
-      value: number;
+      value: number | null;
       unit: string;
       confidence: number;
       note: string;
@@ -71,6 +95,24 @@ export interface VitalLensResult {
       confidence: number[];
       note: string;
     };
+    hrv_sdnn?: {
+      value: number;
+      unit: string;
+      confidence: number | null;
+      note: string;
+    };
+    hrv_rmssd?: {
+      value: number;
+      unit: string;
+      confidence: number | null;
+      note: string;
+    };
+    hrv_lfhf?: {
+      value: number;
+      unit: string;
+      confidence: number | null;
+      note: string;
+    };
   };
   time: number[];
   displayTime?: number;
@@ -80,6 +122,7 @@ export interface VitalLensResult {
   };
   fps?: number;
   estFps?: number;
+  model_used?: string;
   message: string;
 }
 

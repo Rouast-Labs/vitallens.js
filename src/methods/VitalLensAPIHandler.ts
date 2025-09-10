@@ -3,6 +3,8 @@ import {
   VitalLensAPIResponse,
   VitalLensOptions,
   VitalLensResult,
+  MethodConfig,
+  Vital,
 } from '../types/core';
 import { MethodHandler } from './MethodHandler';
 import { Frame } from '../processing/Frame';
@@ -11,7 +13,7 @@ import {
   VitalLensAPIKeyError,
   VitalLensAPIQuotaExceededError,
 } from '../utils/errors';
-import { IRestClient } from '../types/IRestClient';
+import { IRestClient, ResolveModelResponse } from '../types/IRestClient';
 import {
   adaptiveDetrend,
   movingAverage,
@@ -20,22 +22,86 @@ import {
 } from '../utils/arrayOps';
 import { CALC_HR_MAX, CALC_HR_MIN, CALC_RR_MAX } from '../config/constants';
 
+const VITAL_CODES_TO_NAMES: Record<string, Vital> = {
+  hr: 'heart_rate',
+  rr: 'respiratory_rate',
+  ppg: 'ppg_waveform',
+  resp: 'respiratory_waveform',
+  hrv_sdnn: 'hrv_sdnn',
+  hrv_rmssd: 'hrv_rmssd',
+  hrv_lfhf: 'hrv_lfhf',
+};
+
 /**
  * Handler for processing frames using the VitalLens API via REST.
  */
 export class VitalLensAPIHandler extends MethodHandler {
   private client: IRestClient;
+  private options: VitalLensOptions;
+  private ready = false;
+  private requestedModelName?: string;
+  private resolvedModelName?: string;
 
   constructor(client: IRestClient, options: VitalLensOptions) {
     super(options);
     this.client = client;
+    this.options = options;
+
+    if (
+      options.method === 'vitallens-1.0' ||
+      options.method === 'vitallens-2.0'
+    ) {
+      this.requestedModelName = options.method;
+    }
   }
 
   /**
    * Initialise the method.
    */
   async init(): Promise<void> {
-    // Nothing to do
+    if (this.ready) return;
+
+    try {
+      const response = await this.client.resolveModel(this.requestedModelName);
+      this._parseAndSetConfig(response);
+      this.ready = true;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('401') || error.message.includes('403'))
+      ) {
+        throw new VitalLensAPIKeyError(error.message);
+      }
+      throw new VitalLensAPIError(
+        `Failed to initialize VitalLensAPIHandler: ${error}`
+      );
+    }
+  }
+
+  /**
+   * Parses the response from /resolve-model and sets the method config.
+   * @param response The response from the API.
+   */
+  private _parseAndSetConfig(response: ResolveModelResponse): void {
+    const apiConfig = response.config;
+
+    const supportedVitals = (apiConfig.supported_vitals || [])
+      .map((code) => VITAL_CODES_TO_NAMES[code])
+      .filter(Boolean) as Vital[];
+
+    this.config = {
+      method: response.resolved_model as MethodConfig['method'],
+      fpsTarget: apiConfig.fps_target,
+      roiMethod: apiConfig.roi_method,
+      inputSize: apiConfig.input_size,
+      minWindowLength: apiConfig.n_inputs,
+      maxWindowLength: 900,
+      requiresState: true,
+      bufferOffset: 1.5,
+      supportedVitals,
+    };
+
+    this.resolvedModelName = response.resolved_model;
   }
 
   /**
@@ -50,7 +116,7 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @returns Whether the method is ready for prediction.
    */
   getReady(): boolean {
-    return true; // REST client is always ready
+    return this.ready;
   }
 
   /**
@@ -58,7 +124,7 @@ export class VitalLensAPIHandler extends MethodHandler {
    * @returns The method name.
    */
   protected getMethodName(): string {
-    return 'VitalLens API';
+    return this.resolvedModelName || 'VitalLens API';
   }
 
   /**
@@ -73,15 +139,24 @@ export class VitalLensAPIHandler extends MethodHandler {
     mode: InferenceMode,
     state?: Float32Array
   ): Promise<VitalLensResult | undefined> {
+    if (!this.ready) {
+      throw new Error(
+        'VitalLensAPIHandler is not initialized. Call init() first.'
+      );
+    }
+
     try {
-      // Store the roi.
       const roi = framesChunk.getROI();
+      const metadata: { origin: string; model?: string } = {
+        origin: 'vitallens.js',
+      };
+      if (this.requestedModelName) {
+        metadata.model = this.requestedModelName;
+      }
 
       // Send the payload
       const response = (await this.client.sendFrames(
-        {
-          origin: 'vitallens.js',
-        },
+        metadata,
         framesChunk.getUint8Array(),
         mode,
         state
@@ -137,6 +212,7 @@ export class VitalLensAPIHandler extends MethodHandler {
           },
           vital_signs: parsedResponse.vital_signs,
           state: parsedResponse.state,
+          model_used: parsedResponse.model_used,
           time: framesChunk.getTimestamp().slice(-n),
           message:
             'The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes.',

@@ -3,8 +3,10 @@ import {
   COMPRESSION_MODE,
   VITALLENS_FILE_ENDPOINT,
   VITALLENS_STREAM_ENDPOINT,
+  VITALLENS_RESOLVE_MODEL_ENDPOINT,
 } from '../config/constants';
 import { InferenceMode, VitalLensAPIResponse } from '../types';
+import { ResolveModelResponse } from '../types/IRestClient';
 
 export class RestClient extends RestClientBase {
   /**
@@ -17,6 +19,39 @@ export class RestClient extends RestClientBase {
       return VITALLENS_FILE_ENDPOINT;
     } else {
       return VITALLENS_STREAM_ENDPOINT;
+    }
+  }
+
+  /**
+   * Sends a HTTP GET request using the browser's fetch API to resolve which model to use.
+   * @param requestedModel - The requested model (optional)
+   * @returns The response
+   */
+  async resolveModel(requestedModel?: string): Promise<ResolveModelResponse> {
+    const url = new URL(this.proxyUrl ?? VITALLENS_RESOLVE_MODEL_ENDPOINT);
+    if (requestedModel) {
+      url.searchParams.append('model', requestedModel);
+    }
+
+    const headers = {
+      ...(this.proxyUrl ? {} : { 'x-api-key': this.apiKey }),
+    };
+
+    try {
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(
+          `Failed to resolve model config: Status ${response.status} - ${errorBody}`
+        );
+      }
+      return (await response.json()) as ResolveModelResponse;
+    } catch (error) {
+      throw new Error(`Model resolution request failed: ${error}`);
     }
   }
 

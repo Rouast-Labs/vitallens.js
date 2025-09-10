@@ -134,10 +134,10 @@ export function getROIForMethod(
       return getFaceROI(det, clipDims, forceEvenDims);
     case 'forehead':
       return getForeheadROI(det, clipDims, forceEvenDims);
-    case 'upper_body':
+    case 'upper_body_cropped':
       if (!clipDims) {
         throw new Error(
-          "clipDims must be provided for 'upper_body' ROI method."
+          "clipDims must be provided for 'upper_body_cropped' ROI method."
         );
       }
       return getUpperBodyROI(det, clipDims, true, forceEvenDims);

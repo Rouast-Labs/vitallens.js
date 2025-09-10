@@ -1,6 +1,18 @@
 import { InferenceMode, VitalLensAPIResponse } from './core';
 
+export interface ResolveModelResponse {
+  resolved_model: string;
+  config: {
+    n_inputs: number;
+    input_size: number;
+    fps_target: number;
+    roi_method: 'face' | 'upper_body_cropped' | 'forehead';
+    supported_vitals: string[];
+  };
+}
+
 export interface IRestClient {
+  resolveModel(requestedModel?: string): Promise<ResolveModelResponse>;
   sendFrames(
     metadata: Record<string, unknown>,
     frames: Uint8Array,

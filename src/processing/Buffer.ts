@@ -77,7 +77,7 @@ export abstract class Buffer {
     // Merge frames asynchronously
     return mergeFrames(
       consumedFrames,
-      this.methodConfig.method !== 'vitallens'
+      this.methodConfig.method.startsWith('vitallens')
     ).then((mergedFrame) => {
       // Release tensors of frames that are not retained
       for (const key of keys) {
