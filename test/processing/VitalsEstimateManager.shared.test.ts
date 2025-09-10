@@ -7,6 +7,7 @@ import {
   VitalLensOptions,
   VitalLensResult,
 } from '../../src/types/core';
+import * as physio from '../../src/utils/physio';
 import { jest } from '@jest/globals';
 
 jest.mock('../../src/config/constants', () => ({
@@ -19,12 +20,18 @@ jest.mock('../../src/config/constants', () => ({
   CALC_RR_MAX: 60,
   CALC_RR_MIN_WINDOW_SIZE: 4,
   CALC_RR_WINDOW_SIZE: 30,
+  CALC_HRV_SDNN_MIN_T: 5,
+  CALC_HRV_RMSSD_MIN_T: 5,
+  CALC_HRV_LFHF_MIN_T: 5,
 }));
+
+jest.mock('../../src/utils/physio');
 
 const dummyPostprocessFn = (
   signalType: 'ppg' | 'resp',
   data: number[],
-  fps: number
+  fps: number,
+  light: boolean
 ): number[] => {
   return data;
 };
@@ -50,7 +57,6 @@ describe('VitalsEstimateManager', () => {
       overrideFpsTarget: 1,
       waveformMode: 'windowed',
     };
-    // Note the new third parameter (postprocessFn)
     manager = new VitalsEstimateManager(
       () => methodConfig,
       options,
@@ -234,62 +240,144 @@ describe('VitalsEstimateManager', () => {
     });
   });
 
-  // TODO: Test produceBufferedResults
+  describe('produceBufferedResults', () => {
+    it('should process each non-overlapping frame and return an array of results', async () => {
+      // Setup initial state
+      manager['timestamps'].set('source1', [1000, 1001]); // 2 existing timestamps
 
-  // TODO: Fix tests
-  // describe('getUpdatedValues', () => {
-  //   it('should append new values when there is no overlap', () => {
-  //     const currentValues = [1, 2, 3];
-  //     const newValues = [4, 5, 6];
-  //     const result = manager['getUpdatedValues'](
-  //       currentValues,
-  //       newValues,
-  //       'incremental',
-  //       0
-  //     );
-  //     expect(result).toEqual([1, 2, 3, 4, 5, 6]);
-  //   });
+      const incrementalResult: VitalLensResult = {
+        time: [1001, 1002, 1003], // Overlap of 1
+        vital_signs: {
+          ppg_waveform: {
+            data: [1, 2, 3],
+            confidence: [0.9, 0.9, 0.9],
+            unit: '',
+            note: '',
+          },
+        },
+        face: {},
+        message: 'Processing',
+      };
 
-  //   it('should handle overlap correctly and update the array', () => {
-  //     const currentValues = [1, 2, 3, 4, 5];
-  //     const newValues = [4, 5, 6, 7, 8];
-  //     const result = manager['getUpdatedValues'](
-  //       currentValues,
-  //       newValues,
-  //       'incremental',
-  //       2
-  //     );
-  //     expect(result).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-  //   });
+      // Mock processIncrementalResult to check what it's called with
+      const processMock = jest
+        .spyOn(manager, 'processIncrementalResult')
+        .mockImplementation(async (res, src, mode, light, ret) => {
+          // Return a modified version of the input to track calls
+          return { ...res, message: `processed ${res.time[0]}` };
+        });
 
-  //   it('should trim the array to the maximum buffer size in non-complete mode', () => {
-  //     const currentValues = [1, 2, 3, 4, 5];
-  //     const newValues = [6, 7, 8, 9, 10];
-  //     manager['bufferSizePpg'] = 8;
-  //     manager['bufferSizeResp'] = 8;
-  //     const result = manager['getUpdatedValues'](
-  //       currentValues,
-  //       newValues,
-  //       'windowed',
-  //       0
-  //     );
-  //     expect(result).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
-  //   });
+      const results = await manager.produceBufferedResults(
+        incrementalResult,
+        'source1',
+        'windowed'
+      );
 
-  //   it('should keep all values in complete mode regardless of buffer size', () => {
-  //     const currentValues = [1, 2, 3, 4, 5];
-  //     const newValues = [6, 7, 8, 9, 10];
-  //     manager['bufferSizePpg'] = 8;
-  //     manager['bufferSizeResp'] = 8;
-  //     const result = manager['getUpdatedValues'](
-  //       currentValues,
-  //       newValues,
-  //       'complete',
-  //       0
-  //     );
-  //     expect(result).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-  //   });
-  // });
+      // Should have been called twice (for ts 1002 and 1003)
+      expect(results).toHaveLength(2);
+      expect(processMock).toHaveBeenCalledTimes(2);
+
+      // Check the first call (for timestamp 1002)
+      expect(processMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          time: [1002],
+          displayTime: 1002 + methodConfig.bufferOffset,
+          vital_signs: {
+            ppg_waveform: { data: [2], confidence: [0.9], unit: '', note: '' },
+          },
+        }),
+        'source1',
+        'windowed',
+        true,
+        true
+      );
+
+      // Check the second call (for timestamp 1003)
+      expect(processMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          time: [1003],
+          displayTime: 1003 + methodConfig.bufferOffset,
+          vital_signs: {
+            ppg_waveform: { data: [3], confidence: [0.9], unit: '', note: '' },
+          },
+        }),
+        'source1',
+        'windowed',
+        true,
+        true
+      );
+
+      // Check the final returned array
+      expect(results![0].message).toBe('processed 1002');
+      expect(results![1].message).toBe('processed 1003');
+    });
+  });
+
+  describe('getUpdatedValues', () => {
+    it('should append new values when there is no overlap', () => {
+      const currentValues = [1, 2, 3];
+      const newValues = [4, 5, 6];
+      const result = manager['getUpdatedValues'](
+        currentValues,
+        newValues,
+        'incremental',
+        0
+      );
+      expect(result).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
+    it('should handle overlap correctly and update the array', () => {
+      const currentValues = [1, 2, 3, 4, 5];
+      const newValues = [4, 5, 6, 7, 8];
+      const result = manager['getUpdatedValues'](
+        currentValues,
+        newValues,
+        'incremental',
+        2
+      );
+      expect(result).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    });
+
+    it('should trim the array to the maximum buffer size in non-complete mode', () => {
+      // To get a maxBufferSize of 8, we need fpsTarget * 30 = 8 => fpsTarget = 8/30
+      const testOptions = { ...options, overrideFpsTarget: 8 / 30 };
+      const testManager = new VitalsEstimateManager(
+        () => methodConfig,
+        testOptions,
+        dummyPostprocessFn
+      );
+      // maxBufferSize is now Math.max( (8/30)*10, (8/30)*30 ) = Math.max(2.66, 8) = 8
+      const currentValues = [1, 2, 3, 4, 5];
+      const newValues = [6, 7, 8, 9, 10];
+      const result = testManager['getUpdatedValues'](
+        currentValues,
+        newValues,
+        'windowed',
+        0
+      );
+      expect(result).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
+    });
+
+    it('should keep all values in complete mode regardless of buffer size', () => {
+      // To get a maxBufferSize of 8, we need fpsTarget * 30 = 8 => fpsTarget = 8/30
+      const testOptions = { ...options, overrideFpsTarget: 8 / 30 };
+      const testManager = new VitalsEstimateManager(
+        () => methodConfig,
+        testOptions,
+        dummyPostprocessFn
+      );
+      // maxBufferSize is now 8, but should be ignored in 'complete' mode.
+      const currentValues = [1, 2, 3, 4, 5];
+      const newValues = [6, 7, 8, 9, 10];
+      const result = testManager['getUpdatedValues'](
+        currentValues,
+        newValues,
+        'complete',
+        0
+      );
+      expect(result).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    });
+  });
 
   describe('getUpdatedSumCount', () => {
     it('should initialize sum and count arrays when they are empty', () => {
@@ -809,6 +897,57 @@ describe('VitalsEstimateManager', () => {
       manager['timestamps'].set('source1', [1000, 1000, 1000]);
       const fps = manager['getCurrentFps']('source1', 5);
       expect(fps).toBeNull();
+    });
+  });
+
+  describe('getResult', () => {
+    it('should call assembleResult with "complete" mode', async () => {
+      const assembleSpy = jest
+        .spyOn(manager as any, 'assembleResult')
+        .mockResolvedValue({});
+      await manager.getResult('source1');
+      expect(assembleSpy).toHaveBeenCalledWith('source1', 'complete', false);
+    });
+  });
+
+  describe('getEmptyResult', () => {
+    it('should return a predefined empty result object', () => {
+      const result = manager.getEmptyResult();
+      expect(result).toEqual({
+        face: {},
+        vital_signs: {},
+        time: [],
+        message: 'Prediction is empty because no face was detected.',
+      });
+    });
+  });
+
+  describe('reset', () => {
+    it('should delete all data for a specific sourceId', () => {
+      // Add data for two sources
+      manager['timestamps'].set('source1', [1000]);
+      manager['waveforms'].set('source1', {} as any);
+      manager['timestamps'].set('source2', [2000]);
+      manager['waveforms'].set('source2', {} as any);
+
+      manager.reset('source1');
+
+      expect(manager['timestamps'].has('source1')).toBe(false);
+      expect(manager['waveforms'].has('source1')).toBe(false);
+      expect(manager['timestamps'].has('source2')).toBe(true); // Should not be affected
+      expect(manager['waveforms'].has('source2')).toBe(true);
+    });
+  });
+
+  describe('resetAll', () => {
+    it('should clear all data from all maps', () => {
+      manager['timestamps'].set('source1', [1000]);
+      manager['waveforms'].set('source1', {} as any);
+
+      manager.resetAll();
+
+      expect(manager['timestamps'].size).toBe(0);
+      expect(manager['waveforms'].size).toBe(0);
     });
   });
 });
