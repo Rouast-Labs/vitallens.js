@@ -17,16 +17,22 @@ export abstract class StreamProcessorBase {
   protected isDetecting = false;
   protected roi: ROI | null = null;
   protected pendingRoi: ROI | null = null;
-  private targetFps: number = 30.0;
   private fDetFs: number = 0.5;
   private lastProcessedTime: number = 0; // In seconds
   protected lastFaceDetectionTime: number = 0; // In seconds
   private methodHandler: MethodHandler;
 
+  private get methodConfig(): MethodConfig {
+    return this.getConfig();
+  }
+  private get targetFps(): number {
+    return this.options.overrideFpsTarget ?? this.methodConfig.fpsTarget;
+  }
+
   /**
    * Creates a new StreamProcessor.
    * @param options - Configuration options for VitalLens.
-   * @param methodConfig - Method-specific settings (e.g. fps, ROI sizing).
+   * @param getConfig - Get the method-specific settings (e.g. fps, ROI sizing).
    * @param frameIterator - Source of frames (webcam or other).
    * @param bufferManager - Manages frames for each ROI and method state.
    * @param faceDetectionWorker - Face detection worker (optional if global ROI is given).
@@ -37,7 +43,7 @@ export abstract class StreamProcessorBase {
    */
   constructor(
     protected options: VitalLensOptions,
-    protected methodConfig: MethodConfig,
+    private getConfig: () => MethodConfig,
     private frameIterator: IFrameIterator,
     protected bufferManager: BufferManager,
     protected faceDetectionWorker: IFaceDetectionWorker | null,
@@ -47,10 +53,6 @@ export abstract class StreamProcessorBase {
     protected onNoFace: () => Promise<void>
   ) {
     this.methodHandler = methodHandler;
-    // Derive target fps
-    this.targetFps = this.options.overrideFpsTarget
-      ? this.options.overrideFpsTarget
-      : this.methodConfig.fpsTarget;
     this.fDetFs = this.options.fDetFs ?? FDET_DEFAULT_FS_STREAM;
 
     if (this.faceDetectionWorker) {
@@ -80,8 +82,8 @@ export abstract class StreamProcessorBase {
    * Starts the stream processing loop.
    */
   async start(): Promise<void> {
+    await this.methodHandler.init();
     this.init();
-    this.methodHandler.init();
     this.isPaused = false;
     const iterator = this.frameIterator[Symbol.asyncIterator]();
 
@@ -99,7 +101,8 @@ export abstract class StreamProcessorBase {
           await new Promise((resolve) =>
             setTimeout(
               resolve,
-              1 / this.targetFps - (currentTime - this.lastProcessedTime)
+              (1 / this.targetFps - (currentTime - this.lastProcessedTime)) *
+                1000
             )
           );
           continue;
@@ -119,7 +122,7 @@ export abstract class StreamProcessorBase {
           if (!this.bufferManager.isEmpty()) {
             await this.bufferManager.add(
               frame,
-              this.methodConfig.method !== 'vitallens'
+              !this.methodConfig.method.startsWith('vitallens')
                 ? (this.roi ?? undefined)
                 : undefined
             );
@@ -157,7 +160,7 @@ export abstract class StreamProcessorBase {
                 })
                 .finally(() => {
                   this.isPredicting = false;
-                  if (this.methodConfig.method !== 'vitallens') {
+                  if (!this.methodConfig.method.startsWith('vitallens')) {
                     mergedFrame.release();
                   }
                 });

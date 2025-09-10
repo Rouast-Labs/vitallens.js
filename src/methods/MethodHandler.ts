@@ -15,7 +15,18 @@ export abstract class MethodHandler {
   protected config: MethodConfig;
 
   constructor(options: VitalLensOptions) {
-    this.config = METHODS_CONFIG[options.method];
+    // For local methods, the config is immediately available.
+    // For API-based methods, this will be a temporary config,
+    // and the final one will be fetched and set in the init() method.
+    this.config = METHODS_CONFIG[options.method] || ({} as MethodConfig);
+  }
+
+  /**
+   * Returns the current method configuration.
+   * @returns The method configuration.
+   */
+  public getConfig(): MethodConfig {
+    return this.config;
   }
 
   /**

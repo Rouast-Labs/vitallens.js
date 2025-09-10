@@ -1,17 +1,6 @@
 import { MethodConfig } from '../types';
 
 export const METHODS_CONFIG: Record<string, MethodConfig> = {
-  vitallens: {
-    method: 'vitallens',
-    roiMethod: 'upper_body',
-    fpsTarget: 30,
-    inputSize: 40,
-    minWindowLength: 16,
-    minWindowLengthState: 4,
-    maxWindowLength: 900,
-    requiresState: true,
-    bufferOffset: 1.5,
-  },
   pos: {
     method: 'pos',
     roiMethod: 'face',
@@ -20,6 +9,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     maxWindowLength: 48,
     requiresState: false,
     bufferOffset: 0,
+    supportedVitals: ['ppg_waveform', 'heart_rate'],
   },
   chrom: {
     method: 'chrom',
@@ -29,6 +19,7 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     maxWindowLength: 48,
     requiresState: false,
     bufferOffset: 0,
+    supportedVitals: ['ppg_waveform', 'heart_rate'],
   },
   g: {
     method: 'g',
@@ -38,5 +29,6 @@ export const METHODS_CONFIG: Record<string, MethodConfig> = {
     maxWindowLength: 64,
     requiresState: false,
     bufferOffset: 0,
+    supportedVitals: ['ppg_waveform', 'heart_rate'],
   },
 };

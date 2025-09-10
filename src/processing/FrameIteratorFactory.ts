@@ -10,7 +10,10 @@ import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
  * Creates iterators for video processing, including frame capture and preprocessing.
  */
 export class FrameIteratorFactory {
-  constructor(private options: VitalLensOptions) {}
+  constructor(
+    private options: VitalLensOptions,
+    private getConfig: () => MethodConfig
+  ) {}
 
   /**
    * Creates a frame iterator for live streams.
@@ -34,14 +37,12 @@ export class FrameIteratorFactory {
   /**
    * Creates a frame iterator for file-based inputs.
    * @param videoInput - The video input to process.
-   * @param methodConfig - Method config.
    * @param ffpmeg - The ffmpeg wrapper.
    * @param faceDetectionWorker - The face detection worker.
    * @returns A file frame iterator.
    */
   createFileFrameIterator(
     videoInput: VideoInput,
-    methodConfig: MethodConfig,
     ffmpeg: IFFmpegWrapper,
     faceDetectionWorker: IFaceDetectionWorker | null
   ): IFrameIterator {
@@ -49,7 +50,7 @@ export class FrameIteratorFactory {
       return new FileFrameIterator(
         videoInput,
         this.options,
-        methodConfig,
+        this.getConfig,
         faceDetectionWorker,
         ffmpeg
       );
@@ -57,7 +58,7 @@ export class FrameIteratorFactory {
       return new FileRGBIterator(
         videoInput,
         this.options,
-        methodConfig,
+        this.getConfig,
         faceDetectionWorker,
         ffmpeg
       );
