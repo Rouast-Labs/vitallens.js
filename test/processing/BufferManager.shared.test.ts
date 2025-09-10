@@ -32,7 +32,7 @@ jest.mock('../../src/processing/RGBBuffer', () => {
 
 const mockROI: ROI = { x0: 0, y0: 0, x1: 100, y1: 100 };
 const mockMethodConfigVitalLens: MethodConfig = {
-  method: 'vitallens',
+  method: 'vitallens-1.0',
   inputSize: 40,
   fpsTarget: 30,
   roiMethod: 'face',
@@ -40,6 +40,7 @@ const mockMethodConfigVitalLens: MethodConfig = {
   maxWindowLength: 10,
   requiresState: false,
   bufferOffset: 1,
+  supportedVitals: ['ppg_waveform', 'heart_rate'],
 };
 const mockMethodConfigPOS: MethodConfig = {
   method: 'pos',
@@ -50,6 +51,7 @@ const mockMethodConfigPOS: MethodConfig = {
   maxWindowLength: 10,
   requiresState: false,
   bufferOffset: 0,
+  supportedVitals: ['ppg_waveform', 'heart_rate'],
 };
 const mockTimestamp = Date.now();
 

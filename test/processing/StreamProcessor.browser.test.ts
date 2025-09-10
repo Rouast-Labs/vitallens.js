@@ -33,6 +33,7 @@ describe('StreamProcessor (Browser)', () => {
     maxWindowLength: 10,
     requiresState: false,
     bufferOffset: 1,
+    supportedVitals: ['heart_rate', 'ppg_waveform'],
   };
 
   // Dummy stubs for parameters not used in these tests.
@@ -96,7 +97,7 @@ describe('StreamProcessor (Browser)', () => {
     // Create a new instance of StreamProcessor with the dummy dependencies.
     processor = new StreamProcessor(
       options,
-      methodConfig,
+      () => methodConfig,
       dummyFrameIterator,
       fakeBufferManager,
       mockFaceDetectionWorker,
@@ -111,7 +112,7 @@ describe('StreamProcessor (Browser)', () => {
     it('should throw an error if faceDetectionWorker is null', () => {
       const proc = new StreamProcessor(
         options,
-        methodConfig,
+        () => methodConfig,
         dummyFrameIterator,
         fakeBufferManager,
         null, // No face detection worker provided.

@@ -108,12 +108,14 @@ describe('VitalLensController Integration (Node)', () => {
     expect(result.time.length).toBeGreaterThan(0);
     expect(result.time[result.time.length - 1]).toBeGreaterThan(result.time[0]);
 
-    // Ensure `message` and `fps` exist
+    // Ensure `message` and `fps` and `model_used` exist
     expect(result).toHaveProperty('message');
     expect(typeof result.message).toBe('string');
     expect(result).toHaveProperty('fps');
     expect(typeof result.fps).toBe('number');
     expect(result.fps).toBeGreaterThan(0);
+    // expect(result).toHaveProperty('model_used');
+    // expect(typeof result.model_used).toBe('string');
 
     controller.dispose();
   }, 30000);
