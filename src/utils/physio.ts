@@ -10,6 +10,9 @@ import {
 import { standardize } from '../utils/arrayOps';
 import { VitalLensResult } from '../types';
 
+// TODO: Test-driven implementation of the below
+// TODO: Consider moving to its own lib
+
 /**
  * Finds peaks in a 1D signal.
  * @param signal The input signal array.
@@ -151,7 +154,7 @@ function getPowerInBand(
  * @param desiredResolutionHz - (Optional) Desired frequency resolution in Hz.
  * @returns The estimated rate in cycles per minute, or null if no dominant frequency is found.
  */
-function estimateRateFromFFT(
+export function estimateRateFromFFT(
   waveform: number[],
   samplingFrequency: number,
   minFrequency: number,

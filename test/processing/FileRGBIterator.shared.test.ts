@@ -118,6 +118,7 @@ const dummyMethodConfig: MethodConfig = {
   inputSize: 224,
   requiresState: false,
   bufferOffset: 1,
+  supportedVitals: ['heart_rate', 'ppg_waveform'],
 };
 
 const dummyVideoInput: VideoInput = 'test.mp4';
@@ -170,7 +171,7 @@ describe('FileRGBIterator', () => {
     iterator = new FileRGBIterator(
       dummyVideoInput,
       dummyOptions,
-      dummyMethodConfig,
+      () => dummyMethodConfig,
       faceDetectionWorker,
       ffmpegWrapper
     );
@@ -182,7 +183,7 @@ describe('FileRGBIterator', () => {
       const iteratorNoFace = new FileRGBIterator(
         dummyVideoInput,
         dummyOptions,
-        dummyMethodConfig,
+        () => dummyMethodConfig,
         null,
         ffmpegWrapper
       );
@@ -206,7 +207,7 @@ describe('FileRGBIterator', () => {
       const iteratorNoFace = new FileRGBIterator(
         dummyVideoInput,
         dummyOptions,
-        dummyMethodConfig,
+        () => dummyMethodConfig,
         null,
         ffmpegWrapper
       );

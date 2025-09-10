@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { VitalLens } from '../core/VitalLens.browser';
-import { VitalLensOptions } from '../types';
+import { Method, VitalLensOptions } from '../types';
 import widget from './widget.html';
 import logoUrl from '../../assets/logo.svg';
 import {
@@ -108,7 +108,7 @@ export class VitalLensWidgetBase extends HTMLElement {
   protected vitalLensInstance!: VitalLens;
   protected charts: any = {};
   protected videoFileLoaded: File | null = null;
-  protected currentMethod: 'vitallens' | 'pos' | 'chrom' | 'g' = 'vitallens';
+  protected currentMethod: Method = 'vitallens';
   protected latestResult: any = null;
   protected isProcessingFlag: boolean = false;
   protected apiKey: string | null = null;
@@ -825,7 +825,7 @@ export class VitalLensWidgetBase extends HTMLElement {
   }
 
   private setBufferingTimeout() {
-    const buffering = this.currentMethod === 'vitallens';
+    const buffering = this.currentMethod.startsWith('vitallens');
     this.bufferingTimeout = window.setTimeout(() => {
       this.showVitalsLoader(
         buffering

@@ -80,6 +80,7 @@ const methodConfig: MethodConfig = {
   maxWindowLength: 10,
   requiresState: false,
   bufferOffset: 1,
+  supportedVitals: ['heart_rate', 'ppg_waveform'],
 };
 
 describe('StreamProcessor', () => {
@@ -147,7 +148,7 @@ describe('StreamProcessor', () => {
   test('should initialize with the correct ROI and buffer', () => {
     const processor = new TestStreamProcessor(
       options,
-      methodConfig,
+      () => methodConfig,
       mockFrameIterator,
       mockBufferManager,
       null,
@@ -170,7 +171,7 @@ describe('StreamProcessor', () => {
   test('should start processing frames and trigger prediction', async () => {
     const processor = new TestStreamProcessor(
       options,
-      methodConfig,
+      () => methodConfig,
       mockFrameIterator,
       mockBufferManager,
       null, // No face detection worker provided.
@@ -200,7 +201,7 @@ describe('StreamProcessor', () => {
   test('should update ROI on face detection', async () => {
     const processor = new TestStreamProcessor(
       options,
-      methodConfig,
+      () => methodConfig,
       mockFrameIterator,
       mockBufferManager,
       {} as any, // dummy face detection worker (not used since we override triggerFaceDetection)
@@ -224,7 +225,7 @@ describe('StreamProcessor', () => {
   test('should trigger onNoFace callback when no face is detected', async () => {
     const processor = new TestStreamProcessor(
       options,
-      methodConfig,
+      () => methodConfig,
       mockFrameIterator,
       mockBufferManager,
       {} as any,
@@ -247,7 +248,7 @@ describe('StreamProcessor', () => {
   test('should stop processing and clean up buffer', () => {
     const processor = new TestStreamProcessor(
       options,
-      methodConfig,
+      () => methodConfig,
       mockFrameIterator,
       mockBufferManager,
       {} as any,

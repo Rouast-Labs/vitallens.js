@@ -69,9 +69,9 @@ export class StreamProcessor extends StreamProcessorBase {
     const shouldUpdateROI =
       checkROIValid(det) &&
       (this.roi === null ||
-        (this.options.method === 'vitallens' &&
+        (this.options.method.startsWith('vitallens') &&
           !checkFaceInROI(det, this.roi, [0.6, 1.0])) ||
-        this.options.method !== 'vitallens');
+        !this.options.method.startsWith('vitallens'));
 
     if (shouldUpdateROI) {
       const newRoi = getROIForMethod(
@@ -81,7 +81,10 @@ export class StreamProcessor extends StreamProcessorBase {
         true
       );
       this.pendingRoi = newRoi;
-      if (this.bufferManager.isEmpty() || this.options.method === 'vitallens') {
+      if (
+        this.bufferManager.isEmpty() ||
+        this.options.method.startsWith('vitallens')
+      ) {
         this.bufferManager.addBuffer(newRoi, this.methodConfig, timestamp);
       }
     }

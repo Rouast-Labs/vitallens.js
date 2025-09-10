@@ -46,7 +46,7 @@ export class FrameIteratorFactory {
     ffmpeg: IFFmpegWrapper,
     faceDetectionWorker: IFaceDetectionWorker | null
   ): IFrameIterator {
-    if (this.options.method === 'vitallens') {
+    if (this.options.method.startsWith('vitallens')) {
       return new FileFrameIterator(
         videoInput,
         this.options,

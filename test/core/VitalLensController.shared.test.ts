@@ -27,7 +27,10 @@ jest.mock('../../src/processing/VitalsEstimateManager');
 
 class TestVitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
-    return { sendFrames: jest.fn() };
+    return {
+      sendFrames: jest.fn(),
+      resolveModel: jest.fn(),
+    };
   }
   protected createFFmpegWrapper(): IFFmpegWrapper {
     return {
@@ -52,7 +55,7 @@ class TestVitalLensController extends VitalLensControllerBase {
   }
   protected createStreamProcessor(
     options: VitalLensOptions,
-    methodConfig: MethodConfig,
+    getConfig: () => MethodConfig,
     frameIterator: IFrameIterator,
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
@@ -99,7 +102,7 @@ describe('VitalLensControllerBase', () => {
       expect(BufferManager).toHaveBeenCalled();
       expect(FrameIteratorFactory).toHaveBeenCalled();
       expect(VitalsEstimateManager).toHaveBeenCalledWith(
-        expect.any(Object),
+        expect.any(Function),
         mockOptions,
         expect.any(Function)
       );
@@ -294,7 +297,6 @@ describe('VitalLensControllerBase', () => {
         controller['frameIteratorFactory']!.createFileFrameIterator
       ).toHaveBeenCalledWith(
         mockFileInput,
-        controller['methodConfig'],
         controller['ffmpeg'],
         controller['faceDetectionWorker']
       );

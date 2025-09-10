@@ -1,5 +1,6 @@
 import { FrameIteratorFactory } from '../../src/processing/FrameIteratorFactory';
 import { StreamFrameIterator } from '../../src/processing/StreamFrameIterator';
+import { MethodConfig } from '../../src/types';
 
 global.MediaStream = class MediaStream {
   active = true;
@@ -16,16 +17,33 @@ global.MediaStream = class MediaStream {
 
 describe('FrameIteratorFactory (Browser)', () => {
   let factory: FrameIteratorFactory;
+  const mockMethodConfig: MethodConfig = {
+    method: 'vitallens-1.0',
+    inputSize: 40,
+    fpsTarget: 30,
+    roiMethod: 'face',
+    minWindowLength: 5,
+    maxWindowLength: 10,
+    requiresState: false,
+    bufferOffset: 1,
+    supportedVitals: ['ppg_waveform', 'heart_rate'],
+  };
 
   it('should create a StreamFrameIterator with MediaStream', () => {
-    factory = new FrameIteratorFactory({ method: 'vitallens' });
+    factory = new FrameIteratorFactory(
+      { method: 'vitallens' },
+      () => mockMethodConfig
+    );
     const stream = new MediaStream();
     const iterator = factory.createStreamFrameIterator(stream);
     expect(iterator).toBeInstanceOf(StreamFrameIterator);
   });
 
   it('should create a StreamFrameIterator with HTMLVideoElement', () => {
-    factory = new FrameIteratorFactory({ method: 'vitallens' });
+    factory = new FrameIteratorFactory(
+      { method: 'vitallens' },
+      () => mockMethodConfig
+    );
     const videoElement = document.createElement('video') as HTMLVideoElement;
 
     // Mock the `srcObject` property to accept a MediaStream
