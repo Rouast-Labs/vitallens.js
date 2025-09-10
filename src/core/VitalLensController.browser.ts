@@ -49,7 +49,7 @@ export class VitalLensController extends VitalLensControllerBase {
   }
   protected createStreamProcessor(
     options: VitalLensOptions,
-    methodConfig: MethodConfig,
+    getConfig: () => MethodConfig,
     frameIterator: IFrameIterator,
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
@@ -60,7 +60,7 @@ export class VitalLensController extends VitalLensControllerBase {
   ): IStreamProcessor {
     return new StreamProcessor(
       options,
-      methodConfig,
+      getConfig,
       frameIterator,
       bufferManager,
       faceDetectionWorker,

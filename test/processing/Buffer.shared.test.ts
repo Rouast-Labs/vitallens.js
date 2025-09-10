@@ -32,6 +32,7 @@ describe('Buffer', () => {
       maxWindowLength: 5,
       requiresState: false,
       bufferOffset: 1,
+      supportedVitals: ['heart_rate', 'ppg_waveform'],
     };
     buffer = new MockBuffer(roi, methodConfig);
   });

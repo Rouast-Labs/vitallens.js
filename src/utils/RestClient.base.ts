@@ -1,5 +1,5 @@
 import { InferenceMode, VitalLensAPIResponse, VitalLensResult } from '../types';
-import { IRestClient } from '../types/IRestClient';
+import { IRestClient, ResolveModelResponse } from '../types/IRestClient';
 import { float32ArrayToBase64, uint8ArrayToBase64 } from './arrayOps';
 
 /**
@@ -20,6 +20,12 @@ export abstract class RestClientBase implements IRestClient {
    * @returns The REST endpoint.
    */
   protected abstract getRestEndpoint(mode: InferenceMode): string;
+
+  /**
+   * Abstract method to resolve the model.
+   * @param requestedModel - The requested model (optional)
+   */
+  abstract resolveModel(requestedModel?: string): Promise<ResolveModelResponse>;
 
   /**
    * Abstract method for sending HTTP requests.

@@ -34,7 +34,7 @@ export class BufferManager {
     const id = this.generateBufferId(roi);
     if (!this.buffers.has(id)) {
       let newBuffer: Buffer;
-      if (methodConfig.method === 'vitallens') {
+      if (methodConfig.method.startsWith('vitallens')) {
         newBuffer = new FrameBuffer(roi, methodConfig);
       } else {
         newBuffer = new RGBBuffer(roi, methodConfig);

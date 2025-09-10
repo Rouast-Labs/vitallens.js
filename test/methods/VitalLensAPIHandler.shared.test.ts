@@ -1,5 +1,5 @@
 import { VitalLensAPIHandler } from '../../src/methods/VitalLensAPIHandler';
-import { IRestClient } from '../../src/types/IRestClient';
+import { IRestClient, ResolveModelResponse } from '../../src/types/IRestClient';
 import {
   InferenceMode,
   VitalLensAPIResponse,
@@ -47,6 +47,19 @@ const mockRestClient: Partial<IRestClient> = {
         state?: Float32Array
       ) => Promise<VitalLensAPIResponse>
     >(),
+  resolveModel: jest.fn(
+    async () =>
+      ({
+        resolved_model: 'vitalens-2.0',
+        config: {
+          n_inputs: 5,
+          input_size: 40,
+          fps_target: 30,
+          roi_method: 'upper_body_cropped',
+          supported_vitals: ['hr', 'rr', 'hrv_sdnn', 'hrv_rmssd', 'hrv_lfhf'],
+        },
+      }) as ResolveModelResponse
+  ),
 };
 
 describe('VitalLensAPIHandler', () => {
@@ -69,12 +82,15 @@ describe('VitalLensAPIHandler', () => {
     jest.clearAllMocks();
   });
 
-  it('should return true for REST client readiness', () => {
+  it('should behave correctly for REST client readiness', () => {
     const handler = new VitalLensAPIHandler(
       mockRestClient as IRestClient,
       mockOptionsREST
     );
-    expect(handler.getReady()).toBe(true);
+    expect(handler.getReady()).toBe(false);
+    handler.init().then(() => {
+      expect(handler.getReady()).toBe(true);
+    });
   });
 
   it('should process frames and return a valid result for REST client', async () => {
@@ -93,6 +109,7 @@ describe('VitalLensAPIHandler', () => {
       mockRestClient as IRestClient,
       mockOptionsREST
     );
+    await handler.init();
     const result = await handler.process(mockFrame, 'file');
 
     expect(result).toEqual({
@@ -138,6 +155,7 @@ describe('VitalLensAPIHandler', () => {
       mockRestClient as IRestClient,
       mockOptionsREST
     );
+    await handler.init();
     await expect(handler.process(mockFrame, 'file')).rejects.toThrow(
       VitalLensAPIError
     );
@@ -162,6 +180,7 @@ describe('VitalLensAPIHandler', () => {
       mockRestClient as IRestClient,
       mockOptionsREST
     );
+    await handler.init();
     await expect(handler.process(mockFrame, 'file')).rejects.toThrow(
       VitalLensAPIKeyError
     );
@@ -186,6 +205,7 @@ describe('VitalLensAPIHandler', () => {
       mockRestClient as IRestClient,
       mockOptionsREST
     );
+    await handler.init();
     await expect(handler.process(mockFrame, 'file')).rejects.toThrow(
       VitalLensAPIQuotaExceededError
     );

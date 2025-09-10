@@ -20,6 +20,7 @@ describe('RGBBuffer', () => {
       maxWindowLength: 5,
       requiresState: false,
       bufferOffset: 1,
+      supportedVitals: ['heart_rate', 'ppg_waveform'],
     });
   });
 

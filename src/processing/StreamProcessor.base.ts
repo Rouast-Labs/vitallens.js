@@ -22,10 +22,10 @@ export abstract class StreamProcessorBase {
   protected lastFaceDetectionTime: number = 0; // In seconds
   private methodHandler: MethodHandler;
 
-  private get methodConfig(): MethodConfig {
+  protected get methodConfig(): MethodConfig {
     return this.getConfig();
   }
-  private get targetFps(): number {
+  protected get targetFps(): number {
     return this.options.overrideFpsTarget ?? this.methodConfig.fpsTarget;
   }
 
