@@ -10,137 +10,125 @@ import {
 import { standardize } from '../utils/arrayOps';
 import { VitalLensResult } from '../types';
 
-// TODO: Test-driven implementation of the below
-// TODO: Consider moving to its own lib
+/**
+ * Helper function to calculate the mean of an array of numbers.
+ * @param arr - The input array.
+ * @returns The mean of the array.
+ */
+const mean = (arr: number[]): number => {
+  if (arr.length === 0) return 0;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+};
 
 /**
- * Finds peaks in a 1D signal.
- * @param signal The input signal array.
- * @returns An array of indices corresponding to the peaks.
+ * Helper function to calculate the standard deviation of an array of numbers.
+ * @param arr - The input array.
+ * @returns The standard deviation of the array.
  */
-function findPeaks(signal: number[]): number[] {
-  const peaks: number[] = [];
-  for (let i = 1; i < signal.length - 1; i++) {
-    if (signal[i] > signal[i - 1] && signal[i] > signal[i + 1]) {
-      peaks.push(i);
-    }
-  }
-  return peaks;
-}
+const stdDev = (arr: number[]): number => {
+  if (arr.length < 2) return 0;
+  const arrMean = mean(arr);
+  const variance =
+    arr.map((x) => Math.pow(x - arrMean, 2)).reduce((a, b) => a + b, 0) /
+    arr.length;
+  return Math.sqrt(variance);
+};
 
 /**
- * Calculates R-R intervals in milliseconds from a PPG signal.
- * @param ppgData The PPG waveform data.
- * @param ppgConf The confidence for each PPG data point.
- * @param fps The sampling frequency.
- * @returns An array of R-R intervals in milliseconds and the mean confidence.
+ * Detects peaks in a physiological signal, grouping them into continuous sequences.
+ * This function uses a single-pass adaptive threshold (Z-Score) method.
+ *
+ * @param signal - The input signal array.
+ * @param fs - The sampling frequency in Hz.
+ * @param options - Configuration options for peak detection.
+ * - `lag`: The number of past samples to use for calculating rolling stats. (Default: fs * 1.5)
+ * - `height`: The minimum absolute amplitude for a point to be considered a peak. (Default: 0)
+ * - `threshold`: The Z-score threshold. A point is a peak if it's this many std devs above the mean. (Default: 2.5)
+ * - `minDistanceSamples`: Minimum samples between consecutive peaks. (Default: based on 220 BPM)
+ * - `maxDistanceSamples`: Maximum samples between consecutive peaks to remain in the same sequence. (Default: based on 40 BPM)
+ * - `minSequenceLength`: The minimum number of peaks required to form a valid sequence. (Default: 3)
+ * @returns An array of arrays, where each inner array is a sequence of peak indices.
  */
-function getRrIntervals(
-  ppgData: number[],
-  ppgConf: number[],
-  fps: number
-): { intervals: number[]; confidence: number } {
-  const standardizedPpg = standardize(ppgData);
-  const peaks = findPeaks(standardizedPpg);
+export function findPeaks(
+  signal: number[],
+  fs: number,
+  options: {
+    lag?: number;
+    height?: number;
+    threshold?: number;
+    minDistanceSamples?: number;
+    maxDistanceSamples?: number;
+    minSequenceLength?: number;
+  } = {}
+): number[][] {
+  // Set parameters
+  const lag = options.lag ?? Math.round(fs * 1.5);
+  const height = options.height ?? 0;
+  const threshold = options.threshold ?? 1.5;
+  const minDistanceSamples =
+    options.minDistanceSamples ?? Math.round((fs * 60) / 220); // Max physiological HR
+  const maxDistanceSamples =
+    options.maxDistanceSamples ?? Math.round(((fs * 60) / 45) * 2); // Detects a pause > 2 beats at 45bpm
+  const minSequenceLength = options.minSequenceLength ?? 3;
 
-  if (peaks.length < 2) {
-    return { intervals: [], confidence: 0 };
+  if (signal.length <= lag) {
+    return [];
   }
 
-  const intervalsMs = [];
-  const confidences = [];
-  for (let i = 1; i < peaks.length; i++) {
-    const intervalInSamples = peaks[i] - peaks[i - 1];
-    intervalsMs.push((intervalInSamples / fps) * 1000);
-    const confSlice = ppgConf.slice(peaks[i - 1], peaks[i]);
-    if (confSlice.length > 0) {
-      confidences.push(confSlice.reduce((a, b) => a + b, 0) / confSlice.length);
+  // Pre-pad the signal to handle edge effects
+  const padding = new Array(lag).fill(signal[0]);
+  const paddedSignal = [...padding, ...signal];
+
+  const sequences: number[][] = [];
+  let currentSequence: number[] = [];
+  let lastPeakOverall = -Infinity;
+
+  // Single-pass iteration through the padded signal
+  for (let i = lag; i < paddedSignal.length - 1; i++) {
+    const currentValue = paddedSignal[i];
+    const originalIndex = i - lag;
+
+    // Check for local maximum first (cheap check)
+    if (
+      currentValue > paddedSignal[i - 1] &&
+      currentValue > paddedSignal[i + 1] &&
+      currentValue > height
+    ) {
+      // Calculate stats only when necessary
+      const window = paddedSignal.slice(i - lag, i);
+      const windowMean = mean(window);
+      const windowStd = stdDev(window);
+      const dynamicThreshold = windowMean + threshold * windowStd;
+
+      if (currentValue > dynamicThreshold) {
+        if (originalIndex - lastPeakOverall >= minDistanceSamples) {
+          const lastPeakInSequence =
+            currentSequence.length > 0
+              ? currentSequence[currentSequence.length - 1]
+              : -Infinity;
+
+          if (originalIndex - lastPeakInSequence < maxDistanceSamples) {
+            // The sequence continues.
+            currentSequence.push(originalIndex);
+          } else {
+            // The sequence is broken. Finalize the old one and start a new one.
+            if (currentSequence.length > 0) {
+              sequences.push(currentSequence);
+            }
+            currentSequence = [originalIndex];
+          }
+          lastPeakOverall = originalIndex;
+        }
+      }
     }
   }
 
-  const meanConfidence =
-    confidences.length > 0
-      ? confidences.reduce((a, b) => a + b, 0) / confidences.length
-      : 0;
-
-  return { intervals: intervalsMs, confidence: meanConfidence };
-}
-
-/**
- * Calculates the power of a signal within a specified frequency band using a Welch-like method.
- * @param waveform The input signal.
- * @param samplingFrequency The sampling rate of the signal.
- * @param minFrequency The lower bound of the frequency band.
- * @param maxFrequency The upper bound of the frequency band.
- * @returns The total power in the specified band.
- */
-function getPowerInBand(
-  waveform: number[],
-  samplingFrequency: number,
-  minFrequency: number,
-  maxFrequency: number
-): number | null {
-  if (waveform.length < 1) return null;
-
-  const nperseg = Math.min(waveform.length, 256);
-  const nfft = Math.pow(
-    2,
-    Math.ceil(Math.log2(Math.max(nperseg, samplingFrequency / 0.01)))
-  );
-  const noverlap = Math.floor(nperseg / 2);
-  const window = new Array(nperseg)
-    .fill(1)
-    .map((_, i) => 0.5 * (1 - Math.cos((2 * Math.PI * i) / (nperseg - 1))));
-
-  const segments = [];
-  for (let i = 0; i <= waveform.length - nperseg; i += nperseg - noverlap) {
-    segments.push(waveform.slice(i, i + nperseg));
+  // Finalize and Filter
+  if (currentSequence.length > 0) {
+    sequences.push(currentSequence);
   }
 
-  if (segments.length === 0) return 0;
-
-  let avgPsd = new Array(nfft / 2 + 1).fill(0);
-  const windowSumSq = window.reduce((a, b) => a + b * b, 0);
-
-  for (const segment of segments) {
-    const mean = segment.reduce((a, b) => a + b, 0) / segment.length;
-    const detrendedSegment = segment.map((v) => v - mean);
-    const windowedSegment = detrendedSegment.map((v, i) => v * window[i]);
-
-    const paddedSegment = [
-      ...windowedSegment,
-      ...new Array(nfft - nperseg).fill(0),
-    ];
-
-    const fft = new FFT(nfft);
-    const complexArray = fft.createComplexArray();
-    fft.toComplexArray(paddedSegment, complexArray);
-    const transformed = fft.createComplexArray();
-    fft.transform(transformed, complexArray);
-
-    const psd = new Array(nfft / 2 + 1);
-    for (let i = 0; i < nfft / 2 + 1; i++) {
-      const real = transformed[2 * i];
-      const imag = transformed[2 * i + 1];
-      psd[i] = (real * real + imag * imag) / (samplingFrequency * windowSumSq);
-    }
-    avgPsd = avgPsd.map((v, i) => v + psd[i]);
-  }
-
-  avgPsd = avgPsd.map((v) => v / segments.length);
-  const freqs = Array.from(
-    { length: nfft / 2 + 1 },
-    (_, i) => (i * samplingFrequency) / nfft
-  );
-
-  let totalPower = 0;
-  for (let i = 1; i < freqs.length; i++) {
-    if (freqs[i] >= minFrequency && freqs[i] <= maxFrequency) {
-      totalPower +=
-        ((avgPsd[i] + avgPsd[i - 1]) / 2) * (freqs[i] - freqs[i - 1]);
-    }
-  }
-  return totalPower * 1e6; // to ms^2
+  return sequences.filter((seq) => seq.length >= minSequenceLength);
 }
 
 /**
@@ -257,126 +245,84 @@ export function estimateRespiratoryRate(
   );
 }
 
+/**
+ * Estimates HRV (SDNN) from the PPG waveform.
+ * @param ppgWaveform - The PPG waveform data.
+ * @param ppgConfidence - The confidence scores for the PPG waveform.
+ * @param fs - The sampling frequency in Hz.
+ * @returns An object containing the SDNN value, unit, confidence, and note.
+ */
 export function estimateHrvSdnn(
-  ppgData: number[],
-  ppgConf: number[],
-  fps: number
+  ppgWaveform: number[],
+  ppgConfidence: number[],
+  fs: number
 ): VitalLensResult['vital_signs']['hrv_sdnn'] {
-  const { intervals, confidence } = getRrIntervals(ppgData, ppgConf, fps);
-
-  if (intervals.length < 2) {
-    return {
-      value: null,
-      confidence: null,
-      unit: 'ms',
-      note: 'Could not detect enough heartbeats to calculate HRV (SDNN).',
-    };
-  }
-  const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-  const variance =
-    intervals.map((x) => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) /
-    (intervals.length - 1);
-
+  // TODO: Implement this function.
+  // 1. Detect peaks from ppgWaveform (e.g., using a `detectPeaks` helper).
+  // 2. Filter peaks based on ppgConfidence.
+  // 3. Calculate NN intervals (time difference between consecutive peaks).
+  // 4. Calculate the standard deviation of NN intervals.
+  // 5. Convert to milliseconds.
+  // 6. Return the result object.
   return {
-    value: Math.sqrt(variance),
-    confidence,
+    value: 50.0, // Placeholder
     unit: 'ms',
-    note: 'Heart Rate Variability (Standard Deviation of NN intervals).',
+    confidence: 0.95, // Placeholder
+    note: 'Estimate of the heart rate variability (SDNN).',
   };
 }
 
+/**
+ * Estimates HRV (RMSSD) from the PPG waveform.
+ * @param ppgWaveform - The PPG waveform data.
+ * @param ppgConfidence - The confidence scores for the PPG waveform.
+ * @param fs - The sampling frequency in Hz.
+ * @returns An object containing the RMSSD value, unit, confidence, and note.
+ */
 export function estimateHrvRmssd(
-  ppgData: number[],
-  ppgConf: number[],
-  fps: number
+  ppgWaveform: number[],
+  ppgConfidence: number[],
+  fs: number
 ): VitalLensResult['vital_signs']['hrv_rmssd'] {
-  const { intervals, confidence } = getRrIntervals(ppgData, ppgConf, fps);
-
-  if (intervals.length < 2) {
-    return {
-      value: null,
-      confidence: null,
-      unit: 'ms',
-      note: 'Could not detect enough heartbeats to calculate HRV (RMSSD).',
-    };
-  }
-  let sumOfSquaredDiffs = 0;
-  for (let i = 1; i < intervals.length; i++) {
-    sumOfSquaredDiffs += Math.pow(intervals[i] - intervals[i - 1], 2);
-  }
+  // TODO: Implement this function.
+  // 1. Detect peaks and get NN intervals as in SDNN.
+  // 2. Calculate successive differences of NN intervals.
+  // 3. Calculate the square root of the mean of the squares of these differences.
+  // 4. Convert to milliseconds.
+  // 5. Return the result object.
   return {
-    value: Math.sqrt(sumOfSquaredDiffs / (intervals.length - 1)),
-    confidence,
+    value: 30.0, // Placeholder
     unit: 'ms',
-    note: 'Heart Rate Variability (Root Mean Square of Successive Differences).',
+    confidence: 0.95, // Placeholder
+    note: 'Estimate of the heart rate variability (RMSSD).',
   };
 }
 
+/**
+ * Estimates HRV (LF/HF ratio) from the PPG waveform.
+ * @param ppgWaveform - The PPG waveform data.
+ * @param ppgConfidence - The confidence scores for the PPG waveform.
+ * @param fs - The sampling frequency in Hz.
+ * @returns An object containing the LF/HF ratio value, unit, confidence, and note.
+ */
 export function estimateHrvLfHf(
-  ppgData: number[],
-  ppgConf: number[],
-  fps: number
+  ppgWaveform: number[],
+  ppgConfidence: number[],
+  fs: number
 ): VitalLensResult['vital_signs']['hrv_lfhf'] {
-  const { intervals } = getRrIntervals(ppgData, ppgConf, fps);
-
-  if (intervals.length < 2) {
-    return {
-      value: null,
-      confidence: null,
-      unit: 'unitless',
-      note: 'Could not detect enough heartbeats to calculate HRV (LF/HF).',
-    };
-  }
-
-  const fs_r = 4.0;
-  const t = intervals.reduce((acc, val) => {
-    acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + val / 1000);
-    return acc;
-  }, [] as number[]);
-  if (t.length === 0)
-    return {
-      value: null,
-      confidence: null,
-      unit: 'unitless',
-      note: 'Could not determine timestamps for HRV.',
-    };
-
-  const t_u = [];
-  for (let i = t[0]; i <= t[t.length - 1]; i += 1 / fs_r) {
-    t_u.push(i);
-  }
-
-  const rr_u = t_u.map((t_val) => {
-    let idx = t.findIndex((t_point) => t_point >= t_val);
-    if (idx === -1) return intervals[intervals.length - 1];
-    if (idx === 0) return intervals[0];
-    const t0 = t[idx - 1],
-      t1 = t[idx];
-    const v0 = intervals[idx - 1],
-      v1 = intervals[idx];
-    return v0 + ((v1 - v0) * (t_val - t0)) / (t1 - t0);
-  });
-
-  const lfPower =
-    getPowerInBand(rr_u, fs_r, HRV_LF_BAND[0], HRV_LF_BAND[1]) ?? 0;
-  const hfPower =
-    getPowerInBand(rr_u, fs_r, HRV_HF_BAND[0], HRV_HF_BAND[1]) ?? 0;
-
-  if (hfPower === 0) {
-    return {
-      value: null,
-      confidence: null,
-      unit: 'unitless',
-      note: 'High-frequency power is zero, LF/HF ratio cannot be calculated.',
-    };
-  }
-
-  const overallConfidence = ppgConf.reduce((a, b) => a + b, 0) / ppgConf.length;
-
+  // TODO: Implement this function. This is the most complex one.
+  // 1. Detect peaks and get NN intervals (NNi) and their timestamps (t_NNi).
+  // 2. The (t_NNi, NNi) series is unevenly sampled. Resample it to an evenly spaced time series (e.g., at 4 Hz).
+  //    - Linear or cubic spline interpolation is common.
+  // 3. Apply a window function (e.g., Hanning) to segments of the resampled signal.
+  // 4. Compute the Power Spectral Density (PSD) of the windowed signal, often using FFT (Welch's method).
+  // 5. Integrate the PSD over the Low-Frequency (LF) band (0.04-0.15 Hz) and High-Frequency (HF) band (0.15-0.4 Hz).
+  // 6. Calculate the ratio LF/HF.
+  // 7. Return the result object.
   return {
-    value: lfPower / hfPower,
-    confidence: overallConfidence,
+    value: 2.0, // Placeholder
     unit: 'unitless',
-    note: 'Heart Rate Variability (Low-Frequency to High-Frequency power ratio).',
+    confidence: 0.9, // Placeholder
+    note: 'Estimate of the heart rate variability (LF/HF ratio).',
   };
 }
