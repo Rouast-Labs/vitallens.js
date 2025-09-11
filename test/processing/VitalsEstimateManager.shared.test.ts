@@ -7,8 +7,8 @@ import {
   VitalLensOptions,
   VitalLensResult,
 } from '../../src/types/core';
-import * as physio from '../../src/utils/physio';
 import { jest } from '@jest/globals';
+import * as physio from '../../src/utils/physio';
 
 jest.mock('../../src/config/constants', () => ({
   AGG_WINDOW_SIZE: 4,
@@ -40,6 +40,14 @@ describe('VitalsEstimateManager', () => {
   let methodConfig: MethodConfig;
   let options: VitalLensOptions;
   let manager: VitalsEstimateManager;
+
+  // Cast the imported physio functions to Jest mocks for type safety
+  const mockedEstimateHeartRate = physio.estimateHeartRate as jest.Mock;
+  const mockedEstimateRespiratoryRate =
+    physio.estimateRespiratoryRate as jest.Mock;
+  const mockedEstimateHrvSdnn = physio.estimateHrvSdnn as jest.Mock;
+  const mockedEstimateHrvRmssd = physio.estimateHrvRmssd as jest.Mock;
+  const mockedEstimateHrvLfHf = physio.estimateHrvLfHf as jest.Mock;
 
   beforeEach(() => {
     methodConfig = {
@@ -640,226 +648,302 @@ describe('VitalsEstimateManager', () => {
     });
   });
 
-  // TODO: Fix tests
-  // describe('assembleResult', () => {
-  //   beforeEach(() => {
-  //     manager['waveforms'].set('source1', {
-  //       ppgData: { sum: [0, 0, 1, 2, 3], count: [1, 1, 1, 1, 1] },
-  //       ppgConf: { sum: [0.5, 0.6, 0.7, 0.8, 0.9], count: [1, 1, 1, 1, 1] },
-  //       respData: { sum: [2, 3, 4, 5, 6], count: [1, 1, 1, 1, 1] },
-  //       respConf: { sum: [0.4, 0.5, 0.6, 0.7, 0.8], count: [1, 1, 1, 1, 1] },
-  //     });
-  //     manager['waveformNotes'].set('source1', {
-  //       ppg: 'PPG note',
-  //       resp: 'RESP note',
-  //     });
-  //     manager['timestamps'].set('source1', [1001, 1002, 1003, 1004, 1005]);
-  //     manager['faces'].set('source1', {
-  //       coordinates: [
-  //         [0, 0, 20, 20],
-  //         [0, 0, 20, 20],
-  //         [0, 0, 20, 20],
-  //         [10, 10, 30, 30],
-  //         [15, 15, 25, 25],
-  //       ],
-  //       confidence: [0.9, 0.92, 0.95, 0.9, 0.85],
-  //     });
-  //     manager['message'].set('source1', 'Test message');
-  //   });
+  describe('assembleResult', () => {
+    beforeEach(() => {
+      methodConfig.supportedVitals = [
+        'heart_rate',
+        'ppg_waveform',
+        'hrv_sdnn',
+        'hrv_rmssd',
+        'hrv_lfhf',
+      ];
 
-  //   it('should assemble an incremental result correctly', async () => {
-  //     const incrementalResult: VitalLensResult = {
-  //       time: [1004, 1005, 1006],
-  //       face: {
-  //         coordinates: [
-  //           [20, 20, 40, 40],
-  //           [20, 20, 40, 40],
-  //           [25, 25, 50, 50],
-  //         ],
-  //         confidence: [0.91, 0.92, 0.93],
-  //       },
-  //       vital_signs: {
-  //         ppg_waveform: {
-  //           data: [1, 2, 3],
-  //           confidence: [0.7, 0.8, 0.9],
-  //           note: '',
-  //           unit: '',
-  //         },
-  //         respiratory_waveform: {
-  //           data: [4, 5, 6],
-  //           confidence: [0.6, 0.7, 0.8],
-  //           note: '',
-  //           unit: '',
-  //         },
-  //       },
-  //       message: '',
-  //     };
+      manager['waveforms'].set('source1', {
+        ppgData: { sum: [0, 0, 1, 2, 3], count: [1, 1, 1, 1, 1] },
+        ppgConf: { sum: [0.5, 0.6, 0.7, 0.8, 0.9], count: [1, 1, 1, 1, 1] },
+        respData: { sum: [2, 3, 4, 5, 6], count: [1, 1, 1, 1, 1] },
+        respConf: { sum: [0.4, 0.5, 0.6, 0.7, 0.8], count: [1, 1, 1, 1, 1] },
+      });
+      manager['waveformNotes'].set('source1', {
+        ppg: 'PPG note',
+        resp: 'RESP note',
+      });
+      manager['timestamps'].set('source1', [1001, 1002, 1003, 1004, 1005]);
+      manager['faces'].set('source1', {
+        coordinates: [
+          [0, 0, 20, 20],
+          [0, 0, 20, 20],
+          [0, 0, 20, 20],
+          [10, 10, 30, 30],
+          [15, 15, 25, 25],
+        ],
+        confidence: [0.9, 0.92, 0.95, 0.9, 0.85],
+      });
+      manager['message'].set('source1', 'Test message');
+      // Mock return values for all imported physio functions
+      mockedEstimateHeartRate.mockReturnValue(75);
+      mockedEstimateRespiratoryRate.mockReturnValue(18);
+      mockedEstimateHrvSdnn.mockReturnValue({
+        value: 30,
+        confidence: 0.85,
+        unit: 'ms',
+        note: 'SDNN note',
+      });
+      mockedEstimateHrvRmssd.mockReturnValue({
+        value: 25,
+        confidence: 0.88,
+        unit: 'ms',
+        note: 'RMSSD note',
+      });
+      mockedEstimateHrvLfHf.mockReturnValue({
+        value: 1.5,
+        confidence: 0.7,
+        unit: 'unitless',
+        note: 'LF/HF note',
+      });
+    });
 
-  //     jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
-  //     jest.spyOn(manager as any, 'estimateHeartRate').mockReturnValue(75);
-  //     jest.spyOn(manager as any, 'estimateRespiratoryRate').mockReturnValue(18);
+    it('should assemble an incremental result correctly', async () => {
+      const incrementalResult: VitalLensResult = {
+        time: [1004, 1005, 1006],
+        face: {
+          coordinates: [
+            [20, 20, 40, 40],
+            [20, 20, 40, 40],
+            [25, 25, 50, 50],
+          ],
+          confidence: [0.91, 0.92, 0.93],
+        },
+        vital_signs: {
+          ppg_waveform: {
+            data: [1, 2, 3],
+            confidence: [0.7, 0.8, 0.9],
+            note: '',
+            unit: '',
+          },
+          respiratory_waveform: {
+            data: [4, 5, 6],
+            confidence: [0.6, 0.7, 0.8],
+            note: '',
+            unit: '',
+          },
+        },
+        message: '',
+      };
 
-  //     const result = await manager['assembleResult'](
-  //       'source1',
-  //       'incremental',
-  //       true,
-  //       2,
-  //       incrementalResult,
-  //       1
-  //     );
+      jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
-  //     expect(result).toEqual({
-  //       time: [1006],
-  //       face: {
-  //         coordinates: [[25, 25, 50, 50]],
-  //         confidence: [0.93],
-  //         note: 'Face detection coordinates for this face, along with live confidence levels.',
-  //       },
-  //       vital_signs: {
-  //         ppg_waveform: {
-  //           data: [3],
-  //           confidence: [0.9],
-  //           unit: 'unitless',
-  //           note: 'PPG note',
-  //         },
-  //         respiratory_waveform: {
-  //           data: [6],
-  //           confidence: [0.8],
-  //           unit: 'unitless',
-  //           note: 'RESP note',
-  //         },
-  //         heart_rate: {
-  //           value: 75,
-  //           confidence: 0.7,
-  //           unit: 'bpm',
-  //           note: 'Estimate of the heart rate.',
-  //         },
-  //         respiratory_rate: {
-  //           value: 18,
-  //           confidence: 0.6,
-  //           unit: 'bpm',
-  //           note: 'Estimate of the respiratory rate.',
-  //         },
-  //       },
-  //       fps: 1,
-  //       estFps: 1,
-  //       message: 'Test message',
-  //     });
-  //   });
+      const result = await manager['assembleResult'](
+        'source1',
+        'incremental',
+        true,
+        2,
+        incrementalResult,
+        1
+      );
 
-  //   it('should assemble an aggregated result correctly', async () => {
-  //     jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
-  //     jest.spyOn(manager as any, 'estimateHeartRate').mockReturnValue(75);
-  //     jest.spyOn(manager as any, 'estimateRespiratoryRate').mockReturnValue(18);
+      expect(result).toEqual({
+        time: [1006],
+        face: {
+          coordinates: [[25, 25, 50, 50]],
+          confidence: [0.93],
+          note: 'Face detection coordinates for this face, along with live confidence levels.',
+        },
+        vital_signs: {
+          ppg_waveform: {
+            data: [3],
+            confidence: [0.9],
+            unit: 'unitless',
+            note: 'PPG note',
+          },
+          respiratory_waveform: {
+            data: [6],
+            confidence: [0.8],
+            unit: 'unitless',
+            note: 'RESP note',
+          },
+          heart_rate: {
+            value: 75,
+            confidence: 0.7, // avg of [0.5, 0.6, 0.7, 0.8, 0.9]
+            unit: 'bpm',
+            note: 'Estimate of the heart rate.',
+          },
+          respiratory_rate: {
+            value: 18,
+            confidence: 0.6, // avg of [0.4, 0.5, 0.6, 0.7, 0.8]
+            unit: 'bpm',
+            note: 'Estimate of the respiratory rate.',
+          },
+          hrv_sdnn: {
+            value: 30,
+            confidence: 0.85,
+            unit: 'ms',
+            note: 'SDNN note',
+          },
+          hrv_rmssd: {
+            value: 25,
+            confidence: 0.88,
+            unit: 'ms',
+            note: 'RMSSD note',
+          },
+          hrv_lfhf: {
+            value: 1.5,
+            confidence: 0.7,
+            unit: 'unitless',
+            note: 'LF/HF note',
+          },
+        },
+        fps: 1,
+        estFps: 1,
+        message: 'Test message',
+      });
+    });
 
-  //     const result = await manager['assembleResult'](
-  //       'source1',
-  //       'windowed',
-  //       false
-  //     );
+    it('should assemble a windowed result correctly', async () => {
+      jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
-  //     expect(result).toEqual({
-  //       time: [1002, 1003, 1004, 1005],
-  //       face: {
-  //         coordinates: [
-  //           [0, 0, 20, 20],
-  //           [0, 0, 20, 20],
-  //           [10, 10, 30, 30],
-  //           [15, 15, 25, 25],
-  //         ],
-  //         confidence: [0.92, 0.95, 0.9, 0.85],
-  //         note: 'Face detection coordinates for this face, along with live confidence levels.',
-  //       },
-  //       vital_signs: {
-  //         ppg_waveform: {
-  //           data: [0, 1, 2, 3],
-  //           confidence: [0.6, 0.7, 0.8, 0.9],
-  //           unit: 'unitless',
-  //           note: 'PPG note',
-  //         },
-  //         respiratory_waveform: {
-  //           data: [3, 4, 5, 6],
-  //           confidence: [0.5, 0.6, 0.7, 0.8],
-  //           unit: 'unitless',
-  //           note: 'RESP note',
-  //         },
-  //         heart_rate: {
-  //           value: 75,
-  //           confidence: 0.7,
-  //           unit: 'bpm',
-  //           note: 'Estimate of the heart rate.',
-  //         },
-  //         respiratory_rate: {
-  //           value: 18,
-  //           confidence: 0.6,
-  //           unit: 'bpm',
-  //           note: 'Estimate of the respiratory rate.',
-  //         },
-  //       },
-  //       fps: 1,
-  //       message: 'Test message',
-  //     });
-  //     expect(manager['getCurrentFps']).toHaveBeenCalledWith(
-  //       'source1',
-  //       manager['bufferSizeAgg']
-  //     );
-  //   });
+      const result = await manager['assembleResult'](
+        'source1',
+        'windowed',
+        false
+      );
 
-  //   it('should assemble a complete result correctly', async () => {
-  //     jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
-  //     jest.spyOn(manager as any, 'estimateHeartRate').mockReturnValue(75);
-  //     jest.spyOn(manager as any, 'estimateRespiratoryRate').mockReturnValue(18);
+      expect(result).toEqual({
+        time: [1002, 1003, 1004, 1005],
+        face: {
+          coordinates: [
+            [0, 0, 20, 20],
+            [0, 0, 20, 20],
+            [10, 10, 30, 30],
+            [15, 15, 25, 25],
+          ],
+          confidence: [0.92, 0.95, 0.9, 0.85],
+          note: 'Face detection coordinates for this face, along with live confidence levels.',
+        },
+        vital_signs: {
+          ppg_waveform: {
+            data: [0, 1, 2, 3],
+            confidence: [0.6, 0.7, 0.8, 0.9],
+            unit: 'unitless',
+            note: 'PPG note',
+          },
+          respiratory_waveform: {
+            data: [3, 4, 5, 6],
+            confidence: [0.5, 0.6, 0.7, 0.8],
+            unit: 'unitless',
+            note: 'RESP note',
+          },
+          heart_rate: {
+            value: 75,
+            confidence: 0.7,
+            unit: 'bpm',
+            note: 'Estimate of the heart rate.',
+          },
+          respiratory_rate: {
+            value: 18,
+            confidence: 0.6,
+            unit: 'bpm',
+            note: 'Estimate of the respiratory rate.',
+          },
+          hrv_sdnn: {
+            value: 30,
+            confidence: 0.85,
+            unit: 'ms',
+            note: 'SDNN note',
+          },
+          hrv_rmssd: {
+            value: 25,
+            confidence: 0.88,
+            unit: 'ms',
+            note: 'RMSSD note',
+          },
+          hrv_lfhf: {
+            value: 1.5,
+            confidence: 0.7,
+            unit: 'unitless',
+            note: 'LF/HF note',
+          },
+        },
+        fps: 1,
+        message: 'Test message',
+      });
+      expect(manager['getCurrentFps']).toHaveBeenCalledWith(
+        'source1',
+        manager['bufferSizeAgg']
+      );
+    });
 
-  //     const result = await manager['assembleResult'](
-  //       'source1',
-  //       'complete',
-  //       false
-  //     );
+    it('should assemble a complete result correctly', async () => {
+      jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
-  //     expect(result).toEqual({
-  //       time: [1001, 1002, 1003, 1004, 1005],
-  //       face: {
-  //         coordinates: [
-  //           [0, 0, 20, 20],
-  //           [0, 0, 20, 20],
-  //           [0, 0, 20, 20],
-  //           [10, 10, 30, 30],
-  //           [15, 15, 25, 25],
-  //         ],
-  //         confidence: [0.9, 0.92, 0.95, 0.9, 0.85],
-  //         note: 'Face detection coordinates for this face, along with live confidence levels.',
-  //       },
-  //       vital_signs: {
-  //         ppg_waveform: {
-  //           data: [0, 0, 1, 2, 3],
-  //           confidence: [0.5, 0.6, 0.7, 0.8, 0.9],
-  //           unit: 'unitless',
-  //           note: 'PPG note',
-  //         },
-  //         respiratory_waveform: {
-  //           data: [2, 3, 4, 5, 6],
-  //           confidence: [0.4, 0.5, 0.6, 0.7, 0.8],
-  //           unit: 'unitless',
-  //           note: 'RESP note',
-  //         },
-  //         heart_rate: {
-  //           value: 75,
-  //           confidence: 0.7,
-  //           unit: 'bpm',
-  //           note: 'Estimate of the heart rate.',
-  //         },
-  //         respiratory_rate: {
-  //           value: 18,
-  //           confidence: 0.6,
-  //           unit: 'bpm',
-  //           note: 'Estimate of the respiratory rate.',
-  //         },
-  //       },
-  //       fps: 1,
-  //       message: 'Test message',
-  //     });
-  //   });
-  // });
+      const result = await manager['assembleResult'](
+        'source1',
+        'complete',
+        false
+      );
+
+      expect(result).toEqual({
+        time: [1001, 1002, 1003, 1004, 1005],
+        face: {
+          coordinates: [
+            [0, 0, 20, 20],
+            [0, 0, 20, 20],
+            [0, 0, 20, 20],
+            [10, 10, 30, 30],
+            [15, 15, 25, 25],
+          ],
+          confidence: [0.9, 0.92, 0.95, 0.9, 0.85],
+          note: 'Face detection coordinates for this face, along with live confidence levels.',
+        },
+        vital_signs: {
+          ppg_waveform: {
+            data: [0, 0, 1, 2, 3],
+            confidence: [0.5, 0.6, 0.7, 0.8, 0.9],
+            unit: 'unitless',
+            note: 'PPG note',
+          },
+          respiratory_waveform: {
+            data: [2, 3, 4, 5, 6],
+            confidence: [0.4, 0.5, 0.6, 0.7, 0.8],
+            unit: 'unitless',
+            note: 'RESP note',
+          },
+          heart_rate: {
+            value: 75,
+            confidence: 0.7,
+            unit: 'bpm',
+            note: 'Estimate of the heart rate.',
+          },
+          respiratory_rate: {
+            value: 18,
+            confidence: 0.6,
+            unit: 'bpm',
+            note: 'Estimate of the respiratory rate.',
+          },
+          hrv_sdnn: {
+            value: 30,
+            confidence: 0.85,
+            unit: 'ms',
+            note: 'SDNN note',
+          },
+          hrv_rmssd: {
+            value: 25,
+            confidence: 0.88,
+            unit: 'ms',
+            note: 'RMSSD note',
+          },
+          hrv_lfhf: {
+            value: 1.5,
+            confidence: 0.7,
+            unit: 'unitless',
+            note: 'LF/HF note',
+          },
+        },
+        fps: 1,
+        message: 'Test message',
+      });
+    });
+  });
 
   describe('getCurrentFps', () => {
     it('should return null if there are less than 2 timestamps', () => {
