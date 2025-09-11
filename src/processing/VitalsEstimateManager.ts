@@ -10,7 +10,13 @@ import {
   CALC_RR_MIN_WINDOW_SIZE,
   CALC_RR_WINDOW_SIZE,
 } from '../config/constants';
-import * as physio from '../utils/physio';
+import {
+  estimateHeartRate,
+  estimateRespiratoryRate,
+  estimateHrvSdnn,
+  estimateHrvRmssd,
+  estimateHrvLfHf,
+} from '../utils/physio';
 
 export class VitalsEstimateManager implements IVitalsEstimateManager {
   private waveforms: Map<
@@ -660,7 +666,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             light
           );
           const hrPpgConf = averagedPpgConf.slice(-hrPpgSize);
-          const hrValue = physio.estimateHeartRate(hrPpgData, fpsHr);
+          const hrValue = estimateHeartRate(hrPpgData, fpsHr);
           if (hrValue !== null) {
             result.vital_signs.heart_rate = {
               value: hrValue,
@@ -682,7 +688,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           this.methodConfig.supportedVitals?.includes('hrv_sdnn') &&
           ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_SDNN_MIN_T
         ) {
-          result.vital_signs.hrv_sdnn = physio.estimateHrvSdnn(
+          result.vital_signs.hrv_sdnn = estimateHrvSdnn(
             ppgDataForHrv,
             ppgConfForHrv,
             fpsForHrv
@@ -692,7 +698,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           this.methodConfig.supportedVitals?.includes('hrv_rmssd') &&
           ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_RMSSD_MIN_T
         ) {
-          result.vital_signs.hrv_rmssd = physio.estimateHrvRmssd(
+          result.vital_signs.hrv_rmssd = estimateHrvRmssd(
             ppgDataForHrv,
             ppgConfForHrv,
             fpsForHrv
@@ -702,7 +708,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
           this.methodConfig.supportedVitals?.includes('hrv_lfhf') &&
           ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_LFHF_MIN_T
         ) {
-          result.vital_signs.hrv_lfhf = physio.estimateHrvLfHf(
+          result.vital_signs.hrv_lfhf = estimateHrvLfHf(
             ppgDataForHrv,
             ppgConfForHrv,
             fpsForHrv
@@ -784,7 +790,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             light
           );
           const rrRespConf = averagedRespConf.slice(-rrRespSize);
-          const rrValue = physio.estimateRespiratoryRate(rrRespData, fpsRr);
+          const rrValue = estimateRespiratoryRate(rrRespData, fpsRr);
           if (rrValue !== null) {
             result.vital_signs.respiratory_rate = {
               value: rrValue,
