@@ -45,9 +45,9 @@ describe('VitalsEstimateManager', () => {
   const mockedEstimateHeartRate = physio.estimateHeartRate as jest.Mock;
   const mockedEstimateRespiratoryRate =
     physio.estimateRespiratoryRate as jest.Mock;
-  const mockedEstimateHrvSdnn = physio.estimateHrvSdnn as jest.Mock;
-  const mockedEstimateHrvRmssd = physio.estimateHrvRmssd as jest.Mock;
-  const mockedEstimateHrvLfHf = physio.estimateHrvLfHf as jest.Mock;
+  const mockedFindPeaks = physio.findPeaks as jest.Mock;
+  const mockedEstimateHrvFromDetectionSequences =
+    physio.estimateHrvFromDetectionSequences as jest.Mock;
 
   beforeEach(() => {
     methodConfig = {
@@ -680,27 +680,40 @@ describe('VitalsEstimateManager', () => {
         confidence: [0.9, 0.92, 0.95, 0.9, 0.85],
       });
       manager['message'].set('source1', 'Test message');
-      // Mock return values for all imported physio functions
+      // Mock the return values for the physio functions that will be called
       mockedEstimateHeartRate.mockReturnValue(75);
       mockedEstimateRespiratoryRate.mockReturnValue(18);
-      mockedEstimateHrvSdnn.mockReturnValue({
-        value: 30,
-        confidence: 0.85,
-        unit: 'ms',
-        note: 'SDNN note',
-      });
-      mockedEstimateHrvRmssd.mockReturnValue({
-        value: 25,
-        confidence: 0.88,
-        unit: 'ms',
-        note: 'RMSSD note',
-      });
-      mockedEstimateHrvLfHf.mockReturnValue({
-        value: 1.5,
-        confidence: 0.7,
-        unit: 'unitless',
-        note: 'LF/HF note',
-      });
+      mockedFindPeaks.mockReturnValue([[10, 20, 30, 40, 50]]); // Return some dummy peak sequences
+      mockedEstimateHrvFromDetectionSequences.mockImplementation(
+        (sequences, conf, fs, metric) => {
+          // Return a different object based on the metric being requested
+          switch (metric) {
+            case 'sdnn':
+              return {
+                value: 30,
+                confidence: 0.85,
+                unit: 'ms',
+                note: 'SDNN note',
+              };
+            case 'rmssd':
+              return {
+                value: 25,
+                confidence: 0.88,
+                unit: 'ms',
+                note: 'RMSSD note',
+              };
+            case 'lfhf':
+              return {
+                value: 1.5,
+                confidence: 0.7,
+                unit: 'ratio',
+                note: 'LF/HF note',
+              };
+            default:
+              return null;
+          }
+        }
+      );
     });
 
     it('should assemble an incremental result correctly', async () => {
@@ -733,7 +746,7 @@ describe('VitalsEstimateManager', () => {
 
       jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
-      const result = await manager['assembleResult'](
+      const result = await (manager as any).assembleResult(
         'source1',
         'incremental',
         true,
@@ -789,7 +802,7 @@ describe('VitalsEstimateManager', () => {
           hrv_lfhf: {
             value: 1.5,
             confidence: 0.7,
-            unit: 'unitless',
+            unit: 'ratio',
             note: 'LF/HF note',
           },
         },
@@ -802,7 +815,7 @@ describe('VitalsEstimateManager', () => {
     it('should assemble a windowed result correctly', async () => {
       jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
-      const result = await manager['assembleResult'](
+      const result = await (manager as any).assembleResult(
         'source1',
         'windowed',
         false
@@ -860,23 +873,23 @@ describe('VitalsEstimateManager', () => {
           hrv_lfhf: {
             value: 1.5,
             confidence: 0.7,
-            unit: 'unitless',
+            unit: 'ratio',
             note: 'LF/HF note',
           },
         },
         fps: 1,
         message: 'Test message',
       });
-      expect(manager['getCurrentFps']).toHaveBeenCalledWith(
+      expect((manager as any).getCurrentFps).toHaveBeenCalledWith(
         'source1',
-        manager['bufferSizeAgg']
+        (manager as any).bufferSizeAgg
       );
     });
 
     it('should assemble a complete result correctly', async () => {
       jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
-      const result = await manager['assembleResult'](
+      const result = await (manager as any).assembleResult(
         'source1',
         'complete',
         false
@@ -935,7 +948,7 @@ describe('VitalsEstimateManager', () => {
           hrv_lfhf: {
             value: 1.5,
             confidence: 0.7,
-            unit: 'unitless',
+            unit: 'ratio',
             note: 'LF/HF note',
           },
         },
