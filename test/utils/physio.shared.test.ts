@@ -2,11 +2,186 @@ import {
   estimateRateFromFFT,
   estimateHeartRate,
   estimateRespiratoryRate,
-  estimateHrvSdnn,
-  estimateHrvRmssd,
-  estimateHrvLfHf,
+  estimateHrvFromDetectionSequences,
   findPeaks,
 } from '../../src/utils/physio';
+
+/**
+ * A simple seedable pseudo-random number generator (PRNG) for deterministic tests.
+ * @param a The seed.
+ * @returns A function that returns a random number between 0 and 1, just like Math.random().
+ */
+function mulberry32(a: number) {
+  return function () {
+    let t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Generates a synthetic, standardized PPG-like signal for testing.
+ * @param options - Configuration for signal generation.
+ * @returns A standardized array of numbers representing the synthetic PPG signal.
+ */
+function generateSyntheticPPG(options: {
+  duration: number;
+  fs: number;
+  hr: number;
+  noiseLevel?: number;
+  hrVariability?: number;
+  artifacts?: { index: number; amplitude: number }[];
+  missingBeats?: number[];
+  seed?: number;
+}): number[] {
+  const {
+    duration,
+    fs,
+    hr,
+    noiseLevel = 0.05,
+    hrVariability = 0.01,
+    artifacts = [],
+    missingBeats = [],
+    seed,
+  } = options;
+
+  const random = seed ? mulberry32(seed) : Math.random;
+
+  const numSamples = Math.round(duration * fs);
+  const t = Array.from({ length: numSamples }, (_, i) => i / fs);
+  const beatTimes: number[] = [];
+  let currentBeatTime = 0;
+  let beatCounter = 0;
+  while (currentBeatTime < duration) {
+    const rrInterval = 60 / hr + (random() - 0.5) * 2 * hrVariability;
+    if (!missingBeats.includes(beatCounter)) {
+      beatTimes.push(currentBeatTime);
+    }
+    currentBeatTime += rrInterval;
+    beatCounter++;
+  }
+
+  let signal = new Array(numSamples).fill(0);
+  for (const beatTime of beatTimes) {
+    for (let i = 0; i < numSamples; i++) {
+      const timeSinceBeat = t[i] - beatTime;
+      const rrInterval = 60 / hr;
+      if (timeSinceBeat >= 0 && timeSinceBeat < rrInterval) {
+        const phase = timeSinceBeat / rrInterval;
+        let pulse = 0;
+        if (phase < 0.2) {
+          pulse = Math.sin((phase / 0.2) * (Math.PI / 2));
+        } else {
+          pulse = Math.exp(-5 * (phase - 0.2));
+        }
+        signal[i] += pulse;
+      }
+    }
+  }
+
+  for (let i = 0; i < numSamples; i++) {
+    signal[i] += (random() - 0.5) * 2 * noiseLevel;
+  }
+
+  for (const artifact of artifacts) {
+    if (artifact.index >= 0 && artifact.index < numSamples) {
+      signal[artifact.index] += artifact.amplitude;
+    }
+  }
+
+  const mean = signal.reduce((a, b) => a + b, 0) / signal.length;
+  const std = Math.sqrt(
+    signal.map((x) => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) /
+      signal.length
+  );
+  if (std > 0) {
+    signal = signal.map((x) => (x - mean) / std);
+  }
+
+  return signal;
+}
+
+/**
+ * Generates synthetic peak sequences directly for testing HRV functions.
+ * @param options - Configuration for peak generation.
+ * @returns An array of peak index sequences.
+ */
+function generateSyntheticPeaks(options: {
+  duration: number;
+  fs: number;
+  hr: number;
+  hrVariability?: number;
+  missingBeats?: number[];
+  seed?: number;
+}): number[][] {
+  const {
+    duration,
+    fs,
+    hr,
+    hrVariability = 0.01,
+    missingBeats = [],
+    seed,
+  } = options;
+  const random = seed ? mulberry32(seed) : Math.random;
+
+  const peakTimes: number[] = [];
+  let currentBeatTime = 0;
+  let beatCounter = 0;
+  while (currentBeatTime < duration) {
+    const rrInterval = 60 / hr + (random() - 0.5) * 2 * hrVariability;
+    if (!missingBeats.includes(beatCounter)) {
+      peakTimes.push(currentBeatTime);
+    }
+    currentBeatTime += rrInterval;
+    beatCounter++;
+  }
+
+  const peakIndices = peakTimes
+    .map((time) => Math.round(time * fs))
+    .filter((idx) => idx < duration * fs);
+
+  // Mimic findPeaks by splitting into sequences if there's a large gap
+  if (missingBeats.length === 0) {
+    return [peakIndices];
+  }
+
+  const sequences: number[][] = [];
+  let currentSequence: number[] = [];
+  const maxInterval = (60 / 45) * 2; // ~2.6s interval for a 45bpm HR
+
+  for (let i = 0; i < peakIndices.length; i++) {
+    if (currentSequence.length > 0) {
+      const lastTime = currentSequence[currentSequence.length - 1] / fs;
+      const currentTime = peakIndices[i] / fs;
+      if (currentTime - lastTime > maxInterval) {
+        sequences.push(currentSequence);
+        currentSequence = [];
+      }
+    }
+    currentSequence.push(peakIndices[i]);
+  }
+  if (currentSequence.length > 0) {
+    sequences.push(currentSequence);
+  }
+
+  return sequences;
+}
+
+// Helper function to generate peak sequences from a list of intervals
+const createPeaksFromIntervals = (
+  intervalsInSec: number[],
+  fs: number
+): number[][] => {
+  const peakTimes = intervalsInSec.reduce(
+    (acc, interval) => {
+      acc.push(acc[acc.length - 1] + interval);
+      return acc;
+    },
+    [0] // Start at time 0
+  );
+  return [peakTimes.map((t) => Math.round(t * fs))];
+};
 
 describe('estimateRateFromFFT', () => {
   it('should throw an error if the waveform is empty', () => {
@@ -78,92 +253,6 @@ describe('estimateRateFromFFT', () => {
     expect(result).toBeCloseTo(1 * 60, 1); // Expected: 1 Hz = 60 BPM
   });
 });
-
-/**
- * Generates a synthetic, standardized PPG-like signal for testing.
- * @param options - Configuration for signal generation.
- * - `duration`: The duration of the signal in seconds.
- * - `fs`: The sampling frequency in Hz.
- * - `hr`: The heart rate in beats per minute.
- * - `noiseLevel`: The standard deviation of additive Gaussian noise before standardization.
- * - `hrVariability`: Randomness factor for beat-to-beat intervals.
- * - `artifacts`: Array of objects to add sharp artifacts to the signal.
- * - `missingBeats`: Array of beat indices to skip, simulating missed beats.
- * @returns A standardized array of numbers representing the synthetic PPG signal.
- */
-function generateSyntheticPPG(options: {
-  duration: number;
-  fs: number;
-  hr: number;
-  noiseLevel?: number;
-  hrVariability?: number;
-  artifacts?: { index: number; amplitude: number }[];
-  missingBeats?: number[];
-}): number[] {
-  const {
-    duration,
-    fs,
-    hr,
-    noiseLevel = 0.05,
-    hrVariability = 0.01,
-    artifacts = [],
-    missingBeats = [],
-  } = options;
-
-  const numSamples = Math.round(duration * fs);
-  const t = Array.from({ length: numSamples }, (_, i) => i / fs);
-  const beatTimes: number[] = [];
-  let currentBeatTime = 0;
-  let beatCounter = 0;
-  while (currentBeatTime < duration) {
-    const rrInterval = 60 / hr + (Math.random() - 0.5) * 2 * hrVariability;
-    if (!missingBeats.includes(beatCounter)) {
-      beatTimes.push(currentBeatTime);
-    }
-    currentBeatTime += rrInterval;
-    beatCounter++;
-  }
-
-  let signal = new Array(numSamples).fill(0);
-  for (const beatTime of beatTimes) {
-    for (let i = 0; i < numSamples; i++) {
-      const timeSinceBeat = t[i] - beatTime;
-      const rrInterval = 60 / hr;
-      if (timeSinceBeat >= 0 && timeSinceBeat < rrInterval) {
-        const phase = timeSinceBeat / rrInterval;
-        let pulse = 0;
-        if (phase < 0.2) {
-          pulse = Math.sin((phase / 0.2) * (Math.PI / 2));
-        } else {
-          pulse = Math.exp(-5 * (phase - 0.2));
-        }
-        signal[i] += pulse;
-      }
-    }
-  }
-
-  for (let i = 0; i < numSamples; i++) {
-    signal[i] += (Math.random() - 0.5) * 2 * noiseLevel;
-  }
-
-  for (const artifact of artifacts) {
-    if (artifact.index >= 0 && artifact.index < numSamples) {
-      signal[artifact.index] += artifact.amplitude;
-    }
-  }
-
-  // Standardize the final signal to have mean ~0 and std ~1
-  const mean = signal.reduce((a, b) => a + b, 0) / signal.length;
-  const std = Math.sqrt(
-    signal.map((x) => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) /
-      signal.length
-  );
-  if (std > 0) {
-    signal = signal.map((x) => (x - mean) / std);
-  }
-
-  return signal;
-}
 
 describe('findPeaks', () => {
   const fs = 30;
@@ -264,8 +353,6 @@ describe('findPeaks', () => {
       height: 0.5,
     });
 
-    console.log(peaks);
-
     // The artifact might create a false peak and disrupt the interval, splitting the sequence
     expect(peaks.length).toBeGreaterThanOrEqual(1); // Could be 1 or 2 depending on how the artifact is handled
     const totalPeaks = peaks.reduce((sum, seq) => sum + seq.length, 0);
@@ -302,68 +389,296 @@ describe('estimateRespiratoryRate', () => {
   });
 });
 
-// describe('estimateHrvSdnn', () => {
-//   it('should calculate SDNN correctly for a synthetic signal with stable HR', () => {
-//     const fs = 100;
-//     const hr = 60; // 60 BPM -> 1s R-R interval
-//     const ppgSignal = generateSyntheticPPG(30, fs, hr, 0.01);
-//     const ppgConf = new Array(ppgSignal.length).fill(1.0);
+describe('estimateHrvFromDetectionSequences', () => {
+  describe('SDNN metric', () => {
+    it('should return null if not enough valid peaks are found', () => {
+      const result = estimateHrvFromDetectionSequences([], [1], 100, 'sdnn');
+      expect(result).toBeNull();
+    });
 
-//     const result = estimateHrvSdnn(ppgSignal, ppgConf, fs);
+    it('should calculate SDNN as 0 for a perfectly regular signal', () => {
+      const fs = 100;
+      const peakSequences = [Array.from({ length: 10 }, (_, i) => i * fs)];
+      const ppgConf = new Array(10 * fs).fill(1.0);
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'sdnn'
+      );
+      expect(result!.value).toBeCloseTo(0);
+      expect(result!.confidence).toBe(1.0);
+    });
 
-//     // For a perfectly stable HR, SDNN should be very close to 0.
-//     // We allow a small tolerance for noise and peak detection imperfections.
-//     expect(result!.value).toBeLessThan(10); // Expect SDNN < 10 ms for a stable signal
-//     expect(result!.confidence).toBeGreaterThan(0.9);
-//     expect(result!.unit).toBe('ms');
-//   });
-// });
+    it('should calculate a low SDNN for a synthetic signal with low variability', () => {
+      const fs = 100;
+      const peakSequences = generateSyntheticPeaks({
+        duration: 30,
+        fs,
+        hr: 60,
+        hrVariability: 0.01,
+        seed: 42,
+      });
+      const ppgConf = new Array(30 * fs).fill(1.0);
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'sdnn'
+      );
+      expect(result!.value).toBeCloseTo(7, 2);
+      expect(result!.confidence).toBe(1.0);
+    });
 
-// describe('estimateHrvRmssd', () => {
-//   it('should calculate RMSSD correctly for a synthetic signal with stable HR', () => {
-//     const fs = 100;
-//     const hr = 60;
-//     const ppgSignal = generateSyntheticPPG(30, fs, hr, 0.01);
-//     const ppgConf = new Array(ppgSignal.length).fill(1.0);
+    it('should pool intervals from multiple sequences', () => {
+      const fs = 100;
+      const peakSequences = generateSyntheticPeaks({
+        duration: 30,
+        fs,
+        hr: 70,
+        missingBeats: [10, 11, 12, 20, 21, 22],
+        seed: 42,
+      });
+      const ppgConf = new Array(30 * fs).fill(0.95);
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'sdnn'
+      );
+      expect(peakSequences.length).toBeGreaterThan(1);
+      expect(result!.value).toBeGreaterThan(0);
+      expect(result!.value).toBeLessThan(25);
+      expect(result!.confidence).toBeCloseTo(0.95);
+    });
 
-//     const result = estimateHrvRmssd(ppgSignal, ppgConf, fs);
+    it('should ignore outlier intervals caused by missed beats', () => {
+      const fs = 100;
+      const ppgConf = new Array(30 * fs).fill(1.0);
+      const seed = 12345;
 
-//     // For a perfectly stable HR, RMSSD should be very close to 0.
-//     expect(result!.value).toBeLessThan(10); // Expect RMSSD < 10 ms for a stable signal
-//     expect(result!.confidence).toBeGreaterThan(0.9);
-//     expect(result!.unit).toBe('ms');
-//   });
-// });
+      // Generate a clean sequence of peaks.
+      const cleanPeakSequences = generateSyntheticPeaks({
+        duration: 30,
+        fs,
+        hr: 60,
+        hrVariability: 0.02,
+        seed: seed,
+      });
 
-// describe('estimateHrvLfHf', () => {
-//   it('should calculate LF/HF ratio', () => {
-//     const fs = 100;
-//     // We create a signal with a low frequency modulation of the heart rate
-//     const baseHr = 70;
-//     const modFreq = 0.1; // 0.1 Hz, squarely in the LF band
-//     const duration = 60;
-//     const numSamples = duration * fs;
-//     const t = Array.from({ length: numSamples }, (_, i) => i / fs);
-//     const instantaneousHr = t.map(
-//       (time) => baseHr + 10 * Math.sin(2 * Math.PI * modFreq * time)
-//     );
+      // Generate a sequence with a missed beat, using the same seed.
+      const outlierPeakSequences = generateSyntheticPeaks({
+        duration: 30,
+        fs,
+        hr: 60,
+        hrVariability: 0.02,
+        missingBeats: [15],
+        seed: seed,
+      });
 
-//     // This is a simplified way to generate peaks; a full PPG is complex
-//     const ppgSignal = new Array(numSamples).fill(0);
-//     let lastPeakTime = 0;
-//     for (let i = 0; i < numSamples; i++) {
-//       if (t[i] - lastPeakTime >= 60 / instantaneousHr[i]) {
-//         ppgSignal[i] = 1.0; // Mark a peak
-//         lastPeakTime = t[i];
-//       }
-//     }
-//     const ppgConf = new Array(ppgSignal.length).fill(1.0);
+      // Calculate SDNN on both.
+      const resultClean = estimateHrvFromDetectionSequences(
+        cleanPeakSequences,
+        ppgConf,
+        fs,
+        'sdnn'
+      );
+      const resultWithOutlierFiltered = estimateHrvFromDetectionSequences(
+        outlierPeakSequences,
+        ppgConf,
+        fs,
+        'sdnn'
+      );
 
-//     const result = estimateHrvLfHf(ppgSignal, ppgConf, fs);
+      // Assertions
+      // The clean result should have a predictable, low SDNN.
+      expect(resultClean!.value).toBeCloseTo(12, 0);
 
-//     // With strong 0.1Hz modulation, LF power should dominate HF power.
-//     expect(result!.value).toBeGreaterThan(1.5);
-//     expect(result!.confidence).toBeGreaterThan(0.8);
-//     expect(result!.unit).toBe('unitless');
-//   });
-// });
+      // The filtered result should be very close to the clean one, proving the outlier was handled.
+      expect(resultWithOutlierFiltered!.value).toBeCloseTo(
+        resultClean!.value,
+        0
+      );
+    });
+  });
+  describe('RMSSD metric', () => {
+    it('should return null if not enough valid peaks are found', () => {
+      const result = estimateHrvFromDetectionSequences([], [1], 100, 'rmssd');
+      expect(result).toBeNull();
+    });
+
+    it('should calculate RMSSD as 0 for a perfectly regular signal', () => {
+      const fs = 100;
+      const peakSequences = [Array.from({ length: 20 }, (_, i) => i * fs)];
+      const ppgConf = new Array(20 * fs).fill(1.0);
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'rmssd'
+      );
+      expect(result!.value).toBeCloseTo(0);
+      expect(result!.confidence).toBe(1.0);
+    });
+
+    it('should calculate a deterministic low RMSSD for a synthetic signal', () => {
+      const fs = 100;
+      const peakSequences = generateSyntheticPeaks({
+        duration: 30,
+        fs,
+        hr: 60,
+        hrVariability: 0.01,
+        seed: 42,
+      });
+      const ppgConf = new Array(30 * fs).fill(1.0);
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'rmssd'
+      );
+      expect(result!.value).toBeCloseTo(11.3, 1);
+      expect(result!.confidence).toBe(1.0);
+    });
+  });
+  describe('LF/HF metric', () => {
+    it('should return a high LF/HF ratio for a signal with strong LF modulation', () => {
+      const fs = 100;
+      const baseHr = 75;
+      const modFreq = 0.1; // 0.1 Hz, squarely in the LF band
+      const duration = 60; // 60s for a good spectral resolution
+      const seed = 99;
+
+      // Generate RR intervals modulated by a 0.1 Hz sine wave
+      const random = mulberry32(seed);
+      const beatTimes = [0];
+      while (beatTimes[beatTimes.length - 1] < duration) {
+        const time = beatTimes[beatTimes.length - 1];
+        const currentHr = baseHr + 10 * Math.sin(2 * Math.PI * modFreq * time);
+        const rrInterval = 60 / currentHr + (random() - 0.5) * 0.02;
+        beatTimes.push(time + rrInterval);
+      }
+      beatTimes.pop();
+
+      const peakSequences = [beatTimes.map((t) => Math.round(t * fs))];
+      const ppgConf = new Array(duration * fs).fill(1.0);
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'lfhf'
+      );
+
+      // With strong LF modulation and weak HF modulation, the ratio should be high.
+      expect(result!.value).toBeGreaterThan(2);
+      expect(result!.confidence).toBe(1.0);
+    });
+    it('should return a low LF/HF ratio for a signal with strong HF modulation', () => {
+      const fs = 100;
+      const baseHr = 75;
+      const modFreq = 0.25; // 0.25 Hz, squarely in the HF band (0.15 - 0.4 Hz)
+      const duration = 60;
+      const seed = 101;
+
+      // Generate RR intervals modulated by a 0.25 Hz sine wave
+      const random = mulberry32(seed);
+      const beatTimes = [0];
+      while (beatTimes[beatTimes.length - 1] < duration) {
+        const time = beatTimes[beatTimes.length - 1];
+        const currentHr = baseHr + 10 * Math.sin(2 * Math.PI * modFreq * time);
+        const rrInterval = 60 / currentHr + (random() - 0.5) * 0.01; // Very low noise
+        beatTimes.push(time + rrInterval);
+      }
+      beatTimes.pop();
+
+      const peakSequences = [beatTimes.map((t) => Math.round(t * fs))];
+      const ppgConf = new Array(duration * fs).fill(1.0);
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'lfhf'
+      );
+
+      // With strong HF modulation and weak LF, the ratio should be very low.
+      expect(result!.value).toBeLessThan(0.5);
+    });
+    it('should return a predictable ratio for a signal with known LF and HF components', () => {
+      const fs = 100;
+      const baseHr = 75;
+      const lfModFreq = 0.1; // 0.1 Hz
+      const hfModFreq = 0.25; // 0.25 Hz
+      const lfAmplitude = 10; // Stronger LF component
+      const hfAmplitude = 5; // Weaker HF component
+      const duration = 120; // Longer duration for better frequency resolution
+
+      // Power is proportional to amplitude squared. Expected power ratio ≈ (10^2) / (5^2) = 100 / 25 = 4.0
+      const expectedRatio = Math.pow(lfAmplitude, 2) / Math.pow(hfAmplitude, 2);
+
+      const beatTimes = [0];
+      while (beatTimes[beatTimes.length - 1] < duration) {
+        const time = beatTimes[beatTimes.length - 1];
+        const lfMod = lfAmplitude * Math.sin(2 * Math.PI * lfModFreq * time);
+        const hfMod = hfAmplitude * Math.sin(2 * Math.PI * hfModFreq * time);
+        const currentHr = baseHr + lfMod + hfMod;
+        const rrInterval = 60 / currentHr; // No extra noise for a clean signal
+        beatTimes.push(time + rrInterval);
+      }
+      beatTimes.pop();
+
+      const peakSequences = [beatTimes.map((t) => Math.round(t * fs))];
+      const ppgConf = new Array(duration * fs).fill(1.0);
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'lfhf'
+      );
+
+      const relativeError =
+        Math.abs(result!.value - expectedRatio) / expectedRatio;
+      expect(relativeError).toBeLessThan(0.2); // Assert that the error is less than 20%
+    });
+  });
+  describe('Hand-Calculated Verification', () => {
+    const fs = 100;
+    // A simple set of NN intervals (in seconds) for manual calculation.
+    const nnIntervals = [1.0, 1.1, 0.9, 1.2, 0.8, 1.05, 0.95, 1.0]; // 8 intervals
+    const ppgConf = new Array(8 * fs).fill(1.0);
+    const peakSequences = createPeaksFromIntervals(nnIntervals, fs);
+    /**
+     * SDNN Manual Calculation (8 intervals):
+     * Mean = (1.0 + 1.1 + 0.9 + 1.2 + 0.8 + 1.05 + 0.95 + 1.0) / 8 = 1.0s
+     * Variance = [0² + 0.1² + (-0.1)² + 0.2² + (-0.2)² + 0.05² + (-0.05)² + 0²] / 8 = 0.013125 s²
+     * Std Dev = sqrt(0.013125) ≈ 0.11456s
+     * SDNN = 114.56 ms
+     */
+    it('should calculate a precise, hand-verified SDNN using 8 intervals', () => {
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'sdnn'
+      );
+      expect(result!.value).toBeCloseTo(114.56, 2);
+    });
+
+    /**
+     * RMSSD Manual Calculation (8 intervals):
+     * Successive Diffs = [0.1, -0.2, 0.3, -0.4, 0.25, -0.1, 0.05]
+     * Squared Diffs = [0.01, 0.04, 0.09, 0.16, 0.0625, 0.01, 0.0025]
+     * Mean of Squared Diffs = sum(Squared Diffs) / 7 = 0.375 / 7 ≈ 0.05357 s²
+     * RMSSD = sqrt(0.05357) ≈ 0.23145s
+     * RMSSD = 231.46 ms
+     */
+    it('should calculate a precise, hand-verified RMSSD using 8 intervals', () => {
+      const result = estimateHrvFromDetectionSequences(
+        peakSequences,
+        ppgConf,
+        fs,
+        'rmssd'
+      );
+      expect(result!.value).toBeCloseTo(231.46, 2);
+    });
+  });
+});

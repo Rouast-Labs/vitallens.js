@@ -11,11 +11,10 @@ import {
   CALC_RR_WINDOW_SIZE,
 } from '../config/constants';
 import {
+  findPeaks,
   estimateHeartRate,
   estimateRespiratoryRate,
-  estimateHrvSdnn,
-  estimateHrvRmssd,
-  estimateHrvLfHf,
+  estimateHrvFromDetectionSequences,
 } from '../utils/physio';
 
 export class VitalsEstimateManager implements IVitalsEstimateManager {
@@ -683,36 +682,45 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       const ppgDataForHrv = averagedPpgData;
       const ppgConfForHrv = averagedPpgConf;
       const fpsForHrv = this.getCurrentFps(sourceId, ppgDataForHrv.length);
-      if (fpsForHrv) {
-        if (
-          this.methodConfig.supportedVitals?.includes('hrv_sdnn') &&
-          ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_SDNN_MIN_T
-        ) {
-          result.vital_signs.hrv_sdnn = estimateHrvSdnn(
-            ppgDataForHrv,
+      if (
+        fpsForHrv &&
+        ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_SDNN_MIN_T
+      ) {
+        // Detect peaks once from the full available signal.
+        const peakSequences = findPeaks(ppgDataForHrv, fpsForHrv);
+        // Calculate each supported HRV metric using the same peaks.
+        if (this.methodConfig.supportedVitals?.includes('hrv_sdnn')) {
+          const hrvResult = estimateHrvFromDetectionSequences(
+            peakSequences,
             ppgConfForHrv,
-            fpsForHrv
+            fpsForHrv,
+            'sdnn'
           );
+          if (hrvResult) result.vital_signs.hrv_sdnn = hrvResult;
         }
         if (
           this.methodConfig.supportedVitals?.includes('hrv_rmssd') &&
           ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_RMSSD_MIN_T
         ) {
-          result.vital_signs.hrv_rmssd = estimateHrvRmssd(
-            ppgDataForHrv,
+          const hrvResult = estimateHrvFromDetectionSequences(
+            peakSequences,
             ppgConfForHrv,
-            fpsForHrv
+            fpsForHrv,
+            'rmssd'
           );
+          if (hrvResult) result.vital_signs.hrv_rmssd = hrvResult;
         }
         if (
           this.methodConfig.supportedVitals?.includes('hrv_lfhf') &&
           ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_LFHF_MIN_T
         ) {
-          result.vital_signs.hrv_lfhf = estimateHrvLfHf(
-            ppgDataForHrv,
+          const hrvResult = estimateHrvFromDetectionSequences(
+            peakSequences,
             ppgConfForHrv,
-            fpsForHrv
+            fpsForHrv,
+            'lfhf'
           );
+          if (hrvResult) result.vital_signs.hrv_lfhf = hrvResult;
         }
       }
 

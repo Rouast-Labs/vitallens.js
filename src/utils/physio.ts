@@ -11,6 +11,11 @@ import { standardize } from '../utils/arrayOps';
 import { VitalLensResult } from '../types';
 
 /**
+ * Defines the types of HRV metrics that can be calculated.
+ */
+export type HRVMetric = 'sdnn' | 'rmssd' | 'lfhf';
+
+/**
  * Helper function to calculate the mean of an array of numbers.
  * @param arr - The input array.
  * @returns The mean of the array.
@@ -32,6 +37,218 @@ const stdDev = (arr: number[]): number => {
     arr.map((x) => Math.pow(x - arrMean, 2)).reduce((a, b) => a + b, 0) /
     arr.length;
   return Math.sqrt(variance);
+};
+
+/**
+ * Filters NN intervals to remove outliers. This robust method filters intervals
+ * that deviate from the median by more than a given percentage.
+ * @param nnIntervals - Array of NN intervals in seconds.
+ * @param threshold - The relative difference threshold (e.g., 0.2 for 20%).
+ * @returns A filtered array of NN intervals.
+ */
+const _filterNNIntervals = (
+  nnIntervals: number[],
+  threshold = 0.2
+): number[] => {
+  if (nnIntervals.length < 3) {
+    return nnIntervals;
+  }
+  // Sort a copy to find the median, which is robust to outliers
+  const sortedIntervals = [...nnIntervals].sort((a, b) => a - b);
+  const median = sortedIntervals[Math.floor(sortedIntervals.length / 2)];
+
+  // Define the absolute bounds for acceptable intervals
+  const lowerBound = median * (1 - threshold);
+  const upperBound = median * (1 + threshold);
+
+  // Filter the original array to keep intervals within the bounds
+  return nnIntervals.filter(
+    (interval) => interval >= lowerBound && interval <= upperBound
+  );
+};
+
+/**
+ * Performs linear interpolation.
+ * @param x - The x-coordinates of the data points.
+ * @param y - The y-coordinates of the data points.
+ * @param x_new - The x-coordinates at which to evaluate the interpolated values.
+ * @returns The interpolated y-values.
+ */
+const _linearInterp = (x: number[], y: number[], x_new: number[]): number[] => {
+  const y_new: number[] = [];
+  for (const x_val of x_new) {
+    if (x_val < x[0]) {
+      y_new.push(y[0]);
+      continue;
+    }
+    if (x_val > x[x.length - 1]) {
+      y_new.push(y[y.length - 1]);
+      continue;
+    }
+    const i = x.findIndex((val) => val >= x_val);
+    if (x[i] === x_val) {
+      y_new.push(y[i]);
+    } else {
+      const x0 = x[i - 1],
+        y0 = y[i - 1];
+      const x1 = x[i],
+        y1 = y[i];
+      y_new.push(y0 + ((y1 - y0) * (x_val - x0)) / (x1 - x0));
+    }
+  }
+  return y_new;
+};
+
+/**
+ * Calculates Power Spectral Density using Welch's method.
+ * @param signal - The input signal.
+ * @param fs - The sampling frequency.
+ * @param nperseg - Length of each segment.
+ * @returns An object containing frequencies and power spectral density.
+ */
+const _calculateWelchPSD = (
+  signal: number[],
+  fs: number,
+  nperseg: number
+): { freqs: number[]; psd: number[] } => {
+  const noverlap = Math.floor(nperseg / 2);
+  const step = nperseg - noverlap;
+  const numSegments = Math.floor((signal.length - noverlap) / step);
+
+  if (numSegments < 1) return { freqs: [], psd: [] };
+
+  const nfft = Math.pow(2, Math.ceil(Math.log2(nperseg)));
+  const fft = new FFT(nfft);
+  const hanningWindow = Array.from(
+    { length: nperseg },
+    (_, i) => 0.5 * (1 - Math.cos((2 * Math.PI * i) / (nperseg - 1)))
+  );
+  const S2 = hanningWindow.reduce((sum, val) => sum + val * val, 0);
+
+  const psdSum = new Array(Math.floor(nfft / 2) + 1).fill(0);
+
+  for (let i = 0; i < numSegments; i++) {
+    const start = i * step;
+    const segment = signal.slice(start, start + nperseg);
+    if (segment.length !== nperseg) continue;
+
+    const segmentMean = mean(segment);
+    const windowedSegment = segment.map(
+      (val, idx) => (val - segmentMean) * hanningWindow[idx]
+    );
+    const paddedSegment = [
+      ...windowedSegment,
+      ...new Array(nfft - nperseg).fill(0),
+    ];
+
+    const out = fft.createComplexArray();
+    const complexSegment = fft.createComplexArray();
+    fft.toComplexArray(paddedSegment, complexSegment);
+    fft.realTransform(out, complexSegment);
+
+    for (let j = 0; j <= nfft / 2; j++) {
+      const real = out[2 * j];
+      const imag = out[2 * j + 1];
+      const magSq = real * real + imag * imag;
+      const scale = j === 0 || j === nfft / 2 ? 1 : 2;
+      psdSum[j] += scale * magSq;
+    }
+  }
+
+  const scaleFactor = 1.0 / (S2 * fs * numSegments);
+  const psd = psdSum.map((val) => val * scaleFactor);
+  const freqs = Array.from({ length: psd.length }, (_, i) => (i * fs) / nfft);
+
+  return { freqs, psd };
+};
+
+/**
+ * Performs trapezoidal integration.
+ * @param y - The y-values (integrand).
+ * @param x - The x-values (spacing).
+ * @returns The integrated value.
+ */
+const _trapz = (y: number[], x: number[]): number => {
+  let integral = 0;
+  for (let i = 0; i < y.length - 1; i++) {
+    integral += ((y[i] + y[i + 1]) / 2) * (x[i + 1] - x[i]);
+  }
+  return integral;
+};
+
+/**
+ * A factory function that returns the specific mathematical operation for a given HRV metric.
+ * @param metric The HRV metric to calculate.
+ * @returns A function that takes an array of NN intervals (in seconds) and returns the HRV value.
+ */
+const _getHrvFunction = (
+  metric: HRVMetric
+): ((nnIntervals: number[]) => number) => {
+  switch (metric) {
+    case 'sdnn':
+      return (nnIntervals: number[]) => {
+        // Return SDNN in milliseconds
+        return stdDev(nnIntervals) * 1000;
+      };
+    case 'rmssd':
+      return (nnIntervals: number[]) => {
+        if (nnIntervals.length < 2) return 0;
+        let sumOfSquares = 0;
+        for (let i = 0; i < nnIntervals.length - 1; i++) {
+          const diff = nnIntervals[i + 1] - nnIntervals[i];
+          sumOfSquares += diff * diff;
+        }
+        // Return RMSSD in milliseconds
+        return Math.sqrt(sumOfSquares / (nnIntervals.length - 1)) * 1000;
+      };
+    case 'lfhf':
+      return (nnIntervals: number[]) => {
+        const fs_r = 4.0;
+        const t = nnIntervals.reduce(
+          (acc, val, i) => {
+            acc.push((acc[i - 1] || 0) + val);
+            return acc;
+          },
+          [0] as number[]
+        );
+        t.shift(); // Remove the initial 0
+        if (t.length === 0 || t[t.length - 1] <= 0) return 0;
+
+        const t_u = [];
+        for (let time = t[0]; time <= t[t.length - 1]; time += 1 / fs_r) {
+          t_u.push(time);
+        }
+        const nn_u = _linearInterp(t, nnIntervals, t_u);
+
+        const nperseg = Math.min(nn_u.length, 256);
+        const { freqs, psd } = _calculateWelchPSD(nn_u, fs_r, nperseg);
+
+        const lf_indices = freqs.reduce((acc, freq, i) => {
+          if (freq >= HRV_LF_BAND[0] && freq < HRV_LF_BAND[1]) acc.push(i);
+          return acc;
+        }, [] as number[]);
+
+        const hf_indices = freqs.reduce((acc, freq, i) => {
+          if (freq >= HRV_HF_BAND[0] && freq <= HRV_HF_BAND[1]) acc.push(i);
+          return acc;
+        }, [] as number[]);
+
+        if (lf_indices.length < 2 || hf_indices.length < 2) return 0;
+
+        const lf_power = _trapz(
+          lf_indices.map((i) => psd[i]),
+          lf_indices.map((i) => freqs[i])
+        );
+        const hf_power = _trapz(
+          hf_indices.map((i) => psd[i]),
+          hf_indices.map((i) => freqs[i])
+        );
+
+        return hf_power > 0 ? lf_power / hf_power : 0;
+      };
+    default: // This ensures that if new metrics are added to the type, this function will error until updated.
+      throw new Error(`Unhandled HRV metric: ${metric}`);
+  }
 };
 
 /**
@@ -246,83 +463,63 @@ export function estimateRespiratoryRate(
 }
 
 /**
- * Estimates HRV (SDNN) from the PPG waveform.
- * @param ppgWaveform - The PPG waveform data.
- * @param ppgConfidence - The confidence scores for the PPG waveform.
+ * Estimates a specific HRV metric from a series of detected peak sequences.
+ * @param sequences - An array of peak index sequences from `findPeaks`.
+ * @param ppgConfidence - Confidence scores for the original PPG waveform.
  * @param fs - The sampling frequency in Hz.
- * @returns An object containing the SDNN value, unit, confidence, and note.
+ * @param metric - The HRV metric to calculate ('sdnn' or 'rmssd').
+ * @returns A result object for the specified HRV metric, or null if calculation is not possible.
  */
-export function estimateHrvSdnn(
-  ppgWaveform: number[],
+export function estimateHrvFromDetectionSequences(
+  sequences: number[][],
   ppgConfidence: number[],
-  fs: number
-): VitalLensResult['vital_signs']['hrv_sdnn'] {
-  // TODO: Implement this function.
-  // 1. Detect peaks from ppgWaveform (e.g., using a `detectPeaks` helper).
-  // 2. Filter peaks based on ppgConfidence.
-  // 3. Calculate NN intervals (time difference between consecutive peaks).
-  // 4. Calculate the standard deviation of NN intervals.
-  // 5. Convert to milliseconds.
-  // 6. Return the result object.
-  return {
-    value: 50.0, // Placeholder
-    unit: 'ms',
-    confidence: 0.95, // Placeholder
-    note: 'Estimate of the heart rate variability (SDNN).',
-  };
-}
+  fs: number,
+  metric: HRVMetric
+):
+  | (Omit<Required<VitalLensResult['vital_signs']>['hrv_sdnn'], 'value'> & {
+      value: number;
+    })
+  | null {
+  const MIN_INTERVALS = 8; // Minimum number of NN intervals required for a reliable calculation.
 
-/**
- * Estimates HRV (RMSSD) from the PPG waveform.
- * @param ppgWaveform - The PPG waveform data.
- * @param ppgConfidence - The confidence scores for the PPG waveform.
- * @param fs - The sampling frequency in Hz.
- * @returns An object containing the RMSSD value, unit, confidence, and note.
- */
-export function estimateHrvRmssd(
-  ppgWaveform: number[],
-  ppgConfidence: number[],
-  fs: number
-): VitalLensResult['vital_signs']['hrv_rmssd'] {
-  // TODO: Implement this function.
-  // 1. Detect peaks and get NN intervals as in SDNN.
-  // 2. Calculate successive differences of NN intervals.
-  // 3. Calculate the square root of the mean of the squares of these differences.
-  // 4. Convert to milliseconds.
-  // 5. Return the result object.
-  return {
-    value: 30.0, // Placeholder
-    unit: 'ms',
-    confidence: 0.95, // Placeholder
-    note: 'Estimate of the heart rate variability (RMSSD).',
-  };
-}
+  if (sequences.length === 0) {
+    return null;
+  }
 
-/**
- * Estimates HRV (LF/HF ratio) from the PPG waveform.
- * @param ppgWaveform - The PPG waveform data.
- * @param ppgConfidence - The confidence scores for the PPG waveform.
- * @param fs - The sampling frequency in Hz.
- * @returns An object containing the LF/HF ratio value, unit, confidence, and note.
- */
-export function estimateHrvLfHf(
-  ppgWaveform: number[],
-  ppgConfidence: number[],
-  fs: number
-): VitalLensResult['vital_signs']['hrv_lfhf'] {
-  // TODO: Implement this function. This is the most complex one.
-  // 1. Detect peaks and get NN intervals (NNi) and their timestamps (t_NNi).
-  // 2. The (t_NNi, NNi) series is unevenly sampled. Resample it to an evenly spaced time series (e.g., at 4 Hz).
-  //    - Linear or cubic spline interpolation is common.
-  // 3. Apply a window function (e.g., Hanning) to segments of the resampled signal.
-  // 4. Compute the Power Spectral Density (PSD) of the windowed signal, often using FFT (Welch's method).
-  // 5. Integrate the PSD over the Low-Frequency (LF) band (0.04-0.15 Hz) and High-Frequency (HF) band (0.15-0.4 Hz).
-  // 6. Calculate the ratio LF/HF.
-  // 7. Return the result object.
+  // Pool all NN intervals from all valid sequences.
+  const allNNIntervals: number[] = sequences.flatMap((sequence) => {
+    const intervals: number[] = [];
+    for (let i = 0; i < sequence.length - 1; i++) {
+      const intervalInSamples = sequence[i + 1] - sequence[i];
+      intervals.push(intervalInSamples / fs);
+    }
+    return intervals;
+  });
+
+  // Exclude outliers.
+  const filteredIntervals = _filterNNIntervals(allNNIntervals, 0.2); // 20% threshold
+
+  if (filteredIntervals.length < MIN_INTERVALS) {
+    return null;
+  }
+
+  // Get the specific HRV calculation function
+  const hrvFunction = _getHrvFunction(metric);
+  const hrvValue = hrvFunction(filteredIntervals);
+
+  // Calculate average confidence from all peaks used in the original sequences.
+  const allPeaks = sequences.flat();
+  const confidenceSum = allPeaks.reduce(
+    (sum, peakIndex) => sum + (ppgConfidence[peakIndex] || 0),
+    0
+  );
+  const averageConfidence =
+    allPeaks.length > 0 ? confidenceSum / allPeaks.length : 0;
+
   return {
-    value: 2.0, // Placeholder
-    unit: 'unitless',
-    confidence: 0.9, // Placeholder
-    note: 'Estimate of the heart rate variability (LF/HF ratio).',
+    value: hrvValue,
+    unit: 'ms',
+    confidence: averageConfidence,
+    note: `Estimate of the heart rate variability (${metric.toUpperCase()}).`,
   };
 }
