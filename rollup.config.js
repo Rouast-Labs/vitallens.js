@@ -99,8 +99,8 @@ const faceDetectionWorkerBrowserConfig = {
       preventAssignment: true,
       values: {
         SELF_CONTAINED_BUILD: JSON.stringify(false),
-        __FFMPEG_CORE_URL__: JSON.stringify(''),
-        __FFMPEG_WASM_URL__: JSON.stringify(''),
+        __FFMPEG_CORE_URL__: '',
+        __FFMPEG_WASM_URL__: '',
       },
     }),
     alias({
@@ -208,8 +208,8 @@ const browserConfig = {
       preventAssignment: true,
       values: {
         SELF_CONTAINED_BUILD: JSON.stringify(false),
-        __FFMPEG_CORE_URL__: JSON.stringify(''),
-        __FFMPEG_WASM_URL__: JSON.stringify(''),
+        __FFMPEG_CORE_URL__: '',
+        __FFMPEG_WASM_URL__: '',
       },
     }),
     alias({
@@ -260,23 +260,19 @@ const browserSelfContainedConfig = {
       preventAssignment: true,
       values: {
         SELF_CONTAINED_BUILD: JSON.stringify(true),
-        __FFMPEG_CORE_URL__: JSON.stringify(
-          toDataURI(
-            path.resolve(
-              __dirname,
-              'node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js'
-            ),
-            'text/javascript'
-          )
+        __FFMPEG_CORE_URL__: toDataURI(
+          path.resolve(
+            __dirname,
+            'node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js'
+          ),
+          'text/javascript'
         ),
-        __FFMPEG_WASM_URL__: JSON.stringify(
-          toDataURI(
-            path.resolve(
-              __dirname,
-              'node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm'
-            ),
-            'application/wasm'
-          )
+        __FFMPEG_WASM_URL__: toDataURI(
+          path.resolve(
+            __dirname,
+            'node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm'
+          ),
+          'application/wasm'
         ),
       },
     }),
