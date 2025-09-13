@@ -18,7 +18,7 @@ app.use((_, res, next) => {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers':
-      'Origin, X-Requested-With, X-Origin, X-State, X-Encoding, Content-Type, Accept, Range',
+      'Origin, X-Requested-With, X-Origin, X-State, X-Model, X-Encoding, Content-Type, Accept, Range',
     'Content-Security-Policy':
       "default-src 'self' blob: data:; " +
       "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com/ https://cdn.jsdelivr.net; " +
