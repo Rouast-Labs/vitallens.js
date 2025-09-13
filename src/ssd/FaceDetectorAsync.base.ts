@@ -25,56 +25,6 @@ export interface DetectionInfo {
   roi?: ROI;
 }
 
-// /**
-//  * Custom Non-Max Suppression implementation.
-//  * @param boxes - An array of bounding boxes [xMin, yMin, xMax, yMax].
-//  * @param scores - An array of confidence scores for each box.
-//  * @param maxOutputSize - The maximum number of boxes to return.
-//  * @param iouThreshold - The IOU threshold for filtering overlapping boxes.
-//  * @param scoreThreshold - The score threshold for filtering low-confidence boxes.
-//  * @returns Indices of selected boxes.
-//  */
-// export function nms(
-//   boxes: number[][],
-//   scores: number[],
-//   maxOutputSize: number,
-//   iouThreshold: number,
-//   scoreThreshold: number
-// ): number[] {
-//   const areas = boxes.map(([x1, y1, x2, y2]) => (x2 - x1) * (y2 - y1));
-//   const sortedIndices = scores
-//     .map((score, index) => ({ score, index }))
-//     .filter(({ score }) => score >= scoreThreshold)
-//     .sort((a, b) => b.score - a.score)
-//     .map(({ index }) => index);
-
-//   const selectedIndices: number[] = [];
-
-//   while (sortedIndices.length > 0 && selectedIndices.length < maxOutputSize) {
-//     const current = sortedIndices.shift()!;
-//     selectedIndices.push(current);
-
-//     const [x1, y1, x2, y2] = boxes[current];
-//     const overlaps = sortedIndices.filter((index) => {
-//       const [xx1, yy1, xx2, yy2] = boxes[index];
-//       const interX1 = Math.max(x1, xx1);
-//       const interY1 = Math.max(y1, yy1);
-//       const interX2 = Math.min(x2, xx2);
-//       const interY2 = Math.min(y2, yy2);
-
-//       const interArea =
-//         Math.max(0, interX2 - interX1) * Math.max(0, interY2 - interY1);
-//       const unionArea = areas[current] + areas[index] - interArea;
-//       const iou = interArea / unionArea;
-//       return iou <= iouThreshold;
-//     });
-
-//     sortedIndices.length = 0;
-//     sortedIndices.push(...overlaps);
-//   }
-//   return selectedIndices;
-// }
-
 /**
  * Custom Non-Max Suppression implementation that wraps the optimized TensorFlow.js function.
  * @param boxes - An array of bounding boxes [xMin, yMin, xMax, yMax].
@@ -84,7 +34,6 @@ export interface DetectionInfo {
  * @param scoreThreshold - The score threshold for filtering low-confidence boxes.
  * @returns A Promise resolving to the indices of selected boxes.
  */
-// TODO: Write test to validate this is behaving correctly
 export async function nms(
   boxes: number[][],
   scores: number[],

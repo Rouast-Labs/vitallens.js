@@ -6,6 +6,7 @@ import { FaceDetectorAsyncBase } from '../../src/ssd/FaceDetectorAsync.base';
 import { Frame } from '../../src/processing/Frame';
 import { ROI, VideoInput, VideoProbeResult } from '../../src/types/core';
 import { IFFmpegWrapper } from '../../src/types/IFFmpegWrapper';
+import { nms } from '../../src/ssd/FaceDetectorAsync.base';
 
 // Helper to compare ROIs
 function areROIsClose(
@@ -236,5 +237,109 @@ describe('FaceDetectorAsync shared tests', () => {
       }
       mockTensorOutput.dispose();
     });
+  });
+});
+
+describe('nms (Non-Maximum Suppression)', () => {
+  it('should select the box with the highest score among overlapping boxes', async () => {
+    const boxes = [
+      [0, 0, 10, 10], // High score, should be kept
+      [1, 1, 11, 11], // High overlap, lower score, should be suppressed
+      [20, 20, 30, 30], // No overlap, should be kept
+    ];
+    const scores = [0.9, 0.75, 0.8];
+    const maxOutputSize = 10;
+    const iouThreshold = 0.5;
+    const scoreThreshold = 0.1;
+
+    const selectedIndices = await nms(
+      boxes,
+      scores,
+      maxOutputSize,
+      iouThreshold,
+      scoreThreshold
+    );
+
+    // Sort for consistent comparison
+    selectedIndices.sort();
+
+    expect(selectedIndices).toEqual([0, 2]);
+  });
+
+  it('should filter out boxes below the score threshold', async () => {
+    const boxes = [
+      [0, 0, 10, 10],
+      [5, 5, 15, 15],
+      [20, 20, 30, 30],
+    ];
+    const scores = [0.9, 0.4, 0.8];
+    const maxOutputSize = 10;
+    const iouThreshold = 0.5;
+    const scoreThreshold = 0.5;
+
+    const selectedIndices = await nms(
+      boxes,
+      scores,
+      maxOutputSize,
+      iouThreshold,
+      scoreThreshold
+    );
+
+    selectedIndices.sort();
+    expect(selectedIndices).toEqual([0, 2]);
+  });
+
+  it('should not suppress boxes with IoU less than or equal to the threshold', async () => {
+    const boxes = [
+      [0, 0, 10, 10], // High score
+      [8, 8, 18, 18], // Low IoU, should be kept
+    ];
+    const scores = [0.9, 0.8];
+    const maxOutputSize = 10;
+    const iouThreshold = 0.1; // Very low threshold
+    const scoreThreshold = 0.1;
+
+    const selectedIndices = await nms(
+      boxes,
+      scores,
+      maxOutputSize,
+      iouThreshold,
+      scoreThreshold
+    );
+
+    selectedIndices.sort();
+    expect(selectedIndices).toEqual([0, 1]);
+  });
+
+  it('should respect the maxOutputSize parameter', async () => {
+    const boxes = [
+      [0, 0, 10, 10],
+      [20, 20, 30, 30],
+      [40, 40, 50, 50],
+    ];
+    const scores = [0.9, 0.85, 0.8];
+    const maxOutputSize = 2; // Limit output
+    const iouThreshold = 0.5;
+    const scoreThreshold = 0.1;
+
+    const selectedIndices = await nms(
+      boxes,
+      scores,
+      maxOutputSize,
+      iouThreshold,
+      scoreThreshold
+    );
+
+    expect(selectedIndices).toHaveLength(2);
+    // It should return the indices of the two highest scoring boxes
+    expect(selectedIndices).toContain(0);
+    expect(selectedIndices).toContain(1);
+  });
+
+  it('should return an empty array if no boxes are provided', async () => {
+    const boxes: number[][] = [];
+    const scores: number[] = [];
+    const selectedIndices = await nms(boxes, scores, 10, 0.5, 0.1);
+    expect(selectedIndices).toEqual([]);
   });
 });
