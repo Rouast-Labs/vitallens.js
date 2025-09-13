@@ -524,7 +524,6 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
    * @param displayTime - Optional display time for result.
    * @returns The aggregated VitalLensResult.
    */
-  // TODO: Fix test
   private async assembleResult(
     sourceId: string,
     waveformMode: string,
