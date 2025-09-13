@@ -4,7 +4,7 @@
   </a>
   <h1>vitallens.js</h1>
   <p align="center">
-    <p>Estimate vital signs such as heart rate and respiratory rate from video in JavaScript.</p>
+    <p>Estimate vital signs such as heart rate, HRV, and respiratory rate from video in JavaScript.</p>
   </p>
 
 [![Tests](https://github.com/Rouast-Labs/vitallens.js/actions/workflows/ci.yml/badge.svg)](https://github.com/Rouast-Labs/vitallens.js/actions/workflows/ci.yml)
@@ -14,12 +14,9 @@
 
 </div>
 
-`vitallens.js` is a JavaScript client for the [**VitalLens API**](https://www.rouast.com/api/), which leverages the same inference engine as our [free iOS app VitalLens](https://apps.apple.com/us/app/vitallens/id6472757649).
-Furthermore, it includes fast implementations of several other heart rate estimation methods from video such as `g`, `chrom`, and `pos`.
+`vitallens.js` is the official JavaScript client for the [**VitalLens API**](https://www.rouast.com/api/), a service for estimating physiological vital signs like heart rate, respiratory rate, and heart rate variability (HRV) from facial video.
 
-This library works both in browser environments and in Node.js, and comes with a set of examples for file-based processing and real-time webcam streaming.
-
-Using a different language or platform? We also have a [Python client](https://github.com/Rouast-Labs/vitallens-python).
+Using a different language or platform? We also have a [Python client](https://github.com/Rouast-Labs/vitallens-python) and [iOS app](https://apps.apple.com/us/app/vitallens/id6472757649).
 
 ## Features
 
@@ -31,26 +28,14 @@ Using a different language or platform? We also have a [Python client](https://g
 
 - **Multiple Estimation Methods:**
   Choose the method that fits your needs:
-  - **`vitallens`**: Provides *heart rate*, *respiratory rate*, *pulse waveform*, and *respiratory waveform* estimates with associated confidences. *(Requires an API key - [get one for free on our website](https://www.rouast.com/api/))*
-  - **`g`**, **`chrom`**, **`pos`**: Offer faster (but less accurate) *heart rate* and *pulse waveform* estimates. *(No API key required.)*
+  - **`vitallens`**: Provides *heart rate*, *respiratory rate*, and *heart rate variability* estimates. *(Automatically selects the best available model for your plan. Requires an API key - [get one for free on our website](https://www.rouast.com/api/))*
+  - **`g`**, **`chrom`**, **`pos`**: Offer less accurate *heart rate* estimates. *(No API key required.)*
 
 - **Fast Face Detection & ROI Support:**  
   Perform rapid face detection when required—or optionally, pass a global region of interest (ROI) to skip detection for even faster processing.
 
-- **Event-Driven API:**  
-  Register event listeners to receive real-time updates on estimated vitals.
-
 - **Pre-Built Web Component Widgets:**  
   In addition to the core API, vitallens.js provides ready-to-use web components. Use the unified widget (supporting both file and webcam modes) or choose the specialized file-only or webcam-only widget for streamlined integration.
-
-- **TypeScript-Ready:**  
-  Written in TypeScript with complete type definitions for enhanced developer experience.
-  
-### Disclaimer
-
-**Important:** vitallens.js provides vital sign estimates for general wellness purposes only. It is **not intended for medical use**. Always consult a healthcare professional for any medical concerns or precise clinical measurements.
-
-Please review our [Terms of Service](https://www.rouast.com/api/terms) and [Privacy Policy](https://www.rouast.com/privacy) for more details.
 
 ## Installation
 
@@ -88,7 +73,7 @@ For example, using **jsDelivr**:
 <script src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
 
 <!-- Or pin a specific version -->
-<script src="https://cdn.jsdelivr.net/npm/vitallens@0.1.3/dist/vitallens.browser.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vitallens@0.2.0/dist/vitallens.browser.js"></script>
 
 <!-- Use with core API -->
 <video id="my-video" autoplay muted playsinline></video>
@@ -138,22 +123,62 @@ Or **Skypack** if you prefer ES modules:
 </script>
 ```
 
-## Configuration Options
+## How to use
+
+### Configuring `VitalLens`
 
 When creating a new `VitalLens` instance, you can configure various options:
 
-| Parameter      | Description                                                                                | Default        |
-| -------------- | ------------------------------------------------------------------------------------------ | -------------- |
-| `method`       | Inference method: `'vitallens'`, `'g'`, `'chrom'`, or `'pos'`.                             | `'vitallens'`  |
-| `apiKey`       | API key for the VitalLens API (required for method `'vitallens'`).                         | `null`         |
-| `globalRoi`    | Optional region of interest for face detection (object with `{ x0, y0, x1, y1 }`).         | `undefined`    |
-| `waveformMode` | Optional setting how waveform is returned: `'incremental'`, `'windowed'`, or `'complete'`. | *(see below)*  |
+| Parameter           | Description                                                                                | Default        |
+| ------------------- | ------------------------------------------------------------------------------------------ | -------------- |
+| `method`            | Inference method: `vitallens`, `g`, `chrom`, or `pos`.                             | `vitallens`  |
+| `apiKey`            | API key for the VitalLens API (required for method `vitallens`).                         | `null`         |
+| `globalRoi`         | Optional region of interest for face detection (object with `{ x0, y0, x1, y1 }`).         | `undefined`    |
+| `waveformMode`      | Optional setting how waveform is returned: `incremental`, `windowed`, or `complete`. | *(see below)*  |
+| `overrideFpsTarget` | Override for the target frames per second (fps) used during inference.                     | `undefined`    |
+| `fDetFs`            | Frequency (in Hz) at which face detection should be performed.                             | `1`            |
 
-The default value for `waveformMode` is `windowed` if a stream is being analyzed, and `complete` if a file is being processed. Additional options (e.g., face detection settings, buffering) are available. See [docs](https://docs.rouast.com/) for details.
+The default value for `waveformMode` is `windowed` if a stream is being analyzed, and `complete` if a file is being processed.
 
-## Understanding the Estimation Results
+### Methods
 
-When you process a video or a MediaStream with `vitallens.js`, the library returns vital sign estimates in a structured object. **vitallens.js is designed to process only a single face** — so you always receive a single result object with the following structure:
+You can choose from several rPPG methods:
+- `vitallens`: The recommended method. Uses the VitalLens API and automatically selects the best model for your API key (e.g., VitalLens 2.0 with HRV support)
+- `vitallens-2.0`: Forces the use of the VitalLens 2.0 model.
+- `vitallens-1.0`: Forces the use of the VitalLens 1.0 model.
+- `pos`, `chrom`, `g`: Classic rPPG algorithms that run locally and do not require and API key.
+
+### Understanding the results
+
+#### When analyzing a video stream
+
+When analyzing a video stream, `VitalLens` returns estimation results continuously. Each returned estimation result contains the following vital signs:
+
+| Name                   | Type                | Based on / containing     | Returned if                                                                                         |
+|------------------------|---------------------|---------------------------|-----------------------------------------------------------------------------------------------------|
+| `ppg_waveform`         | Continuous waveform | Depends on `waveformMode` | Always                                                                                              |
+| `heart_rate`           | Global value        | Up to last 10 seconds     | Face present for at least 5 seconds                                                                 |
+| `respiratory_waveform` | Continuous waveform | Depends on `waveformMode` | Using `vitallens`, `vitallens-1.0`, or `vitallens-2.0`                                              |
+| `respiratory_rate`     | Global value        | Up to last 30 seconds     | Face present for at least 10 seconds using `vitallens`, `vitallens-1.0`, or `vitallens-2.0`         |
+| `hrv_sdnn`             | Global value        | Up to last 60 seconds     | Face present for at least 20 seconds using `vitallens`, or `vitallens-2.0`                          |
+| `hrv_rmssd`            | Global value        | Up to last 60 seconds     | Face present for at least 20 seconds using `vitallens`, or `vitallens-2.0`                          |
+| `hrv_lfhf`             | Global value        | Up to last 60 seconds     | Face present for at least 55 seconds using `vitallens`, or `vitallens-2.0`                          |
+
+#### When analyzing a video file
+
+When analyzing a video file, `VitalLens` returns one estimation result for the entire file, containing:
+
+| Name                   | Type                | Based on / containing     | Returned if                                                                                         |
+|------------------------|---------------------|---------------------------|-----------------------------------------------------------------------------------------------------|
+| `ppg_waveform`         | Continuous waveform | Depends on `waveformMode` | Always                                                                                              |
+| `heart_rate`           | Global value        | Entire video              | Video is at least 5 seconds long                                                                    |
+| `respiratory_waveform` | Continuous waveform | Depends on `waveformMode` | Using `vitallens`, `vitallens-1.0`, or `vitallens-2.0`                                              |
+| `respiratory_rate`     | Global value        | Entire video              | Video is at least 10 seconds long using `vitallens`, `vitallens-1.0`, or `vitallens-2.0`            |
+| `hrv_sdnn`             | Global value        | Entire video              | Face present for at least 20 seconds using `vitallens`, or `vitallens-2.0`                          |
+| `hrv_rmssd`            | Global value        | Entire video              | Face present for at least 20 seconds using `vitallens`, or `vitallens-2.0`                          |
+| `hrv_lfhf`             | Global value        | Entire video              | Face present for at least 55 seconds using `vitallens`, or `vitallens-2.0`                          |
+
+The library returns vital sign estimates in a structured object. **vitallens.js is designed to process only a single face** — so you always receive a single result object with the following structure:
 
 ```typescript
 export interface VitalLensResult {
@@ -177,39 +202,7 @@ export interface VitalLensResult {
       // An explanatory note regarding the estimation.
       note: string;
     };
-    // Estimated global respiratory rate.
-    respiratory_rate?: {
-      // Estimated respiratory rate value (in breaths per minute).
-      value: number;
-      // Unit of the respiratory rate value.
-      unit: string;
-      // Overall confidence of the respiratory rate estimation.
-      confidence: number;
-      // An explanatory note regarding the estimation.
-      note: string;
-    };
-    // Photoplethysmogram (PPG) waveform estimation.
-    ppg_waveform: {
-      // Estimated PPG waveform data (one value per processed frame).
-      data: number[];
-      // Unit of the waveform data.
-      unit: string;
-      // Confidence values for the waveform estimation per frame.
-      confidence: number[];
-      // An explanatory note regarding the waveform estimation.
-      note: string;
-    };
-    // Respiratory waveform estimation.
-    respiratory_waveform?: {
-      // Estimated respiratory waveform data (one value per processed frame).
-      data: number[];
-      // Unit of the waveform data.
-      unit: string;
-      // Confidence values for the waveform estimation per frame.
-      confidence: number[];
-      // An explanatory note regarding the waveform estimation.
-      note: string;
-    };
+    // Other vitals...
   };
   // A list of timestamps (one per processed frame).
   time: number[];
@@ -289,7 +282,7 @@ Try opening the HTML examples in your browser or running the Node script to see 
   **Warning:** This file is large and will significantly slow initial page load.
 
   ```html
-  <script src="https://cdn.jsdelivr.net/npm/vitallens@0.1.3/dist/vitallens.browser.selfcontained.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vitallens@0.2.0/dist/vitallens.browser.selfcontained.js"></script>
   ```
 
 ## Securing your API Key
@@ -412,6 +405,12 @@ Lint the code using:
 ```bash
 npm run lint
 ```
+
+## Disclaimer
+
+**Important:** vitallens.js provides vital sign estimates for general wellness purposes only. It is **not intended for medical use**. Always consult a healthcare professional for any medical concerns or precise clinical measurements.
+
+Please review our [Terms of Service](https://www.rouast.com/api/terms) and [Privacy Policy](https://www.rouast.com/privacy) for more details.
 
 ## License
 
