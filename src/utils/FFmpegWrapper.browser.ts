@@ -3,8 +3,6 @@ import { toBlobURL, fetchFile } from '@ffmpeg/util';
 import { FFmpegWrapperBase } from './FFmpegWrapper.base';
 import { VideoInput, VideoProbeResult, VideoProcessingOptions } from '../types';
 import { createWorkerBlobURL } from './workerOps';
-
-// Import the worker bundle as a URL (which will be inlined as a data URI)
 import workerBundleDataURI from '../../dist/ffmpeg.worker.bundle.js';
 
 export default class FFmpegWrapper extends FFmpegWrapperBase {
@@ -15,8 +13,8 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
 
   constructor(coreURL?: string, wasmURL?: string) {
     super();
-    if (coreURL) this.coreURL = coreURL;
-    if (wasmURL) this.wasmURL = wasmURL;
+    this.coreURL = coreURL;
+    this.wasmURL = wasmURL;
   }
 
   /**
@@ -29,18 +27,27 @@ export default class FFmpegWrapper extends FFmpegWrapperBase {
         const workerURL = createWorkerBlobURL(workerBundleDataURI);
 
         // If URLs were not provided via the constructor, fetch them from the CDN.
-        if (!this.coreURL || !this.wasmURL) {
+        if (!this.coreURL) {
           this.coreURL = await toBlobURL(
             'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js',
             'text/javascript'
           );
+        }
+        if (!this.wasmURL) {
           this.wasmURL = await toBlobURL(
             'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm',
             'application/wasm'
           );
         }
 
-        // Now load FFmpeg with the obtained URLs
+        // Handle data URIs for the self-contained build.
+        if (this.coreURL.startsWith('data:')) {
+          this.coreURL = await toBlobURL(this.coreURL, 'text/javascript');
+        }
+        if (this.wasmURL.startsWith('data:')) {
+          this.wasmURL = await toBlobURL(this.wasmURL, 'application/wasm');
+        }
+
         await (this.ffmpeg as FFmpeg).load({
           coreURL: this.coreURL,
           wasmURL: this.wasmURL,
