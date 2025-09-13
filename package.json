@@ -1,6 +1,6 @@
 {
   "name": "vitallens",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "VitalLens: Estimate vital signs such as heart rate and respiratory rate from face video.",
   "main": "./dist/vitallens.cjs.js",
   "module": "./dist/vitallens.esm.js",
@@ -31,11 +31,11 @@
     "test:node-integration": "npm run build:integration && jest --selectProjects node-integration",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.{ts,js,json,css,md}\"",
-    "start:browser": "EXAMPLE_TO_OPEN=browser/widget nodemon scripts/server.cjs",
-    "start:browser-file": "EXAMPLE_TO_OPEN=browser/file_widget nodemon scripts/server.cjs",
-    "start:browser-file-minimal": "EXAMPLE_TO_OPEN=browser/file_minimal nodemon scripts/server.cjs",
-    "start:browser-webcam": "EXAMPLE_TO_OPEN=browser/webcam_widget nodemon scripts/server.cjs",
-    "start:browser-webcam-minimal": "EXAMPLE_TO_OPEN=browser/webcam_minimal nodemon scripts/server.cjs",
+    "start:browser": "EXAMPLE_TO_OPEN=browser/widget node scripts/server.cjs",
+    "start:browser-file": "EXAMPLE_TO_OPEN=browser/file_widget node scripts/server.cjs",
+    "start:browser-file-minimal": "EXAMPLE_TO_OPEN=browser/file_minimal node scripts/server.cjs",
+    "start:browser-webcam": "EXAMPLE_TO_OPEN=browser/webcam_widget node scripts/server.cjs",
+    "start:browser-webcam-minimal": "EXAMPLE_TO_OPEN=browser/webcam_minimal node scripts/server.cjs",
     "start:node-file": "node ./examples/node/file.js"
   },
   "keywords": [
@@ -128,7 +128,6 @@
     "jest-dev-server": "^11.0.0",
     "jest-environment-jsdom": "^29.7.0",
     "jest-puppeteer": "^11.0.0",
-    "nodemon": "^3.1.9",
     "prettier": "^3.5.3",
     "puppeteer": "^24.17.0",
     "rollup": "^4.44.0",
