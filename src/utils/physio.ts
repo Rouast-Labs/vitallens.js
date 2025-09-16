@@ -470,6 +470,7 @@ export function estimateRespiratoryRate(
  * @param metric - The HRV metric to calculate ('sdnn' or 'rmssd').
  * @returns A result object for the specified HRV metric, or null if calculation is not possible.
  */
+// TODO: Cannot assume equally spaced sampling. Need to pass timestamps.
 export function estimateHrvFromDetectionSequences(
   sequences: number[][],
   ppgConfidence: number[],

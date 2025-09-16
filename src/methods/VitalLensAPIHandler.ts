@@ -198,16 +198,16 @@ export class VitalLensAPIHandler extends MethodHandler {
         parsedResponse.state
       ) {
         const n = parsedResponse.vital_signs.ppg_waveform.data.length;
+        const coords = roi.map((roi) => [roi.x0, roi.y0, roi.x1, roi.y1]) as [
+          number,
+          number,
+          number,
+          number,
+        ][];
+
         return {
           face: {
-            coordinates: (
-              roi.map((roi) => [roi.x0, roi.y0, roi.x1, roi.y1]) as [
-                number,
-                number,
-                number,
-                number,
-              ][]
-            ).slice(-n),
+            coordinates: coords.slice(-n),
             confidence: parsedResponse.face.confidence?.slice(-n),
             note: 'Face detection coordinates for this face, along with live confidence levels.',
           },

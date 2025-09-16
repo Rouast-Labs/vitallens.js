@@ -57,7 +57,15 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     return this.fpsTarget * AGG_WINDOW_SIZE;
   }
   private get bufferSizePpg(): number {
-    return this.fpsTarget * CALC_HR_WINDOW_SIZE;
+    return (
+      this.fpsTarget *
+      Math.max(
+        CALC_HR_WINDOW_SIZE,
+        CALC_HRV_LFHF_MIN_T,
+        CALC_HRV_RMSSD_MIN_T,
+        CALC_HRV_SDNN_MIN_T
+      )
+    );
   }
   private get bufferSizeResp(): number {
     return this.fpsTarget * CALC_RR_WINDOW_SIZE;
@@ -67,6 +75,12 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   }
   private get minBufferSizeResp(): number {
     return this.fpsTarget * CALC_RR_MIN_WINDOW_SIZE;
+  }
+  private get maxCalcSizeHR(): number {
+    return this.fpsTarget * CALC_HR_WINDOW_SIZE;
+  }
+  private get maxCalcSizeRR(): number {
+    return this.fpsTarget * CALC_RR_WINDOW_SIZE;
   }
 
   /**
@@ -219,6 +233,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       incrementalResult.vital_signs?.respiratory_waveform?.data;
     const respiratoryWaveformConf =
       incrementalResult.vital_signs?.respiratory_waveform?.confidence;
+    const faceCoordinates = incrementalResult.face?.coordinates;
+    const faceConfidence = incrementalResult.face?.confidence;
     const waveformMode = this.options.waveformMode || defaultWaveformMode;
     // Determine overlap
     const overlap = Math.min(
@@ -232,7 +248,12 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     for (let i = overlap; i < newTimestamps.length; i++) {
       // Create a new VitalLensResult for the current time step
       const singleResult: VitalLensResult = {
-        face: {},
+        face: {
+          ...(faceCoordinates?.[i] && { coordinates: [faceCoordinates[i]] }),
+          ...(faceConfidence?.[i] !== undefined && {
+            confidence: [faceConfidence[i]],
+          }),
+        },
         vital_signs: {},
         time: [newTimestamps[i]],
         message: incrementalResult.message,
@@ -655,15 +676,15 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       // Prepare hr for result
       if (hrPpgSize >= this.minBufferSizePpg) {
         // Ppg data long enough for hr estimation
-        const fpsHr = this.getCurrentFps(sourceId, hrPpgSize);
+        const fpsHr = this.getCurrentFps(sourceId, this.maxCalcSizeHR);
         if (fpsHr) {
           const hrPpgData = this.postprocessFn(
             'ppg',
-            averagedPpgData.slice(-hrPpgSize),
+            averagedPpgData.slice(-this.maxCalcSizeHR),
             fpsHr,
             light
           );
-          const hrPpgConf = averagedPpgConf.slice(-hrPpgSize);
+          const hrPpgConf = averagedPpgConf.slice(-this.maxCalcSizeHR);
           const hrValue = estimateHeartRate(hrPpgData, fpsHr);
           if (hrValue !== null) {
             result.vital_signs.heart_rate = {
@@ -788,15 +809,15 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       // Prepare rr for result
       if (rrRespSize >= this.minBufferSizeResp) {
         // Resp data long enough for rr estimation
-        const fpsRr = this.getCurrentFps(sourceId, rrRespSize);
+        const fpsRr = this.getCurrentFps(sourceId, this.maxCalcSizeRR);
         if (fpsRr) {
           const rrRespData = this.postprocessFn(
             'resp',
-            averagedRespData.slice(-rrRespSize),
+            averagedRespData.slice(-this.maxCalcSizeRR),
             fpsRr,
             light
           );
-          const rrRespConf = averagedRespConf.slice(-rrRespSize);
+          const rrRespConf = averagedRespConf.slice(-this.maxCalcSizeRR);
           const rrValue = estimateRespiratoryRate(rrRespData, fpsRr);
           if (rrValue !== null) {
             result.vital_signs.respiratory_rate = {
