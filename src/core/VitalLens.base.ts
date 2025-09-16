@@ -1,4 +1,9 @@
-import { VitalLensOptions, VitalLensResult, VideoInput } from '../types/core';
+import {
+  VitalLensOptions,
+  VitalLensResult,
+  VideoInput,
+  Vital,
+} from '../types/core';
 import { IVitalLensController } from '../types/IVitalLensController';
 
 /**
@@ -68,6 +73,15 @@ export abstract class VitalLensBase {
    */
   async processVideoFile(videoInput: VideoInput): Promise<VitalLensResult> {
     return this.controller.processVideoFile(videoInput);
+  }
+
+  /**
+   * Returns the vital signs supported by the currently resolved model.
+   * Must be called after the instance has initialized.
+   * @returns An array of supported vital sign keys.
+   */
+  getSupportedVitals(): Vital[] {
+    return this.controller.getSupportedVitals();
   }
 
   /**

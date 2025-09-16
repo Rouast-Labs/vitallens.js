@@ -1,0 +1,197 @@
+<style>
+  :host {
+    display: block;
+    width: 320px;
+    height: 180px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+  .status-indicator {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+  }
+  .status-searching {
+    background-color: #007bff;
+    animation: pulse 1.5s infinite ease-in-out;
+  }
+  .status-tracking {
+    background-color: #28a745;
+    animation: none;
+  }
+  .status-lost {
+    background-color: #dc3545;
+    animation: none;
+  }
+  .status-idle {
+    background-color: #6c757d;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.9); opacity: 0.7; }
+    50% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.7; }
+  }
+  .logo {
+    height: 24px;
+    opacity: 0.7;
+  }
+  .vitals-display {
+    display: flex;
+    justify-content: space-around;
+    align-items: center; /* Center content vertically */
+    text-align: center;
+    position: relative;
+    z-index: 2;
+    flex-grow: 1; /* Allow this container to fill space */
+  }
+  .vitals-grid {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+  }
+  .vital {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .vital-value-container {
+    height: 48px; /* Fixed height to prevent layout shifts */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .vital-value {
+    font-size: 48px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .vital-unit {
+    font-size: 16px;
+    color: #adb5bd;
+    margin-left: 4px;
+  }
+  .vital-label {
+    font-size: 14px;
+    color: #adb5bd;
+  }
+  .spinner {
+    display: none; /* Hidden by default */
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .feedback-message {
+    display: none; /* Hidden by default */
+    padding: 0 10px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #ced4da;
+    line-height: 1.4;
+  }
+  #hrv-container {
+    display: none; /* Hidden by default */
+    flex-direction: row;
+    justify-content: space-around;
+    text-align: center;
+    font-size: 12px;
+    color: #ced4da;
+    border-top: 1px solid #343a40;
+    padding-top: 10px;
+    margin-top: 10px;
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0; /* Prevent HRV container from shrinking */
+  }
+  .hrv-metric .value {
+    font-weight: 500;
+    display: inline-block;
+    min-width: 2.5em;
+    text-align: right;
+  }
+  .hrv-metric .spinner {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
+    vertical-align: middle;
+    margin: 0 0.8em;
+  }
+  .hrv-metric .unit {
+    color: #adb5bd;
+  }
+  .prompt {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 26, 26, 0.8);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    font-size: 18px;
+    font-weight: 500;
+  }
+</style>
+
+<div id="prompt" class="prompt">Click to Start</div>
+
+<div class="header">
+  <div id="status-indicator" class="status-indicator status-idle"></div>
+  <img id="logo" src="__LOGO_URL__" alt="VitalLens Logo" class="logo"/>
+</div>
+
+<div class="vitals-display">
+  <div id="vitals-grid" class="vitals-grid">
+    <div class="vital">
+      <div class="vital-value-container">
+        <span class="vital-value" id="hr-value">--</span>
+        <div class="spinner" id="hr-spinner"></div>
+      </div>
+      <div class="vital-label">HR <span class="vital-unit">bpm</span></div>
+    </div>
+    <div class="vital">
+      <div class="vital-value-container">
+        <span class="vital-value" id="rr-value">--</span>
+        <div class="spinner" id="rr-spinner"></div>
+      </div>
+      <div class="vital-label">RR <span class="vital-unit">bpm</span></div>
+    </div>
+  </div>
+  <div id="feedback-message" class="feedback-message"></div>
+</div>
+
+
+<div id="hrv-container">
+  <div class="hrv-metric">SDNN: <span id="hrv-sdnn" class="value">--</span><div class="spinner" id="hrv-sdnn-spinner"></div><span class="unit"> ms</span></div>
+  <div class="hrv-metric">RMSSD: <span id="hrv-rmssd" class="value">--</span><div class="spinner" id="hrv-rmssd-spinner"></div><span class="unit"> ms</span></div>
+  <div class="hrv-metric">LF/HF: <span id="hrv-lfhf" class="value">--</span><div class="spinner" id="hrv-lfhf-spinner"></div></div>
+</div>

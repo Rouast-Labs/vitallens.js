@@ -716,6 +716,7 @@ describe('VitalsEstimateManager', () => {
       );
     });
 
+    // TODO: Fix test
     it('should assemble an incremental result correctly', async () => {
       const incrementalResult: VitalLensResult = {
         time: [1004, 1005, 1006],
@@ -812,6 +813,7 @@ describe('VitalsEstimateManager', () => {
       });
     });
 
+    // TODO: Fix test
     it('should assemble a windowed result correctly', async () => {
       jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
@@ -886,6 +888,7 @@ describe('VitalsEstimateManager', () => {
       );
     });
 
+    // TODO: Fix test
     it('should assemble a complete result correctly', async () => {
       jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
