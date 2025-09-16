@@ -6,6 +6,7 @@ import {
   VitalLensResult,
   VideoInput,
   MethodConfig,
+  Vital,
 } from '../types/core';
 import { IVitalLensController } from '../types/IVitalLensController';
 import { METHODS_CONFIG } from '../config/methodsConfig';
@@ -280,6 +281,14 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     this.vitalsEstimateManager.reset(frameIterator.getId());
 
     return result;
+  }
+
+  /**
+   * Returns the vital signs supported by the currently resolved model.
+   * @returns An array of supported vital sign keys.
+   */
+  getSupportedVitals(): Vital[] {
+    return this.methodHandler.getConfig().supportedVitals;
   }
 
   /**

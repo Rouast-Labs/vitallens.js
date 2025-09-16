@@ -1,27 +1,16 @@
-import { VitalLensWidgetBase } from './VitalLensWidgetBase';
+import { VitalLensWidgetAdvanced } from './VitalLensWidgetAdvanced';
 
-class VitalLensWidgetUnified extends VitalLensWidgetBase {
+class VitalLensWidgetUnified extends VitalLensWidgetAdvanced {
   constructor() {
     super();
   }
+
   connectedCallback() {
     super.connectedCallback();
-    // For unified widget, use the full template.
-    this.getElements();
-    this.apiKey = this.getAttribute('api-key') || '';
-    this.proxyUrl = this.getAttribute('proxy-url') || null;
-    this.bindEvents();
-    this.charts.ppgChart = this.createChart(
-      'ppgChart',
-      'PPG Waveform',
-      '230,34,0'
+    // Default to webcam mode for the unified widget
+    this.startMode('webcam', true, false).catch((err) =>
+      console.error('Failed to start webcam mode:', err)
     );
-    this.charts.respChart = this.createChart(
-      'respChart',
-      'Respiratory Waveform',
-      '0,123,255'
-    );
-    this.switchMode('webcam');
   }
 }
 
