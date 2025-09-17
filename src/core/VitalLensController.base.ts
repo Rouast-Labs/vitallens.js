@@ -288,7 +288,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @returns An array of supported vital sign keys.
    */
   getSupportedVitals(): Vital[] {
-    return this.methodHandler.getConfig().supportedVitals;
+    return this.methodHandler.getConfig().supportedVitals || [];
   }
 
   /**

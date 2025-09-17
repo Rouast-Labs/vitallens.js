@@ -358,6 +358,55 @@ describe('findPeaks', () => {
     const totalPeaks = peaks.reduce((sum, seq) => sum + seq.length, 0);
     expect(totalPeaks).toBeCloseTo(11, 1); // Approx 10s * 70bpm / 60
   });
+
+  it('should use HR to set a tighter peak distance window, breaking sequences', () => {
+    const fs = 30;
+    const hr = 120; // expected interval = 15 samples
+    // Signal with peaks at sample 1, 10 (ok), 25 (ok), 70 (too far)
+    const signal = new Array(100).fill(0);
+    signal[1] = 2;
+    signal[10] = 2;
+    signal[25] = 2;
+    signal[70] = 2;
+
+    // With HR=120, expected interval is 15. minDistance ~ 7.5, maxDistance ~ 37.5
+    const peaksWithHr = findPeaks(signal, fs, {
+      hr: hr,
+      height: 1,
+      threshold: -5,
+      minSequenceLength: 3,
+    });
+    // Expected sequence: [1, 10, 25].
+    // Peak at 70 is skipped because the distance (70-25=45) is > maxDistance (37.5),
+    // which breaks the sequence. The new sequence `[70]` is too short and filtered out.
+    expect(peaksWithHr.length).toBe(1);
+    expect(peaksWithHr[0]).toEqual([1, 10, 25]);
+  });
+
+  it('should use HR to reject a peak that is too close', () => {
+    const fs = 30;
+    // With HR=60, expected interval is 30 samples. minDistance will be 15.
+    // Without HR, default minDistance is round((30*60)/220) = 8.
+    const signal = new Array(100).fill(0);
+    signal[1] = 2; // First peak
+    signal[13] = 2; // Second peak, distance is 12 samples.
+
+    // Test WITHOUT HR: 12 > 8, so the peak at 13 should be found.
+    const peaksWithoutHr = findPeaks(signal, fs, {
+      threshold: -5,
+      minSequenceLength: 2,
+    });
+    expect(peaksWithoutHr[0]).toEqual([1, 13]);
+
+    // Test WITH HR: 12 < 15, so the peak at 13 should be rejected.
+    const peaksWithHr = findPeaks(signal, fs, {
+      hr: 60,
+      threshold: -5,
+      minSequenceLength: 2,
+    });
+    // The sequence [1] is too short and gets filtered out.
+    expect(peaksWithHr).toEqual([]);
+  });
 });
 
 describe('estimateHeartRate', () => {
@@ -499,6 +548,43 @@ describe('estimateHrvFromDetectionSequences', () => {
         resultClean!.value,
         0
       );
+    });
+
+    describe('Non-uniform sampling', () => {
+      it('should use timestamps to calculate NN intervals when provided', () => {
+        const fs = 100; // This should be ignored by the calculation
+        // Provide 9 peaks to get 8 intervals, satisfying MIN_INTERVALS = 8
+        const peakIndices = [100, 205, 300, 410, 500, 605, 700, 810, 900];
+        const timestamps = new Array(1000).fill(0).map((_, i) => i * 0.01);
+
+        // Introduce non-uniformity at peak locations
+        timestamps[100] = 1.0;
+        timestamps[205] = 2.1; // 1.1s
+        timestamps[300] = 3.0; // 0.9s
+        timestamps[410] = 4.2; // 1.2s
+        timestamps[500] = 5.0; // 0.8s
+        timestamps[605] = 6.05; // 1.05s
+        timestamps[700] = 7.0; // 0.95s
+        timestamps[810] = 8.1; // 1.1s
+        timestamps[900] = 9.0; // 0.9s
+
+        const ppgConf = new Array(1000).fill(1.0);
+        const peakSequences = [peakIndices];
+
+        const result = estimateHrvFromDetectionSequences(
+          peakSequences,
+          ppgConf,
+          fs,
+          'sdnn',
+          timestamps
+        );
+
+        console.log('result:', result);
+
+        // Manual SDNN for [1.1, 0.9, 1.2, 0.8, 1.05, 0.95, 1.1, 0.9] is 125ms
+        expect(result).not.toBeNull();
+        expect(result!.value).toBeCloseTo(125.0, 1);
+      });
     });
   });
   describe('RMSSD metric', () => {
