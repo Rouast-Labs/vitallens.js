@@ -716,7 +716,6 @@ describe('VitalsEstimateManager', () => {
       );
     });
 
-    // TODO: Fix test
     it('should assemble an incremental result correctly', async () => {
       const incrementalResult: VitalLensResult = {
         time: [1004, 1005, 1006],
@@ -813,7 +812,6 @@ describe('VitalsEstimateManager', () => {
       });
     });
 
-    // TODO: Fix test
     it('should assemble a windowed result correctly', async () => {
       jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
@@ -888,7 +886,6 @@ describe('VitalsEstimateManager', () => {
       );
     });
 
-    // TODO: Fix test
     it('should assemble a complete result correctly', async () => {
       jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
@@ -896,6 +893,20 @@ describe('VitalsEstimateManager', () => {
         'source1',
         'complete',
         false
+      );
+
+      // Verify findPeaks was called with the estimated HR
+      expect(mockedFindPeaks).toHaveBeenCalledWith(expect.any(Array), 1, {
+        hr: 75,
+      });
+
+      // Verify estimateHrvFromDetectionSequences was called with timestamps
+      expect(mockedEstimateHrvFromDetectionSequences).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(Array),
+        1,
+        'sdnn',
+        [1001, 1002, 1003, 1004, 1005]
       );
 
       expect(result).toEqual({
