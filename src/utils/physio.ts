@@ -7,7 +7,6 @@ import {
   HRV_HF_BAND,
   HRV_LF_BAND,
 } from '../config/constants';
-import { standardize } from '../utils/arrayOps';
 import { VitalLensResult } from '../types';
 
 /**
@@ -48,14 +47,22 @@ const stdDev = (arr: number[]): number => {
  */
 const _filterNNIntervals = (
   nnIntervals: number[],
-  threshold = 0.2
+  threshold = 0.3
 ): number[] => {
   if (nnIntervals.length < 3) {
     return nnIntervals;
   }
   // Sort a copy to find the median, which is robust to outliers
   const sortedIntervals = [...nnIntervals].sort((a, b) => a - b);
-  const median = sortedIntervals[Math.floor(sortedIntervals.length / 2)];
+  let median;
+  const mid = Math.floor(sortedIntervals.length / 2);
+  if (sortedIntervals.length % 2 === 0) {
+    // Average the two middle elements for even-sized arrays
+    median = (sortedIntervals[mid - 1] + sortedIntervals[mid]) / 2;
+  } else {
+    // The middle element for odd-sized arrays
+    median = sortedIntervals[mid];
+  }
 
   // Define the absolute bounds for acceptable intervals
   const lowerBound = median * (1 - threshold);
@@ -75,26 +82,30 @@ const _filterNNIntervals = (
  * @returns The interpolated y-values.
  */
 const _linearInterp = (x: number[], y: number[], x_new: number[]): number[] => {
-  const y_new: number[] = [];
-  for (const x_val of x_new) {
+  const y_new: number[] = new Array(x_new.length);
+  let currentIndex = 0;
+
+  for (let i = 0; i < x_new.length; i++) {
+    const x_val = x_new[i];
+
     if (x_val < x[0]) {
-      y_new.push(y[0]);
+      y_new[i] = y[0];
       continue;
     }
     if (x_val > x[x.length - 1]) {
-      y_new.push(y[y.length - 1]);
+      y_new[i] = y[y.length - 1];
       continue;
     }
-    const i = x.findIndex((val) => val >= x_val);
-    if (x[i] === x_val) {
-      y_new.push(y[i]);
-    } else {
-      const x0 = x[i - 1],
-        y0 = y[i - 1];
-      const x1 = x[i],
-        y1 = y[i];
-      y_new.push(y0 + ((y1 - y0) * (x_val - x0)) / (x1 - x0));
+
+    // Advance the pointer efficiently instead of restarting the search
+    while (currentIndex < x.length - 2 && x[currentIndex + 1] < x_val) {
+      currentIndex++;
     }
+
+    const x0 = x[currentIndex], y0 = y[currentIndex];
+    const x1 = x[currentIndex + 1], y1 = y[currentIndex + 1];
+
+    y_new[i] = y0 + ((y1 - y0) * (x_val - x0)) / (x1 - x0);
   }
   return y_new;
 };
@@ -262,8 +273,9 @@ const _getHrvFunction = (
  * - `height`: The minimum absolute amplitude for a point to be considered a peak. (Default: 0)
  * - `threshold`: The Z-score threshold. A point is a peak if it's this many std devs above the mean. (Default: 2.5)
  * - `minDistanceSamples`: Minimum samples between consecutive peaks. (Default: based on 220 BPM)
- * - `maxDistanceSamples`: Maximum samples between consecutive peaks to remain in the same sequence. (Default: based on 40 BPM)
+ * - `maxDistanceSamples`: Maximum samples between consecutive peaks to remain in the same sequence. (Default: based on 45 BPM)
  * - `minSequenceLength`: The minimum number of peaks required to form a valid sequence. (Default: 3)
+ * - `hr`: An estimated heart rate (bpm) to create a more adaptive window for peak distances.
  * @returns An array of arrays, where each inner array is a sequence of peak indices.
  */
 export function findPeaks(
@@ -276,16 +288,30 @@ export function findPeaks(
     minDistanceSamples?: number;
     maxDistanceSamples?: number;
     minSequenceLength?: number;
+    hr?: number;
   } = {}
 ): number[][] {
   // Set parameters
   const lag = options.lag ?? Math.round(fs * 1.5);
   const height = options.height ?? 0;
   const threshold = options.threshold ?? 1.5;
-  const minDistanceSamples =
-    options.minDistanceSamples ?? Math.round((fs * 60) / 220); // Max physiological HR
-  const maxDistanceSamples =
-    options.maxDistanceSamples ?? Math.round(((fs * 60) / 45) * 2); // Detects a pause > 2 beats at 45bpm
+  let minDistanceSamples: number;
+  let maxDistanceSamples: number;
+  if (options.hr && options.hr >= 45 && options.hr <= 220) {
+    // If HR is provided, create an adaptive window for peak distance.
+    const expectedIntervalSamples = (fs * 60) / options.hr;
+    minDistanceSamples =
+      options.minDistanceSamples ?? Math.round(expectedIntervalSamples * 0.5);
+    // Allow for a pause of ~2.5 beats to avoid breaking sequences too easily
+    maxDistanceSamples =
+      options.maxDistanceSamples ?? Math.round(expectedIntervalSamples * 2.5);
+  } else {
+    // Fallback to fixed physiological limits if HR is not available.
+    minDistanceSamples =
+      options.minDistanceSamples ?? Math.round((fs * 60) / 220); // Max physiological HR
+    maxDistanceSamples =
+      options.maxDistanceSamples ?? Math.round(((fs * 60) / 45) * 2); // Detects a pause > 2 beats at 45bpm
+  }
   const minSequenceLength = options.minSequenceLength ?? 3;
 
   if (signal.length <= lag) {
@@ -468,14 +494,15 @@ export function estimateRespiratoryRate(
  * @param ppgConfidence - Confidence scores for the original PPG waveform.
  * @param fs - The sampling frequency in Hz.
  * @param metric - The HRV metric to calculate ('sdnn' or 'rmssd').
+ * @param timestamps - Timestamps of the original signal (optional)
  * @returns A result object for the specified HRV metric, or null if calculation is not possible.
  */
-// TODO: Cannot assume equally spaced sampling. Need to pass timestamps.
 export function estimateHrvFromDetectionSequences(
   sequences: number[][],
   ppgConfidence: number[],
   fs: number,
-  metric: HRVMetric
+  metric: HRVMetric,
+  timestamps?: number[]
 ):
   | (Omit<Required<VitalLensResult['vital_signs']>['hrv_sdnn'], 'value'> & {
       value: number;
@@ -487,40 +514,58 @@ export function estimateHrvFromDetectionSequences(
     return null;
   }
 
-  // Pool all NN intervals from all valid sequences.
-  const allNNIntervals: number[] = sequences.flatMap((sequence) => {
-    const intervals: number[] = [];
+  // Create objects containing the interval and the indices of the peaks that form it.
+  const intervalData = sequences.flatMap((sequence) => {
+    const data: { interval: number; idx1: number; idx2: number }[] = [];
     for (let i = 0; i < sequence.length - 1; i++) {
-      const intervalInSamples = sequence[i + 1] - sequence[i];
-      intervals.push(intervalInSamples / fs);
+      const idx1 = sequence[i];
+      const idx2 = sequence[i + 1];
+      let intervalInSeconds: number;
+      if (timestamps && idx1 < timestamps.length && idx2 < timestamps.length) {
+        intervalInSeconds = timestamps[idx2] - timestamps[idx1];
+      } else {
+        intervalInSeconds = (idx2 - idx1) / fs;
+      }
+      data.push({ interval: intervalInSeconds, idx1, idx2 });
     }
-    return intervals;
+    return data;
   });
 
-  // Exclude outliers.
-  const filteredIntervals = _filterNNIntervals(allNNIntervals, 0.2); // 20% threshold
+  // Filter out outlier intervals.
+  const allIntervalValues = intervalData.map((d) => d.interval);
+  const filteredIntervalValues = _filterNNIntervals(allIntervalValues, 0.3);
 
-  if (filteredIntervals.length < MIN_INTERVALS) {
+  if (filteredIntervalValues.length < MIN_INTERVALS) {
     return null;
   }
 
+  // Find the indices of peaks that form the valid, filtered intervals.
+  const validPeakIndices = new Set<number>();
+  const validIntervalData = intervalData.filter((d) =>
+    filteredIntervalValues.includes(d.interval)
+  );
+  validIntervalData.forEach((d) => {
+    validPeakIndices.add(d.idx1);
+    validPeakIndices.add(d.idx2);
+  });
+
+  // Calculate the minimum confidence among only the used peaks.
+  let minConfidence = 1.0;
+  validPeakIndices.forEach((idx) => {
+    const peakConf = ppgConfidence[idx] ?? 0;
+    if (peakConf < minConfidence) {
+      minConfidence = peakConf;
+    }
+  });
+
   // Get the specific HRV calculation function
   const hrvFunction = _getHrvFunction(metric);
-  const hrvValue = hrvFunction(filteredIntervals);
-
-  // Calculate average confidence from all peaks used in the original sequences.
-  const allPeaks = sequences.flat();
-  const confidenceSum = allPeaks.reduce(
-    (sum, peakIndex) => sum + (ppgConfidence[peakIndex] || 0),
-    0
-  );
-  const averageConfidence =
-    allPeaks.length > 0 ? confidenceSum / allPeaks.length : 0;
+  const hrvValue = hrvFunction(filteredIntervalValues);
 
   return {
     value: hrvValue,
     unit: 'ms',
-    confidence: averageConfidence,
+    confidence: minConfidence,
     note: `Estimate of the heart rate variability (${metric.toUpperCase()}).`,
   };
 }

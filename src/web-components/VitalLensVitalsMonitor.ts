@@ -4,6 +4,7 @@ import widget from './vitals-monitor.html';
 import logoUrl from '../../assets/logo.svg';
 
 const VITAL_CONFIDENCE_THRESHOLD = 0.7; // Confidence threshold for showing a vital sign
+const HRV_CONFIDENCE_THRESHOLD = 0.5; // Confidence threshold for showing hrv
 const FACE_CONFIDENCE_THRESHOLD = 0.5; // Confidence threshold for considering a face tracked
 
 class VitalLensVitalsMonitor extends VitalLensWidgetBase {
@@ -12,7 +13,6 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
   private rrValueElement!: HTMLElement;
   private hrvSdnnElement!: HTMLElement;
   private hrvRmssdElement!: HTMLElement;
-  private hrvLfhfElement!: HTMLElement;
   private promptElement!: HTMLElement;
   private feedbackMessageElement!: HTMLElement;
   private vitalsGridElement!: HTMLElement;
@@ -22,7 +22,6 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
   private rrSpinner!: HTMLElement;
   private hrvSdnnSpinner!: HTMLElement;
   private hrvRmssdSpinner!: HTMLElement;
-  private hrvLfhfSpinner!: HTMLElement;
 
   private ecoMode = false;
   private mediaStream: MediaStream | null = null;
@@ -49,7 +48,6 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
     this.rrValueElement = this.shadowRoot!.querySelector('#rr-value')!;
     this.hrvSdnnElement = this.shadowRoot!.querySelector('#hrv-sdnn')!;
     this.hrvRmssdElement = this.shadowRoot!.querySelector('#hrv-rmssd')!;
-    this.hrvLfhfElement = this.shadowRoot!.querySelector('#hrv-lfhf')!;
     this.promptElement = this.shadowRoot!.querySelector('#prompt')!;
     this.feedbackMessageElement =
       this.shadowRoot!.querySelector('#feedback-message')!;
@@ -61,7 +59,6 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
     this.hrvSdnnSpinner = this.shadowRoot!.querySelector('#hrv-sdnn-spinner')!;
     this.hrvRmssdSpinner =
       this.shadowRoot!.querySelector('#hrv-rmssd-spinner')!;
-    this.hrvLfhfSpinner = this.shadowRoot!.querySelector('#hrv-lfhf-spinner')!;
   }
 
   protected async initVitalLensInstance(): Promise<void> {
@@ -115,6 +112,7 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
     result: VitalLensResult,
     valueEl: HTMLElement,
     spinnerEl: HTMLElement,
+    confThresh: number,
     toFixed: number
   ): boolean {
     const vitalData = result.vital_signs[vital];
@@ -127,7 +125,7 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
 
     const confidence = vitalData.confidence ?? 0;
 
-    if (confidence >= VITAL_CONFIDENCE_THRESHOLD && vitalData.value !== null) {
+    if (confidence >= confThresh && vitalData.value !== null) {
       valueEl.style.display = 'inline';
       spinnerEl.style.display = 'none';
       valueEl.textContent = vitalData.value.toFixed(toFixed);
@@ -179,6 +177,7 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
       result,
       this.hrValueElement,
       this.hrSpinner,
+      VITAL_CONFIDENCE_THRESHOLD,
       0
     );
     const hasConfidentRr = this.updateVitalDisplay(
@@ -186,6 +185,7 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
       result,
       this.rrValueElement,
       this.rrSpinner,
+      VITAL_CONFIDENCE_THRESHOLD,
       0
     );
 
@@ -196,6 +196,7 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
         result,
         this.hrvSdnnElement,
         this.hrvSdnnSpinner,
+        HRV_CONFIDENCE_THRESHOLD,
         1
       );
       const hasRmssd = this.updateVitalDisplay(
@@ -203,16 +204,10 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
         result,
         this.hrvRmssdElement,
         this.hrvRmssdSpinner,
+        HRV_CONFIDENCE_THRESHOLD,
         1
       );
-      const hasLfhf = this.updateVitalDisplay(
-        'hrv_lfhf',
-        result,
-        this.hrvLfhfElement,
-        this.hrvLfhfSpinner,
-        2
-      );
-      hasConfidentHrv = hasSdnn || hasRmssd || hasLfhf;
+      hasConfidentHrv = hasSdnn || hasRmssd;
     }
 
     const allVitalsLowConfidence = !(
@@ -240,21 +235,18 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
     this.rrValueElement.textContent = '--';
     this.hrvSdnnElement.textContent = '--';
     this.hrvRmssdElement.textContent = '--';
-    this.hrvLfhfElement.textContent = '--';
 
     [
       this.hrSpinner,
       this.rrSpinner,
       this.hrvSdnnSpinner,
       this.hrvRmssdSpinner,
-      this.hrvLfhfSpinner,
     ].forEach((el) => (el ? (el.style.display = 'none') : null));
     [
       this.hrValueElement,
       this.rrValueElement,
       this.hrvSdnnElement,
       this.hrvRmssdElement,
-      this.hrvLfhfElement,
     ].forEach((el) => (el ? (el.style.display = 'inline') : null));
   }
 }

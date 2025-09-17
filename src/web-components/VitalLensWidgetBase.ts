@@ -76,12 +76,12 @@ export abstract class VitalLensWidgetBase extends HTMLElement {
 
   private handleVitalLensResults(result: VitalLensResult): void {
     this.latestResult = result;
-    this.updateUI(result);
     // Re-check vitals in case of dynamic model changes
     if (this.vitalLensInstance) {
       this.supportedVitals = this.vitalLensInstance.getSupportedVitals();
-      this.updateHRVDisplay();
     }
+    this.updateUI(result);
+    this.updateHRVDisplay();
   }
 
   protected updateHRVDisplay(): void {

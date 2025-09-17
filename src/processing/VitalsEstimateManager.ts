@@ -701,20 +701,32 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       // HRV
       const ppgDataForHrv = averagedPpgData;
       const ppgConfForHrv = averagedPpgConf;
+      let timestampsForHrv = this.timestamps.get(sourceId);
+      const hrValue = result.vital_signs.heart_rate?.value;
       const fpsForHrv = this.getCurrentFps(sourceId, ppgDataForHrv.length);
       if (
+        hrValue &&
         fpsForHrv &&
         ppgDataForHrv.length >= this.fpsTarget * CALC_HRV_SDNN_MIN_T
       ) {
+        if (
+          timestampsForHrv &&
+          timestampsForHrv.length > ppgDataForHrv.length
+        ) {
+          timestampsForHrv = timestampsForHrv.slice(-ppgDataForHrv.length);
+        }
         // Detect peaks once from the full available signal.
-        const peakSequences = findPeaks(ppgDataForHrv, fpsForHrv);
+        const peakSequences = findPeaks(ppgDataForHrv, fpsForHrv, {
+          hr: hrValue,
+        });
         // Calculate each supported HRV metric using the same peaks.
         if (this.methodConfig.supportedVitals?.includes('hrv_sdnn')) {
           const hrvResult = estimateHrvFromDetectionSequences(
             peakSequences,
             ppgConfForHrv,
             fpsForHrv,
-            'sdnn'
+            'sdnn',
+            timestampsForHrv
           );
           if (hrvResult) result.vital_signs.hrv_sdnn = hrvResult;
         }
@@ -726,7 +738,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             peakSequences,
             ppgConfForHrv,
             fpsForHrv,
-            'rmssd'
+            'rmssd',
+            timestampsForHrv
           );
           if (hrvResult) result.vital_signs.hrv_rmssd = hrvResult;
         }
@@ -738,7 +751,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             peakSequences,
             ppgConfForHrv,
             fpsForHrv,
-            'lfhf'
+            'lfhf',
+            timestampsForHrv
           );
           if (hrvResult) result.vital_signs.hrv_lfhf = hrvResult;
         }
