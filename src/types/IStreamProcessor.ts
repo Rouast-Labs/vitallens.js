@@ -3,5 +3,4 @@ export interface IStreamProcessor {
   start(): Promise<void>;
   isProcessing(): boolean;
   stop(): void;
-  onStreamReset?: () => Promise<void>;
 }
