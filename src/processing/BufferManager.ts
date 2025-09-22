@@ -16,6 +16,15 @@ export class BufferManager {
   }
 
   /**
+   * Get the size of the most relevant buffer.
+   * @returns The size of the most relevant buffer.
+   */
+  size(): number {
+    const readyBuffer = this.getReadyBuffer();
+    return readyBuffer ? readyBuffer.size() : 0;
+  }
+
+  /**
    * Generates a unique buffer ID based on ROI.
    * @param roi - The ROI associated with the buffer.
    * @returns A unique buffer ID string.

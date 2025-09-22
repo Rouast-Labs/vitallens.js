@@ -310,12 +310,14 @@ describe('VitalLensControllerBase', () => {
       expect(controller['methodHandler'].process).toHaveBeenCalledWith(
         { frames: [new Uint8Array([1, 2, 3])], timestamp: 0 },
         'file',
-        controller['bufferManager'].getState()
+        controller['bufferManager'].getState(),
+        undefined
       );
       expect(controller['methodHandler'].process).toHaveBeenCalledWith(
         { frames: [new Uint8Array([4, 5, 6])], timestamp: 1 },
         'file',
-        controller['bufferManager'].getState()
+        controller['bufferManager'].getState(),
+        undefined
       );
 
       // Ensure vitalsEstimateManager processes incremental results

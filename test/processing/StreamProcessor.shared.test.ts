@@ -90,6 +90,7 @@ describe('StreamProcessor', () => {
   let mockBufferedResultsConsumer: jest.Mocked<BufferedResultsConsumer>;
   let onPredictMock: jest.Mock;
   let onNoFaceMock: jest.Mock;
+  let onStreamResetMock: jest.Mock;
 
   beforeEach(() => {
     // Create a mock BufferManager with the necessary methods.
@@ -103,6 +104,7 @@ describe('StreamProcessor', () => {
       resetState: jest.fn(),
       cleanup: jest.fn(),
       isEmpty: jest.fn(() => false),
+      size: jest.fn(() => 5),
     } as unknown as jest.Mocked<BufferManager>;
 
     // Create a mock MethodHandler that returns a fake state.
@@ -143,6 +145,7 @@ describe('StreamProcessor', () => {
 
     onPredictMock = jest.fn(async (result: VitalLensResult) => {});
     onNoFaceMock = jest.fn(async () => {});
+    onStreamResetMock = jest.fn(async () => {});
   });
 
   test('should initialize with the correct ROI and buffer', () => {
@@ -155,7 +158,8 @@ describe('StreamProcessor', () => {
       mockMethodHandler,
       null,
       onPredictMock,
-      onNoFaceMock
+      onNoFaceMock,
+      onStreamResetMock
     );
 
     processor.init();
@@ -178,7 +182,8 @@ describe('StreamProcessor', () => {
       mockMethodHandler,
       mockBufferedResultsConsumer,
       onPredictMock,
-      onNoFaceMock
+      onNoFaceMock,
+      onStreamResetMock
     );
 
     // Start processing; this calls frameIterator.start() and kicks off the async loop.
@@ -198,6 +203,32 @@ describe('StreamProcessor', () => {
     expect(onPredictMock).toHaveBeenCalled();
   });
 
+  test('should call onStreamReset on a reset error', async () => {
+    // Simulate an error that contains the "Resetting stream" message.
+    mockMethodHandler.process.mockRejectedValue(
+      new Error('Resetting stream now!')
+    );
+
+    const processor = new TestStreamProcessor(
+      options,
+      () => methodConfig,
+      mockFrameIterator,
+      mockBufferManager,
+      null,
+      mockMethodHandler,
+      mockBufferedResultsConsumer,
+      onPredictMock,
+      onNoFaceMock,
+      onStreamResetMock
+    );
+
+    await processor.start();
+    await new Promise((resolve) => setTimeout(resolve, 100)); // Allow async loop to run
+
+    expect(onStreamResetMock).toHaveBeenCalled();
+    expect(onNoFaceMock).not.toHaveBeenCalled(); // Ensure the wrong callback wasn't called
+  });
+
   test('should update ROI on face detection', async () => {
     const processor = new TestStreamProcessor(
       options,
@@ -208,7 +239,8 @@ describe('StreamProcessor', () => {
       mockMethodHandler,
       mockBufferedResultsConsumer,
       onPredictMock,
-      onNoFaceMock
+      onNoFaceMock,
+      onStreamResetMock
     );
 
     // Call triggerFaceDetection with a frame.
@@ -232,7 +264,8 @@ describe('StreamProcessor', () => {
       mockMethodHandler,
       mockBufferedResultsConsumer,
       onPredictMock,
-      onNoFaceMock
+      onNoFaceMock,
+      onStreamResetMock
     );
 
     // Simulate a face detection event with no detections.
@@ -255,7 +288,8 @@ describe('StreamProcessor', () => {
       mockMethodHandler,
       mockBufferedResultsConsumer,
       onPredictMock,
-      onNoFaceMock
+      onNoFaceMock,
+      onStreamResetMock
     );
 
     processor.stop();
