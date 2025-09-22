@@ -14,6 +14,14 @@ export abstract class Buffer {
   ) {}
 
   /**
+   * Get the current buffer size.
+   * @returns The size of the buffer.
+   */
+  size(): number {
+    return this.buffer.size;
+  }
+
+  /**
    * Adds a frame to the buffer.
    * @param frame - The frame to add.
    * @param overrideRoi - Use this ROI instead of buffer ROI (optional).

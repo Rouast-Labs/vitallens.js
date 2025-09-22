@@ -71,11 +71,13 @@ export abstract class MethodHandler {
    * @param framesChunk - Frame chunk to process.
    * @param mode - The inference mode.
    * @param state - Optional recurrent state from previous processing.
+   * @param bufferSize - Optional current size of the buffer.
    * @returns A promise that resolves to the processing result.
    */
   abstract process(
     framesChunk: Frame,
     mode: InferenceMode,
-    state?: Float32Array
+    state?: Float32Array,
+    bufferSize?: number
   ): Promise<VitalLensResult | undefined>;
 }
