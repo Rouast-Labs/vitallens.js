@@ -60,6 +60,9 @@ export abstract class VitalLensWidgetBase extends HTMLElement {
       this.vitalLensInstance.addEventListener('vitals', (result) =>
         this.handleVitalLensResults(result as VitalLensResult)
       );
+      this.vitalLensInstance.addEventListener('streamReset', (event) =>
+        this.handleStreamReset(event as { message: string })
+      );
 
       // After a brief moment for initialization, check for supported vitals
       setTimeout(() => {
@@ -84,13 +87,23 @@ export abstract class VitalLensWidgetBase extends HTMLElement {
     this.updateHRVDisplay();
   }
 
+  protected handleStreamReset(event: { message: string }): void {
+    this.showError(event.message);
+    this.isProcessingFlag = false; // Stop the processing state
+    this.resetUI();
+  }
+
   protected updateHRVDisplay(): void {
     const hrvContainer = this.shadowRoot?.querySelector(
       '#hrv-container'
     ) as HTMLElement | null;
-    if (!hrvContainer || !this.supportedVitals) return;
-    const hasHrv = this.supportedVitals.some((v) => v.startsWith('hrv_'));
-    hrvContainer.style.display = hasHrv ? 'flex' : 'none';
+    if (hrvContainer) {
+      // To re-enable HRV display, remove the line below and uncomment the original logic.
+      hrvContainer.style.display = 'none';
+      // if (!this.supportedVitals) return;
+      // const hasHrv = this.supportedVitals.some((v) => v.startsWith('hrv_'));
+      // hrvContainer.style.display = hasHrv ? 'flex' : 'none';
+    }
   }
 
   protected showError(message: string): void {
