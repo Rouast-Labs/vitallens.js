@@ -3,6 +3,7 @@ import { IRestClient, ResolveModelResponse } from '../../src/types/IRestClient';
 import { VitalLensOptions, VitalLensResult } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
 import { jest } from '@jest/globals';
+import { VitalLensAPIError } from '../../src/utils/errors';
 
 // A standard successful response from the API for our mocks
 const mockSuccessResponseBody: VitalLensResult = {
@@ -85,10 +86,10 @@ describe('VitalLensAPIHandler Circuit Breaker', () => {
       body: mockSuccessResponseBody,
     });
 
-    // ACT: Process with a small buffer size and no prior errors
+    // ACT: Process with a small buffer size
     await handler.process(mockFrame, 'stream', undefined, 50);
 
-    // ASSERT: The /stream endpoint should be called, and only once.
+    // ASSERT: The /stream endpoint should be called
     expect(mockRestClient.sendFrames).toHaveBeenCalledTimes(1);
     expect(mockRestClient.sendFrames).toHaveBeenCalledWith(
       expect.any(Object),
@@ -98,124 +99,29 @@ describe('VitalLensAPIHandler Circuit Breaker', () => {
     );
   });
 
-  it('should switch to the /file endpoint when buffer size exceeds FALLBACK_BUFFER_THRESHOLD', async () => {
-    // ARRANGE: Mock the client to succeed on the /file endpoint
-    mockRestClient.sendFrames.mockResolvedValue({
-      statusCode: 200,
-      body: mockSuccessResponseBody,
-    });
-
-    // ACT: Process with a large buffer size (101 > 100)
-    const result = await handler.process(mockFrame, 'stream', undefined, 101);
-
-    // ASSERT: The /file endpoint should be called directly, and only once.
-    expect(result?.message).toBe(
-      'The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes.'
-    );
-    expect(mockRestClient.sendFrames).toHaveBeenCalledTimes(1);
-    expect(mockRestClient.sendFrames).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.any(Uint8Array),
-      'file',
-      undefined
-    );
-  });
-
-  it('should switch to the /file endpoint after a timeout', async () => {
-    // ARRANGE: Mock the client to fail on '/stream' but succeed on '/file'
-    mockRestClient.sendFrames.mockImplementation(
-      async (metadata, frames, mode) => {
-        if (mode === 'stream') {
-          throw new Error('Request timed out');
-        }
-        if (mode === 'file') {
-          return Promise.resolve({
-            statusCode: 200,
-            body: mockSuccessResponseBody,
-          });
-        }
-        return Promise.reject(new Error(`Unexpected mode in mock: ${mode}`));
-      }
-    );
-
-    // ACT: Process the frame. The initial call will be to '/stream'.
-    const result = await handler.process(mockFrame, 'stream', undefined, 50);
-
-    // ASSERT
-    expect(result?.message).toBe(
-      'The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes.'
-    );
-    expect(mockRestClient.sendFrames).toHaveBeenCalledTimes(2);
-    expect(mockRestClient.sendFrames).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.any(Uint8Array),
-      'stream',
-      undefined
-    );
-    expect(mockRestClient.sendFrames).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.any(Uint8Array),
-      'file',
-      undefined
-    );
-  });
-
-  it('should reset the timeout counter after a successful fallback', async () => {
-    // ARRANGE: Set the initial timeout count to 1 to force a fallback
-    (handler as any).consecutiveTimeouts = 1;
-    mockRestClient.sendFrames.mockResolvedValue({
-      statusCode: 200,
-      body: mockSuccessResponseBody,
-    });
-
-    // ACT: Process the frame. This will go straight to the /file fallback due to the counter.
-    await handler.process(mockFrame, 'stream', undefined, 50);
-
-    // ASSERT: The fallback call should be successful, and the counter should be reset.
-    expect(mockRestClient.sendFrames).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.any(Uint8Array),
-      'file',
-      undefined
-    );
-    expect((handler as any).consecutiveTimeouts).toBe(0);
-  });
-
-  it('should throw a reset error if buffer size exceeds RESET_BUFFER_THRESHOLD', async () => {
-    // ACT & ASSERT: Process with a buffer size (301) that triggers the hard reset limit (300).
+  it('should throw a reset error if buffer size exceeds STREAM_RESET_BUFFER_THRESHOLD', async () => {
+    // ACT & ASSERT: Process with a buffer size (101) that triggers the hard reset limit (100).
     // This should throw an error before any API call is made.
     await expect(
-      handler.process(mockFrame, 'stream', undefined, 301)
+      handler.process(mockFrame, 'stream', undefined, 101)
     ).rejects.toThrow(
-      'Network instability detected. Frame buffer exceeded 300 frames. Resetting stream.'
+      'Network instability detected. Frame buffer exceeded 100 frames. Resetting stream.'
     );
     expect(mockRestClient.sendFrames).not.toHaveBeenCalled();
   });
 
-  it('should throw a reset error after MAX_CONSECUTIVE_TIMEOUTS', async () => {
-    // ARRANGE: Mock the client to *always* throw a timeout error
-    mockRestClient.sendFrames.mockImplementation(
-      async (metadata, frames, mode) => {
-        throw new Error('Request timed out');
-      }
-    );
+  it('should throw a general VitalLensAPIError on fetch timeout', async () => {
+    // ARRANGE: Mock the client to simulate a network timeout.
+    mockRestClient.sendFrames.mockRejectedValue(new Error('Request timed out'));
 
-    // ACT & ASSERT
-    // Call 1: /stream fails (timeout #1), then the immediate fallback to /file fails (timeout #2).
-    // The handler returns undefined because the max has not been reached.
-    const result1 = await handler.process(mockFrame, 'stream', undefined, 50);
-    expect(result1).toBeUndefined();
-    expect((handler as any).consecutiveTimeouts).toBe(2);
-
-    // Call 2: Since consecutiveTimeouts > 0, it goes straight to the /file fallback.
-    // The fallback fails again (timeout #3). This time, it should throw the final error.
+    // ACT & ASSERT: Expect the process method to catch the timeout and re-throw it as a VitalLensAPIError.
     await expect(
       handler.process(mockFrame, 'stream', undefined, 50)
-    ).rejects.toThrow(
-      'Persistent network instability. Please check your connection. Resetting stream.'
-    );
+    ).rejects.toThrow(VitalLensAPIError);
 
-    // Verify the final timeout count
-    expect((handler as any).consecutiveTimeouts).toBe(3);
+    // Ensure it contains the original message.
+    await expect(
+      handler.process(mockFrame, 'stream', undefined, 50)
+    ).rejects.toThrow('Request timed out');
   });
 });

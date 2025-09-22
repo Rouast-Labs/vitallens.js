@@ -22,10 +22,7 @@ import {
 } from '../utils/arrayOps';
 import { CALC_HR_MAX, CALC_HR_MIN, CALC_RR_MAX } from '../config/constants';
 
-// Thresholds for circuit breaker
-const FALLBACK_BUFFER_THRESHOLD = 100; // Frames
-const RESET_BUFFER_THRESHOLD = 300; // Frames
-
+const STREAM_RESET_BUFFER_THRESHOLD = 100; // Frames
 const VITAL_CODES_TO_NAMES: Record<string, Vital> = {
   hr: 'heart_rate',
   rr: 'respiratory_rate',
@@ -41,12 +38,10 @@ const VITAL_CODES_TO_NAMES: Record<string, Vital> = {
  */
 export class VitalLensAPIHandler extends MethodHandler {
   private client: IRestClient;
-  private options: VitalLensOptions;
+  private options: VitalLensOptions; // TODO: Remove this?
   private ready = false;
   private requestedModelName?: string;
   private resolvedModelName?: string;
-  private consecutiveTimeouts = 0;
-  private readonly MAX_CONSECUTIVE_TIMEOUTS = 3;
 
   constructor(client: IRestClient, options: VitalLensOptions) {
     super(options);
@@ -221,24 +216,16 @@ export class VitalLensAPIHandler extends MethodHandler {
       );
     }
 
-    // Circuit breaker logic
-    if (mode === 'stream' && bufferSize) {
-      if (bufferSize > RESET_BUFFER_THRESHOLD) {
-        // Buffer is too large, reset is necessary.
-        throw new VitalLensAPIError(
-          `Network instability detected. Frame buffer exceeded ${RESET_BUFFER_THRESHOLD} frames. Resetting stream.`
-        );
-      }
-      // If buffer is large or we are recovering from a timeout, go straight to fallback
-      if (
-        bufferSize > FALLBACK_BUFFER_THRESHOLD ||
-        this.consecutiveTimeouts > 0
-      ) {
-        console.warn(
-          `High latency detected (buffer: ${bufferSize} frames). Attempting fallback recovery.`
-        );
-        return this._fallbackToLambda(framesChunk, state);
-      }
+    // Circuit breaker logic for stream mode
+    if (
+      mode === 'stream' &&
+      bufferSize &&
+      bufferSize > STREAM_RESET_BUFFER_THRESHOLD
+    ) {
+      // Buffer is too large, reset is necessary.
+      throw new VitalLensAPIError(
+        `Network instability detected. Frame buffer exceeded ${STREAM_RESET_BUFFER_THRESHOLD} frames. Resetting stream.`
+      );
     }
 
     try {
@@ -255,29 +242,9 @@ export class VitalLensAPIHandler extends MethodHandler {
         state
       )) as VitalLensAPIResponse;
 
-      // On success, reset the timeout counter and parse the response
-      this.consecutiveTimeouts = 0;
+      // Parse the successful response
       return this._parseAPIResponse(response, framesChunk);
     } catch (error) {
-      // Catch timeout errors to engage the circuit breaker
-      if (
-        error instanceof Error &&
-        (error.message.toLowerCase().includes('timed out') ||
-          error.message.toLowerCase().includes('timeout') ||
-          error.message.includes('504'))
-      ) {
-        this.consecutiveTimeouts++;
-        console.error(
-          `Request timed out (${this.consecutiveTimeouts}/${this.MAX_CONSECUTIVE_TIMEOUTS}). Activating fallback.`
-        );
-        // If max timeouts reached, throw the fatal reset error
-        if (this.consecutiveTimeouts >= this.MAX_CONSECUTIVE_TIMEOUTS) {
-          throw new VitalLensAPIError(
-            'Persistent network instability. Please check your connection. Resetting stream.'
-          );
-        }
-        return this._fallbackToLambda(framesChunk, state);
-      }
       // Re-throw other specific errors
       if (
         error instanceof VitalLensAPIError ||
@@ -290,47 +257,6 @@ export class VitalLensAPIHandler extends MethodHandler {
       throw new VitalLensAPIError(
         error instanceof Error ? error.message : 'Unknown error'
       );
-    }
-  }
-
-  /**
-   * Handle the fallback to the /file Lambda endpoint.
-   * @param framesChunk - Frame chunk to send, already in shape (n_frames, 40, 40, 3).
-   * @param state - Optional recurrent state from the previous API call.
-   * @returns A promise that resolves to the processed result.
-   */
-  private async _fallbackToLambda(
-    framesChunk: Frame,
-    state?: Float32Array
-  ): Promise<VitalLensResult | undefined> {
-    console.log('Executing fallback to /file endpoint.');
-    try {
-      const metadata: { origin: string; model?: string } = {
-        origin: 'vitallens.js',
-        ...(this.requestedModelName && { model: this.requestedModelName }),
-      };
-
-      // Use the 'file' mode for the client call
-      const response = await this.client.sendFrames(
-        metadata,
-        framesChunk.getUint8Array(),
-        'file', // Use the file endpoint
-        state
-      );
-
-      // Reset timeout counter on successful fallback
-      this.consecutiveTimeouts = 0;
-      return this._parseAPIResponse(response, framesChunk);
-    } catch (error) {
-      console.error('Fallback to /file endpoint failed:', error);
-      // Increment timeout counter as the fallback also failed
-      this.consecutiveTimeouts++;
-      if (this.consecutiveTimeouts >= this.MAX_CONSECUTIVE_TIMEOUTS) {
-        throw new VitalLensAPIError(
-          'Persistent network instability. Please check your connection. Resetting stream.'
-        );
-      }
-      return undefined; // Indicate failure
     }
   }
 

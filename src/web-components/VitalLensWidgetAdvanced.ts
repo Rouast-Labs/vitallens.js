@@ -14,7 +14,6 @@ import {
   ScriptableLineSegmentContext,
 } from 'chart.js';
 import { AGG_WINDOW_SIZE } from '../config/constants';
-import { METHODS_CONFIG } from '../config/methodsConfig';
 
 // Chart.js plugins (as before)
 const playbackDotPlugin = {
@@ -98,7 +97,6 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
   protected methodSelectElement!: HTMLSelectElement;
   protected fpsValueElement!: HTMLElement;
   protected downloadButtonElement!: HTMLButtonElement;
-  protected ecoModeButtonElement!: HTMLButtonElement;
   protected vitalsDimmerElement!: HTMLElement;
   protected vitalsSpinnerElement!: HTMLElement;
   protected vitalsProgressElement!: HTMLElement;
@@ -109,8 +107,7 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
   protected currentMethod: Method = 'vitallens';
   protected mode: string = '';
   protected debug: boolean = false;
-  protected ecoMode: boolean = true;
-  protected ecoModeFps: number = 15;
+  protected readonly ecoModeFps: number = 15;
   protected bufferingTimeout: number | null = null;
   private _handleResizeBound = this.handleResize.bind(this);
 
@@ -162,8 +159,6 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     )!;
     this.downloadButtonElement =
       this.shadowRoot!.querySelector('#downloadButton')!;
-    this.ecoModeButtonElement =
-      this.shadowRoot!.querySelector('#ecoModeButton')!;
     this.vitalsDimmerElement = this.shadowRoot!.querySelector('#vitalsDimmer')!;
     this.vitalsSpinnerElement =
       this.shadowRoot!.querySelector('#vitalsSpinner')!;
@@ -192,16 +187,10 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
       respiratory_rate,
       hrv_sdnn,
       hrv_rmssd,
-      hrv_lfhf,
     } = vital_signs;
 
     const maxDataPoints =
-      this.mode === 'webcam'
-        ? AGG_WINDOW_SIZE *
-          (this.ecoMode
-            ? this.ecoModeFps
-            : METHODS_CONFIG[this.currentMethod]?.fpsTarget || 30)
-        : undefined;
+      this.mode === 'webcam' ? AGG_WINDOW_SIZE * this.ecoModeFps : undefined;
 
     this.updateChart(
       this.charts.ppgChart,
@@ -223,19 +212,39 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     // Update HRV values
     const sdnnEl = this.shadowRoot?.querySelector('#hrv-sdnn');
     const rmssdEl = this.shadowRoot?.querySelector('#hrv-rmssd');
-    const lfhfEl = this.shadowRoot?.querySelector('#hrv-lfhf');
 
     if (sdnnEl) sdnnEl.textContent = hrv_sdnn?.value?.toFixed(1) ?? '--';
     if (rmssdEl) rmssdEl.textContent = hrv_rmssd?.value?.toFixed(1) ?? '--';
-    if (lfhfEl) lfhfEl.textContent = hrv_lfhf?.value?.toFixed(2) ?? '--';
 
     if (this.mode === 'webcam') this.setBufferingTimeout();
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected async handleStreamReset(event: { message: string }): Promise<void> {
+    this.showError('Connection unstable. Reconnecting in 3 seconds...');
+
+    if (this.mode === 'webcam' && this.vitalLensInstance) {
+      this.vitalLensInstance.stopVideoStream();
+      this.resetVideoStreamView();
+    }
+    this.resetUI();
+
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    if (this.mode === 'webcam') {
+      try {
+        await this.startMode('webcam', true, false);
+      } catch (err) {
+        console.error('Failed to automatically restart webcam mode:', err);
+        this.showError(
+          'Could not restart the camera. Please try again manually.'
+        );
+      }
+    }
+  }
+
   protected resetUI(): void {
-    const methodConfig = METHODS_CONFIG[this.currentMethod];
-    const fpsTarget = this.ecoMode ? this.ecoModeFps : methodConfig.fpsTarget;
-    const maxDataPoints = AGG_WINDOW_SIZE * fpsTarget;
+    const maxDataPoints = AGG_WINDOW_SIZE * this.ecoModeFps;
     this.updateChart(this.charts.ppgChart, [], [], maxDataPoints);
     this.updateChart(this.charts.respChart, [], [], maxDataPoints);
     this.updateStats('ppgStats', 'HR', undefined);
@@ -246,22 +255,14 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
   protected async initVitalLensInstance(): Promise<void> {
     const selectedMethod =
       (this.methodSelectElement.value as Method) || 'vitallens';
-    const selectedEcoMode =
-      this.ecoModeButtonElement.classList.contains('eco-enabled');
 
-    if (
-      this.vitalLensInstance &&
-      this.currentMethod === selectedMethod &&
-      this.ecoMode === selectedEcoMode
-    )
-      return;
+    if (this.vitalLensInstance && this.currentMethod === selectedMethod) return;
 
     this.currentMethod = selectedMethod;
-    this.ecoMode = selectedEcoMode;
 
     const options: Partial<VitalLensOptions> = {
       method: this.currentMethod,
-      ...(this.ecoMode ? { overrideFpsTarget: this.ecoModeFps } : {}),
+      overrideFpsTarget: this.ecoModeFps,
     };
 
     // Call the base class implementation with the assembled options
@@ -541,12 +542,6 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     }
   }
 
-  protected toggleEcoMode() {
-    this.ecoModeButtonElement.classList.toggle('eco-enabled');
-    this.ecoModeButtonElement.classList.toggle('eco-disabled');
-    this.restartMode();
-  }
-
   protected async startMode(
     modeToStart: string,
     initUI: boolean,
@@ -637,17 +632,6 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     this.disablePlaybackDotPlugin();
   }
 
-  private resetVitalsView() {
-    const methodConfig = METHODS_CONFIG[this.currentMethod];
-    const fpsTarget = this.ecoMode ? this.ecoModeFps : methodConfig.fpsTarget;
-    const maxDataPoints = AGG_WINDOW_SIZE * fpsTarget;
-    this.updateChart(this.charts.ppgChart, [], [], maxDataPoints);
-    this.updateChart(this.charts.respChart, [], [], maxDataPoints);
-    this.updateStats('ppgStats', 'HR   bpm', undefined);
-    this.updateStats('respStats', 'RR   bpm', undefined);
-    this.updateFpsValue(0, 0);
-  }
-
   private handleResize() {
     this.setCanvasDimensions();
     if (this.charts.ppgChart) {
@@ -733,9 +717,6 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
         anchor.click();
         anchor.remove();
       }
-    });
-    this.ecoModeButtonElement.addEventListener('click', () => {
-      this.toggleEcoMode();
     });
 
     this.webcamModeButtonElement?.addEventListener('click', () =>
