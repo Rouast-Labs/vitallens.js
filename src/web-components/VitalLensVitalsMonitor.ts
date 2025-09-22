@@ -3,7 +3,7 @@ import { VitalLensOptions, VitalLensResult } from '../types';
 import widget from './vitals-monitor.html';
 import logoUrl from '../../assets/logo.svg';
 
-const VITAL_CONFIDENCE_THRESHOLD = 0.7; // Confidence threshold for showing a vital sign
+const VITAL_CONFIDENCE_THRESHOLD = 0.6; // Confidence threshold for showing a vital sign
 const HRV_CONFIDENCE_THRESHOLD = 0.5; // Confidence threshold for showing hrv
 const FACE_CONFIDENCE_THRESHOLD = 0.5; // Confidence threshold for considering a face tracked
 
@@ -23,7 +23,6 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
   private hrvSdnnSpinner!: HTMLElement;
   private hrvRmssdSpinner!: HTMLElement;
 
-  private ecoMode = false;
   private mediaStream: MediaStream | null = null;
 
   constructor() {
@@ -33,7 +32,6 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
 
   connectedCallback() {
     super.connectedCallback();
-    this.ecoMode = this.hasAttribute('eco-mode');
     this.addEventListener('click', this.toggleProcessing);
   }
 
@@ -63,7 +61,7 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
 
   protected async initVitalLensInstance(): Promise<void> {
     const options: Partial<VitalLensOptions> = {
-      ...(this.ecoMode && { overrideFpsTarget: 15 }),
+      overrideFpsTarget: 15,
     };
     await super.initVitalLensInstance(options);
   }
@@ -86,7 +84,7 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
         this.vitalLensInstance!.startVideoStream();
         this.statusIndicator.className = 'status-indicator status-searching';
 
-        // **FIX:** Display initial instructions immediately.
+        // Display initial instructions immediately.
         this.vitalsGridElement.style.display = 'none';
         this.feedbackMessageElement.textContent =
           'Face the camera, ensure good lighting and hold still.';
@@ -152,7 +150,6 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
       sdnn: hrv_sdnn?.value?.toFixed(1) ?? 'N/A',
       sdnnConfidence: hrv_sdnn?.confidence?.toFixed(4) ?? 'N/A',
     };
-    console.log('VitalLens Monitor Debug:', debugLog);
 
     const { face } = result;
     const faceConfidence = face?.confidence?.[face.confidence.length - 1] ?? 0;

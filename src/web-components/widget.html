@@ -62,7 +62,6 @@
     padding: 8px;
     box-sizing: border-box;
     min-height: 0;
-    border-top: 1px solid #333;
   }
   .chart-wrapper {
     display: flex;
@@ -73,13 +72,21 @@
   .chart-container {
     flex-grow: 1;
     position: relative;
+    min-width: 0;
+  }
+  .chart-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
   }
   .vital-stats {
-    min-width: 120px;
+    flex-shrink: 0;
+    width: 120px;
     text-align: left;
   }
   .vital-stats p {
     margin: 4px 0 0;
+    white-space: nowrap;
   }
   .vital-stats .value {
     font-size: 42px;
@@ -87,6 +94,13 @@
   }
   .vital-stats .label {
     font-size: 14px;
+  }
+  .vital-stats .unit {
+    font-size: 14px;
+    color: #a0a0a0;
+  }
+  .vital-stats .label, .vital-stats .value {
+    transition: color 0.3s ease;
   }
   /* HRV Container */
   #hrv-container {
@@ -106,7 +120,7 @@
   #controls {
     flex: 0 0 auto;
     background: #111;
-    padding: 8px 15px;
+    padding: 10px; /* RESTORED this padding */
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -128,7 +142,7 @@
     background-color: #007bff;
     border-color: #007bff;
   }
-  /* Other styles from original widget.html */
+  /* Other styles */
   #video-container video, #video-container canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
   #video-container canvas { pointer-events: none; }
   #dropZone { position: absolute; top: 8px; left: 8px; width: calc(100% - 16px); height: calc(100% - 16px); border: 2px dashed #007bff; border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; color: #007bff; background: rgba(0, 0, 0, 0.8); cursor: pointer; box-sizing: border-box; padding: 20px; z-index: 3; display: none; }
@@ -139,10 +153,18 @@
   .progressMessage { position: absolute; z-index: 3; display: none; top: calc(50% + 50px); left: 50%; transform: translateX(-50%); font-size: 14px; color: white; text-align: center; }
   #errorPopup { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #b71c1c; color: white; padding: 10px 20px; border-radius: 5px; z-index: 1000; display: none; }
   #methodContainer, #hintsContainer, #fpsDisplay { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  /* Tooltip Styles */
+  .tooltip { position: relative; display: inline-block; cursor: pointer; }
+  .tooltip .tooltip-label, .tooltip .tooltip-icon { vertical-align: middle; }
+  .tooltip .tooltip-icon { background: #007bff; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; margin-left: 4px; font-weight: bold; }
+  .tooltip .tooltip-content { visibility: hidden; opacity: 0; position: absolute; z-index: 10; bottom: 125%; left: 50%; transform: translateX(-50%); background-color: #333; color: #fff; padding: 10px; border-radius: 6px; width: max-content; max-width: 300px; text-align: left; transition: opacity 0.3s, visibility 0.3s; }
+  .tooltip:hover .tooltip-content { visibility: visible; opacity: 1; }
+  .tooltip .tooltip-content ul { margin: 0; padding: 0 0 0 20px; list-style: disc; }
+  .tooltip .tooltip-content li { margin-bottom: 5px; }
+  .tooltip .tooltip-content li:last-child { margin-bottom: 0; }
 </style>
 
 <div id="errorPopup">Error message goes here</div>
-
 <div id="navbar">
   <a href="https://www.rouast.com/api/" target="_blank" class="logo-link">
     <div class="logo-container"><img src="__LOGO_URL__" alt="VitalLens API" /></div>
@@ -154,7 +176,6 @@
   </div>
   <button id="downloadButton">Download JSON</button>
 </div>
-
 <div id="main-content">
   <div id="video-container">
     <video id="video" autoplay muted playsinline style="display: none;"></video>
@@ -173,7 +194,31 @@
         <option value="vitallens" selected>VitalLens</option><option value="pos">POS</option><option value="chrom">CHROM</option><option value="g">G</option>
       </select>
     </div>
-    <button id="ecoModeButton" class="eco-enabled">Eco Mode</button>
+    <div id="hintsContainer">
+      <div class="tooltip guidelines-tooltip">
+        <span class="tooltip-label">Tips</span>
+        <span class="tooltip-icon">?</span>
+        <div class="tooltip-content">
+          <ul>
+            <li>Minimize camera movement.</li>
+            <li>Keep the subject still and facing the camera.</li>
+            <li>Use bright and steady light source.</li>
+            <li>Ensure a stable internet connection.</li>
+            <li>Use as little video compression as possible if using a video file.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="tooltip file-mode-tooltip" style="display: none;">
+        <span class="tooltip-label">Slow?</span>
+        <span class="tooltip-icon">?</span>
+        <div class="tooltip-content">
+          <ul>
+            <li>Video processing in the browser can take a while for large files.</li>
+            <li>For more performance, use this client in Node.js or our Python client.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
     <button id="controlButton">Pause</button>
   </div>
   <div id="vitals-container">
@@ -182,16 +227,15 @@
     <div id="vitalsProgressMessage" class="progressMessage"></div>
     <div class="chart-wrapper">
       <div class="chart-container"><canvas id="ppgChart"></canvas></div>
-      <div class="vital-stats" id="ppgStats"><p class="label">HR</p><p class="value">--</p></div>
+      <div class="vital-stats" id="ppgStats"><p class="label">HR <span class="unit">bpm</span></p><p class="value">--</p></div>
     </div>
     <div class="chart-wrapper">
       <div class="chart-container"><canvas id="respChart"></canvas></div>
-      <div class="vital-stats" id="respStats"><p class="label">RR</p><p class="value">--</p></div>
+      <div class="vital-stats" id="respStats"><p class="label">RR <span class="unit">bpm</span></p><p class="value">--</p></div>
     </div>
     <div id="hrv-container">
       <div class="hrv-metric">SDNN: <span id="hrv-sdnn" class="value">--</span><span class="unit"> ms</span></div>
       <div class="hrv-metric">RMSSD: <span id="hrv-rmssd" class="value">--</span><span class="unit"> ms</span></div>
-      <div class="hrv-metric">LF/HF: <span id="hrv-lfhf" class="value">--</span></div>
     </div>
   </div>
 </div>
