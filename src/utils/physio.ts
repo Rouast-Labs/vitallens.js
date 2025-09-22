@@ -102,8 +102,10 @@ const _linearInterp = (x: number[], y: number[], x_new: number[]): number[] => {
       currentIndex++;
     }
 
-    const x0 = x[currentIndex], y0 = y[currentIndex];
-    const x1 = x[currentIndex + 1], y1 = y[currentIndex + 1];
+    const x0 = x[currentIndex],
+      y0 = y[currentIndex];
+    const x1 = x[currentIndex + 1],
+      y1 = y[currentIndex + 1];
 
     y_new[i] = y0 + ((y1 - y0) * (x_val - x0)) / (x1 - x0);
   }

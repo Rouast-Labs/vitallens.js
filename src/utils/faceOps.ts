@@ -110,7 +110,7 @@ export function getUpperBodyROI(
   forceEvenDims: boolean = false
 ): ROI {
   const relChange: [number, number, number, number] = cropped
-    ? [0.175, 0.15, 0.175, 0.3]
+    ? [0.19, 0.1455, 0.19, 0.2769]
     : [0.25, 0.2, 0.25, 0.4];
   return getROIFromDetection(det, relChange, clipDims, forceEvenDims);
 }

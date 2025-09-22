@@ -84,7 +84,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     methodHandler: MethodHandler,
     bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
-    onNoFace: () => Promise<void>
+    onNoFace: () => Promise<void>,
+    onStreamReset: () => Promise<void>
   ): IStreamProcessor;
 
   /**
@@ -175,6 +176,12 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
           'vitals',
           this.vitalsEstimateManager.getEmptyResult()
         );
+      },
+      async () => {
+        // onStreamReset - dispatch a public event so the UI can react.
+        this.dispatchEvent('streamReset', {
+          message: 'Connection unstable. Stream is resetting.',
+        });
       }
     );
   }
@@ -253,7 +260,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       const incrementalResult = await this.methodHandler.process(
         framesChunk,
         'file',
-        this.bufferManager.getState() ?? undefined
+        this.bufferManager.getState() ?? undefined,
+        undefined
       );
 
       if (incrementalResult) {

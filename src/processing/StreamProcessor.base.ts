@@ -40,6 +40,7 @@ export abstract class StreamProcessorBase {
    * @param bufferedResultsConsumer - The buffered results consumer.
    * @param onPredict - Callback invoked with each new VitalLensResult.
    * @param onNoFace - Callback invoked when face is lost.
+   * @param onStreamReset - Callback invoked when stream is reset.
    */
   constructor(
     protected options: VitalLensOptions,
@@ -50,7 +51,8 @@ export abstract class StreamProcessorBase {
     methodHandler: MethodHandler,
     private bufferedResultsConsumer: BufferedResultsConsumer | null,
     private onPredict: (result: VitalLensResult) => Promise<void>,
-    protected onNoFace: () => Promise<void>
+    protected onNoFace: () => Promise<void>,
+    protected onStreamReset: () => Promise<void>
   ) {
     this.methodHandler = methodHandler;
     this.fDetFs = this.options.fDetFs ?? FDET_DEFAULT_FS_STREAM;
@@ -135,6 +137,7 @@ export abstract class StreamProcessorBase {
             !this.isPredicting
           ) {
             this.isPredicting = true;
+            const bufferSize = this.bufferManager.size();
             this.bufferManager.consume().then((mergedFrame) => {
               if (!mergedFrame) {
                 this.isPredicting = false;
@@ -142,7 +145,12 @@ export abstract class StreamProcessorBase {
               }
               const currentState = this.bufferManager.getState();
               this.methodHandler
-                .process(mergedFrame, 'stream', currentState as Float32Array)
+                .process(
+                  mergedFrame,
+                  'stream',
+                  currentState as Float32Array,
+                  bufferSize
+                )
                 .then((incrementalResult) => {
                   if (incrementalResult) {
                     if (incrementalResult.state) {
@@ -157,6 +165,10 @@ export abstract class StreamProcessorBase {
                 })
                 .catch((error) => {
                   console.error('Error during prediction:', error);
+                  if (error.message.includes('Resetting stream')) {
+                    this.stop();
+                    this.onStreamReset();
+                  }
                 })
                 .finally(() => {
                   this.isPredicting = false;

@@ -69,7 +69,7 @@ describe('getUpperBodyROI', () => {
     const det = { x0: 100, y0: 100, x1: 180, y1: 220 };
     const clipDims = { width: 220, height: 300 };
     const result = getUpperBodyROI(det, clipDims, true);
-    expect(result).toEqual({ x0: 86, y0: 82, x1: 194, y1: 256 });
+    expect(result).toEqual({ x0: 85, y0: 83, x1: 195, y1: 253 });
   });
 });
 
