@@ -136,20 +136,21 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
   }
 
   protected updateUI(result: VitalLensResult): void {
-    const { heart_rate, respiratory_rate, hrv_sdnn } = result.vital_signs;
-    const debugLog = {
-      timestamp: new Date().toLocaleTimeString(),
-      faceConfidence:
-        result.face?.confidence?.[result.face.confidence.length - 1]?.toFixed(
-          4
-        ) ?? 'N/A',
-      hr: heart_rate?.value?.toFixed(1) ?? 'N/A',
-      hrConfidence: heart_rate?.confidence?.toFixed(4) ?? 'N/A',
-      rr: respiratory_rate?.value?.toFixed(1) ?? 'N/A',
-      rrConfidence: respiratory_rate?.confidence?.toFixed(4) ?? 'N/A',
-      sdnn: hrv_sdnn?.value?.toFixed(1) ?? 'N/A',
-      sdnnConfidence: hrv_sdnn?.confidence?.toFixed(4) ?? 'N/A',
-    };
+    // const { heart_rate, respiratory_rate, hrv_sdnn } = result.vital_signs;
+    // const debugLog = {
+    //   timestamp: new Date().toLocaleTimeString(),
+    //   faceConfidence:
+    //     result.face?.confidence?.[result.face.confidence.length - 1]?.toFixed(
+    //       4
+    //     ) ?? 'N/A',
+    //   hr: heart_rate?.value?.toFixed(1) ?? 'N/A',
+    //   hrConfidence: heart_rate?.confidence?.toFixed(4) ?? 'N/A',
+    //   rr: respiratory_rate?.value?.toFixed(1) ?? 'N/A',
+    //   rrConfidence: respiratory_rate?.confidence?.toFixed(4) ?? 'N/A',
+    //   sdnn: hrv_sdnn?.value?.toFixed(1) ?? 'N/A',
+    //   sdnnConfidence: hrv_sdnn?.confidence?.toFixed(4) ?? 'N/A',
+    // };
+    // console.log('VitalLens Monitor Debug:', debugLog);
 
     const { face } = result;
     const faceConfidence = face?.confidence?.[face.confidence.length - 1] ?? 0;
