@@ -91,13 +91,25 @@ For example, using **jsDelivr**:
 <script src="https://cdn.jsdelivr.net/npm/vitallens@0.1.3/dist/vitallens.browser.js"></script>
 
 <!-- Use with core API -->
-<script>
-  // vitallens.js is exposed as a global, for example as window.VitalLens.
-  const vl = new VitalLens({ method: 'vitallens', apiKey: 'YOUR_API_KEY' });
-  // Suppose myMediaStream and myVideoElement are defined:
-  vl.addVideoStream(myMediaStream, myVideoElement);
-  vl.addEventListener('vitals', (data) => console.log(data));
-  vl.startVideoStream();
+<video id="my-video" autoplay muted playsinline></video>
+<script type="module">
+  import { VitalLens } from 'https://cdn.jsdelivr.net/npm/vitallens';
+
+  (async () => {
+    try {
+      const videoElement = document.getElementById('my-video');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      videoElement.srcObject = stream;
+
+      const vl = new VitalLens({ method: 'vitallens', apiKey: 'YOUR_API_KEY' });
+
+      await vl.setVideoStream(stream, videoElement); // Use await here
+      vl.addEventListener('vitals', (data) => console.log(data));
+      vl.startVideoStream();
+    } catch (err) {
+      console.error("Failed to start VitalLens:", err);
+    }
+  })();
 </script>
 
 <!-- Or use our widget -->
