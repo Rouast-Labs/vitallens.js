@@ -726,7 +726,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             ppgConfForHrv,
             fpsForHrv,
             'sdnn',
-            timestampsForHrv
+            { timestamps: timestampsForHrv, confidenceThreshold: 0.5 }
           );
           if (hrvResult) result.vital_signs.hrv_sdnn = hrvResult;
         }
@@ -739,7 +739,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             ppgConfForHrv,
             fpsForHrv,
             'rmssd',
-            timestampsForHrv
+            { timestamps: timestampsForHrv, confidenceThreshold: 0.5 }
           );
           if (hrvResult) result.vital_signs.hrv_rmssd = hrvResult;
         }
@@ -752,7 +752,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             ppgConfForHrv,
             fpsForHrv,
             'lfhf',
-            timestampsForHrv
+            { timestamps: timestampsForHrv, confidenceThreshold: 0.5 }
           );
           if (hrvResult) result.vital_signs.hrv_lfhf = hrvResult;
         }

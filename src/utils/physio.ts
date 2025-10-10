@@ -496,7 +496,9 @@ export function estimateRespiratoryRate(
  * @param ppgConfidence - Confidence scores for the original PPG waveform.
  * @param fs - The sampling frequency in Hz.
  * @param metric - The HRV metric to calculate ('sdnn' or 'rmssd').
- * @param timestamps - Timestamps of the original signal (optional)
+ * @param options - Optional parameters for the calculation.
+ * @param options.timestamps - Timestamps of the original signal.
+ * @param options.confidenceThreshold - If provided, intervals will only be calculated from peaks with confidence >= this value.
  * @returns A result object for the specified HRV metric, or null if calculation is not possible.
  */
 export function estimateHrvFromDetectionSequences(
@@ -504,12 +506,17 @@ export function estimateHrvFromDetectionSequences(
   ppgConfidence: number[],
   fs: number,
   metric: HRVMetric,
-  timestamps?: number[]
+  options?: {
+    timestamps?: number[];
+    confidenceThreshold?: number;
+  }
 ):
   | (Omit<Required<VitalLensResult['vital_signs']>['hrv_sdnn'], 'value'> & {
       value: number;
     })
   | null {
+  const timestamps = options?.timestamps;
+  const confidenceThreshold = options?.confidenceThreshold;
   const MIN_INTERVALS = 8; // Minimum number of NN intervals required for a reliable calculation.
 
   if (sequences.length === 0) {
@@ -522,6 +529,15 @@ export function estimateHrvFromDetectionSequences(
     for (let i = 0; i < sequence.length - 1; i++) {
       const idx1 = sequence[i];
       const idx2 = sequence[i + 1];
+      // If a threshold is provided, check the confidence of both peaks forming the interval.
+      if (
+        confidenceThreshold !== undefined &&
+        (ppgConfidence[idx1] < confidenceThreshold ||
+          ppgConfidence[idx2] < confidenceThreshold)
+      ) {
+        // Skip this interval if either peak is below the confidence threshold.
+        continue;
+      }
       let intervalInSeconds: number;
       if (timestamps && idx1 < timestamps.length && idx2 < timestamps.length) {
         intervalInSeconds = timestamps[idx2] - timestamps[idx1];
