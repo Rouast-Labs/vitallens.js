@@ -213,18 +213,25 @@ npm run build
 
 Also, note that each example requires an API key. Replace `YOUR_API_KEY` with your actual API key when running the examples.
 
-- **Browser Unified Widget:**  
+- **Browser Vitals Monitor:**  
   [examples/browser/widget.html](examples/browser/widget.html)  
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser
   ```
 
+- **Browser Unified Widget:**  
+  [examples/browser/widget.html](examples/browser/widget.html)  
+  To run this example, execute:
+  ```bash
+  API_KEY=YOUR_API_KEY npm run start:browser-widget
+  ```
+
 - **Browser File Input Widget:**  
   [examples/browser/file_widget.html](examples/browser/file_widget.html)  
   To run this example, execute:
   ```bash
-  API_KEY=YOUR_API_KEY npm run start:browser-file
+  API_KEY=YOUR_API_KEY npm run start:browser-widget-file
   ```
 
 - **Browser File Input Minimal:**  
@@ -238,7 +245,7 @@ Also, note that each example requires an API key. Replace `YOUR_API_KEY` with yo
   [examples/browser/webcam_widget.html](examples/browser/webcam_widget.html)  
   To run this example, execute:
   ```bash
-  API_KEY=YOUR_API_KEY npm run start:browser-webcam
+  API_KEY=YOUR_API_KEY npm run start:brobrowser-widget-webcam
   ```
 
 - **Browser Webcam Input Minimal:**  
