@@ -15,6 +15,8 @@ import {
 } from 'chart.js';
 import { AGG_WINDOW_SIZE } from '../config/constants';
 
+const FACE_CONFIDENCE_THRESHOLD = 0.5;
+
 // Chart.js plugins (as before)
 const playbackDotPlugin = {
   id: 'playbackDot',
@@ -171,6 +173,17 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
   protected updateUI(result: VitalLensResult): void {
     this.clearBufferingTimeout();
     const { face, vital_signs, fps, estFps } = result;
+    const faceConfidence = face?.confidence?.[face.confidence.length - 1] ?? 0;
+
+    // If face confidence is too low, show a loader and reset the UI.
+    if (faceConfidence < FACE_CONFIDENCE_THRESHOLD) {
+      this.showVitalsLoader('Searching for face...');
+      this.resetUI();
+      this.canvasElement
+        .getContext('2d')!
+        .clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
+      return;
+    }
 
     if (!face?.coordinates || face.coordinates.length === 0) {
       this.canvasElement
