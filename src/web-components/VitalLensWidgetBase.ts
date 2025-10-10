@@ -98,11 +98,9 @@ export abstract class VitalLensWidgetBase extends HTMLElement {
       '#hrv-container'
     ) as HTMLElement | null;
     if (hrvContainer) {
-      // To re-enable HRV display, remove the line below and uncomment the original logic.
-      hrvContainer.style.display = 'none';
-      // if (!this.supportedVitals) return;
-      // const hasHrv = this.supportedVitals.some((v) => v.startsWith('hrv_'));
-      // hrvContainer.style.display = hasHrv ? 'flex' : 'none';
+      if (!this.supportedVitals) return;
+      const hasHrv = this.supportedVitals.some((v) => v.startsWith('hrv_'));
+      hrvContainer.style.display = hasHrv ? 'flex' : 'none';
     }
   }
 

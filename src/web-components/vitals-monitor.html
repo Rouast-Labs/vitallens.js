@@ -23,6 +23,16 @@
     position: relative;
     z-index: 2;
   }
+  .status-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #status-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #ced4da;
+  }
   .status-indicator {
     width: 24px;
     height: 24px;
@@ -37,8 +47,8 @@
     background-color: #28a745;
     animation: none;
   }
-  .status-lost {
-    background-color: #dc3545;
+  .status-lost, .status-issue {
+    background-color: #fd7e14;
     animation: none;
   }
   .status-idle {
@@ -61,6 +71,14 @@
     position: relative;
     z-index: 2;
     flex-grow: 1; /* Allow this container to fill space */
+  }
+  #vitals-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    align-items: center; /* Center the content */
+    justify-content: center;
+    flex-grow: 1;
   }
   .vitals-grid {
     display: flex;
@@ -102,7 +120,7 @@
     border-top: 3px solid #fff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-  }
+  } 
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -116,9 +134,10 @@
     line-height: 1.4;
   }
   #hrv-container {
-    display: none; /* Hidden by default */
+    display: none; /* Hidden by default, JS will show it */
     flex-direction: row;
     justify-content: space-around;
+    width: 100%; /* Ensure it takes full width */
     text-align: center;
     font-size: 12px;
     color: #ced4da;
@@ -127,7 +146,7 @@
     margin-top: 10px;
     position: relative;
     z-index: 2;
-    flex-shrink: 0; /* Prevent HRV container from shrinking */
+    flex-shrink: 0;
   }
   .hrv-metric .value {
     font-weight: 500;
@@ -165,32 +184,39 @@
 <div id="prompt" class="prompt">Click to Start</div>
 
 <div class="header">
-  <div id="status-indicator" class="status-indicator status-idle"></div>
+  <div class="status-container">
+    <div id="status-indicator" class="status-indicator status-idle"></div>
+    <span id="status-text"></span>
+  </div>
   <img id="logo" src="__LOGO_URL__" alt="VitalLens Logo" class="logo"/>
 </div>
 
 <div class="vitals-display">
-  <div id="vitals-grid" class="vitals-grid">
-    <div class="vital">
-      <div class="vital-value-container">
-        <span class="vital-value" id="hr-value">--</span>
-        <div class="spinner" id="hr-spinner"></div>
+  
+  <div id="vitals-content">
+    <div id="vitals-grid" class="vitals-grid">
+      <div class="vital">
+        <div class="vital-value-container">
+          <span class="vital-value" id="hr-value">--</span>
+          <div class="spinner" id="hr-spinner"></div>
+        </div>
+        <div class="vital-label">HR <span class="vital-unit">bpm</span></div>
       </div>
-      <div class="vital-label">HR <span class="vital-unit">bpm</span></div>
+      <div class="vital">
+        <div class="vital-value-container">
+          <span class="vital-value" id="rr-value">--</span>
+          <div class="spinner" id="rr-spinner"></div>
+        </div>
+        <div class="vital-label">RR <span class="vital-unit">bpm</span></div>
+      </div>
     </div>
-    <div class="vital">
-      <div class="vital-value-container">
-        <span class="vital-value" id="rr-value">--</span>
-        <div class="spinner" id="rr-spinner"></div>
-      </div>
-      <div class="vital-label">RR <span class="vital-unit">bpm</span></div>
+    
+    <div id="hrv-container">
+      <div class="hrv-metric">SDNN: <span id="hrv-sdnn" class="value">--</span><div class="spinner" id="hrv-sdnn-spinner"></div><span class="unit"> ms</span></div>
+      <div class="hrv-metric">RMSSD: <span id="hrv-rmssd" class="value">--</span><div class="spinner" id="hrv-rmssd-spinner"></div><span class="unit"> ms</span></div>
     </div>
   </div>
+  
   <div id="feedback-message" class="feedback-message"></div>
-</div>
 
-
-<div id="hrv-container">
-  <div class="hrv-metric">SDNN: <span id="hrv-sdnn" class="value">--</span><div class="spinner" id="hrv-sdnn-spinner"></div><span class="unit"> ms</span></div>
-  <div class="hrv-metric">RMSSD: <span id="hrv-rmssd" class="value">--</span><div class="spinner" id="hrv-rmssd-spinner"></div><span class="unit"> ms</span></div>
 </div>
