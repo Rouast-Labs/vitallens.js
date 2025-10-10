@@ -906,7 +906,10 @@ describe('VitalsEstimateManager', () => {
         expect.any(Array),
         1,
         'sdnn',
-        [1001, 1002, 1003, 1004, 1005]
+        {
+          timestamps: [1001, 1002, 1003, 1004, 1005],
+          confidenceThreshold: 0.5,
+        }
       );
 
       expect(result).toEqual({
