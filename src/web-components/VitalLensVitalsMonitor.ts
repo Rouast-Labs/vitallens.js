@@ -9,13 +9,14 @@ const FACE_CONFIDENCE_THRESHOLD = 0.5; // Confidence threshold for considering a
 
 class VitalLensVitalsMonitor extends VitalLensWidgetBase {
   private statusIndicator!: HTMLElement;
+  private statusTextElement!: HTMLElement;
   private hrValueElement!: HTMLElement;
   private rrValueElement!: HTMLElement;
   private hrvSdnnElement!: HTMLElement;
   private hrvRmssdElement!: HTMLElement;
   private promptElement!: HTMLElement;
   private feedbackMessageElement!: HTMLElement;
-  private vitalsGridElement!: HTMLElement;
+  private vitalsContentElement!: HTMLElement;
 
   // Spinner elements
   private hrSpinner!: HTMLElement;
@@ -42,6 +43,7 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
 
   protected getElements(): void {
     this.statusIndicator = this.shadowRoot!.querySelector('#status-indicator')!;
+    this.statusTextElement = this.shadowRoot!.querySelector('#status-text')!;
     this.hrValueElement = this.shadowRoot!.querySelector('#hr-value')!;
     this.rrValueElement = this.shadowRoot!.querySelector('#rr-value')!;
     this.hrvSdnnElement = this.shadowRoot!.querySelector('#hrv-sdnn')!;
@@ -49,7 +51,8 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
     this.promptElement = this.shadowRoot!.querySelector('#prompt')!;
     this.feedbackMessageElement =
       this.shadowRoot!.querySelector('#feedback-message')!;
-    this.vitalsGridElement = this.shadowRoot!.querySelector('#vitals-grid')!;
+    this.vitalsContentElement =
+      this.shadowRoot!.querySelector('#vitals-content')!;
 
     // Get spinners
     this.hrSpinner = this.shadowRoot!.querySelector('#hr-spinner')!;
@@ -83,9 +86,10 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
         await this.vitalLensInstance!.setVideoStream(this.mediaStream);
         this.vitalLensInstance!.startVideoStream();
         this.statusIndicator.className = 'status-indicator status-searching';
+        this.statusTextElement.textContent = 'Searching...';
 
         // Display initial instructions immediately.
-        this.vitalsGridElement.style.display = 'none';
+        this.vitalsContentElement.style.display = 'none';
         this.feedbackMessageElement.textContent =
           'Face the camera, ensure good lighting and hold still.';
         this.feedbackMessageElement.style.display = 'block';
@@ -156,12 +160,13 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
     const faceConfidence = face?.confidence?.[face.confidence.length - 1] ?? 0;
 
     // Default to showing vitals and hiding the message
-    this.vitalsGridElement.style.display = 'flex';
+    this.vitalsContentElement.style.display = 'flex';
     this.feedbackMessageElement.style.display = 'none';
 
     if (faceConfidence < FACE_CONFIDENCE_THRESHOLD) {
-      this.statusIndicator.className = 'status-indicator status-lost';
-      this.vitalsGridElement.style.display = 'none'; // Hide vitals grid
+      this.statusIndicator.className = 'status-indicator status-issue';
+      this.statusTextElement.textContent = 'Check Position';
+      this.vitalsContentElement.style.display = 'none'; // Hide vitals grid
       this.feedbackMessageElement.textContent =
         'Face the camera and hold still';
       this.feedbackMessageElement.style.display = 'block'; // Show message
@@ -169,6 +174,7 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
     }
 
     this.statusIndicator.className = 'status-indicator status-tracking';
+    this.statusTextElement.textContent = '';
 
     const hasConfidentHr = this.updateVitalDisplay(
       'heart_rate',
@@ -215,7 +221,9 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
     );
 
     if (allVitalsLowConfidence) {
-      this.vitalsGridElement.style.display = 'none'; // Hide vitals grid
+      this.statusIndicator.className = 'status-indicator status-issue';
+      this.statusTextElement.textContent = 'Check Lighting';
+      this.vitalsContentElement.style.display = 'none'; // Hide vitals grid
       this.feedbackMessageElement.textContent =
         'Low confidence. Ensure you are well lit and hold still.';
       this.feedbackMessageElement.style.display = 'block'; // Show message
@@ -225,8 +233,9 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
   protected resetUI(): void {
     this.promptElement.style.display = 'flex';
     this.statusIndicator.className = 'status-indicator status-idle';
+    this.statusTextElement.textContent = '';
 
-    this.vitalsGridElement.style.display = 'flex';
+    this.vitalsContentElement.style.display = 'flex';
     this.feedbackMessageElement.style.display = 'none';
 
     this.hrValueElement.textContent = '--';
