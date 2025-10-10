@@ -205,16 +205,12 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
       maxDataPoints
     );
 
-    this.updateStats('ppgStats', 'HR', heart_rate?.value ?? undefined);
-    this.updateStats('respStats', 'RR', respiratory_rate?.value ?? undefined);
+    this.updateNumericValue('hr-value', heart_rate?.value, 0);
+    this.updateNumericValue('rr-value', respiratory_rate?.value, 0);
+    this.updateNumericValue('hrv-sdnn', hrv_sdnn?.value, 1);
+    this.updateNumericValue('hrv-rmssd', hrv_rmssd?.value, 1);
+
     this.updateFpsValue(fps, estFps);
-
-    // Update HRV values
-    const sdnnEl = this.shadowRoot?.querySelector('#hrv-sdnn');
-    const rmssdEl = this.shadowRoot?.querySelector('#hrv-rmssd');
-
-    if (sdnnEl) sdnnEl.textContent = hrv_sdnn?.value?.toFixed(1) ?? '--';
-    if (rmssdEl) rmssdEl.textContent = hrv_rmssd?.value?.toFixed(1) ?? '--';
 
     if (this.mode === 'webcam') this.setBufferingTimeout();
   }
@@ -247,8 +243,10 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     const maxDataPoints = AGG_WINDOW_SIZE * this.ecoModeFps;
     this.updateChart(this.charts.ppgChart, [], [], maxDataPoints);
     this.updateChart(this.charts.respChart, [], [], maxDataPoints);
-    this.updateStats('ppgStats', 'HR', undefined);
-    this.updateStats('respStats', 'RR', undefined);
+    this.updateNumericValue('hr-value', undefined);
+    this.updateNumericValue('rr-value', undefined);
+    this.updateNumericValue('hrv-sdnn', undefined);
+    this.updateNumericValue('hrv-rmssd', undefined);
     this.updateFpsValue(0, 0);
   }
 
@@ -442,21 +440,21 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     }
   }
 
-  private updateStats(
+  private updateNumericValue(
     elementId: string,
-    label: string,
-    value: number | undefined
-  ) {
-    const element = this.shadowRoot!.querySelector(
+    value: number | null | undefined,
+    toFixed = 0
+  ): void {
+    const element = this.shadowRoot?.querySelector(
       `#${elementId}`
-    ) as HTMLElement;
+    ) as HTMLElement | null;
     if (!element) return;
-    const color = elementId === 'ppgStats' ? '#e62300' : '#007bff';
-    element.innerHTML = `
-      <p class="label" style="font-size: 16px; font-weight: bold; color: ${color};">${label}</p>
-      <p class="value" style="font-size: 48px; font-weight: bold; color: ${color};">
-        ${value !== undefined ? value.toFixed(0) : '--'}
-      </p>`;
+
+    if (value !== null && value !== undefined) {
+      element.textContent = value.toFixed(toFixed);
+    } else {
+      element.textContent = '--';
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
