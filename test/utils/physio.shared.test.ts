@@ -576,7 +576,10 @@ describe('estimateHrvFromDetectionSequences', () => {
           ppgConf,
           fs,
           'sdnn',
-          timestamps
+          {
+            timestamps: timestamps,
+            confidenceThreshold: 0.5,
+          }
         );
 
         console.log('result:', result);
