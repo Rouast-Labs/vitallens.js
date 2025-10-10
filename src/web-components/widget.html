@@ -10,6 +10,10 @@
     color: #ffffff;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     box-sizing: border-box;
+    --ppg-color: #e62300;       /* Main Red for HR */
+    --ppg-color-dark: #b01b00;  /* Darker Red for HR unit */
+    --resp-color: #007bff;      /* Main Blue for RR */
+    --resp-color-dark: #0056b3; /* Darker Blue for RR unit */
   }
   /* Navbar area */
   #navbar {
@@ -83,6 +87,9 @@
     flex-shrink: 0;
     width: 120px;
     text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   .vital-stats p {
     margin: 4px 0 0;
@@ -94,25 +101,56 @@
   }
   .vital-stats .label {
     font-size: 14px;
+    font-weight: 600;
   }
   .vital-stats .unit {
     font-size: 14px;
-    color: #a0a0a0;
+    font-weight: 400;
   }
   .vital-stats .label, .vital-stats .value {
     transition: color 0.3s ease;
   }
-  /* HRV Container */
-  #hrv-container {
-    display: none; /* Hidden by default */
-    flex-direction: row;
-    justify-content: space-around;
-    align-items: center;
-    background: #1c1c1e;
-    padding: 8px;
-    border-radius: 8px;
-    font-size: 14px;
-    text-align: center;
+  #ppgStats .label,
+  #ppgStats .value {
+    color: var(--ppg-color);
+  }
+  #ppgStats .unit {
+    color: var(--ppg-color-dark);
+  }
+  #respStats .label,
+  #respStats .value {
+    color: var(--resp-color);
+  }
+  #respStats .unit {
+    color: var(--resp-color-dark);
+  }
+  #hrv-stats-container {
+    margin-top: 8px; /* Space below the main HR value */
+    padding-top: 8px;
+  }
+  .hrv-stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 14px;
+      color: #e62300; /* Shade of red as requested */
+  }
+  .hrv-stat:not(:last-child) {
+      margin-bottom: 4px; /* Space between SDNN and RMSSD */
+  }
+  .hrv-label {
+      font-weight: 300;
+      opacity: 0.8;
+  }
+  .hrv-value {
+      font-weight: 600;
+      min-width: 3em; /* Align the values */
+      text-align: right;
+  }
+  .hrv-unit {
+      font-weight: 300;
+      opacity: 0.7;
+      padding-left: 4px;
   }
   .hrv-metric .value { font-weight: 600; }
   .hrv-metric .unit { color: #a0a0a0; }
@@ -227,15 +265,30 @@
     <div id="vitalsProgressMessage" class="progressMessage"></div>
     <div class="chart-wrapper">
       <div class="chart-container"><canvas id="ppgChart"></canvas></div>
-      <div class="vital-stats" id="ppgStats"><p class="label">HR <span class="unit">bpm</span></p><p class="value">--</p></div>
+      <div class="vital-stats" id="ppgStats">
+        <p class="label">HR <span class="unit">bpm</span></p>
+        <p class="value" id="hr-value">--</p>
+
+        <div id="hrv-stats-container">
+          <div class="hrv-stat">
+            <span class="hrv-label">SDNN</span>
+            <span id="hrv-sdnn" class="hrv-value">--</span>
+            <span class="hrv-unit">ms</span>
+          </div>
+          <div class="hrv-stat">
+            <span class="hrv-label">RMSSD</span>
+            <span id="hrv-rmssd" class="hrv-value">--</span>
+            <span class="hrv-unit">ms</span>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="chart-wrapper">
       <div class="chart-container"><canvas id="respChart"></canvas></div>
-      <div class="vital-stats" id="respStats"><p class="label">RR <span class="unit">bpm</span></p><p class="value">--</p></div>
-    </div>
-    <div id="hrv-container">
-      <div class="hrv-metric">SDNN: <span id="hrv-sdnn" class="value">--</span><span class="unit"> ms</span></div>
-      <div class="hrv-metric">RMSSD: <span id="hrv-rmssd" class="value">--</span><span class="unit"> ms</span></div>
+      <div class="vital-stats" id="respStats">
+        <p class="label">RR <span class="unit">bpm</span></p>
+        <p class="value" id="rr-value">--</p>
+      </div>
     </div>
   </div>
 </div>
