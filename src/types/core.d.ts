@@ -26,6 +26,7 @@ export type Vital =
 export type Method =
   | 'vitallens' // Dynamic model selection
   | 'vitallens-1.0' // Force VitalLens 1.0
+  | 'vitallens-1.1' // Force VitalLens 1.1
   | 'vitallens-2.0' // Force VitalLens 2.0
   | 'pos'
   | 'chrom'

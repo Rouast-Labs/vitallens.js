@@ -1,6 +1,6 @@
 {
   "name": "vitallens",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "VitalLens: Estimate vital signs such as heart rate and respiratory rate from face video.",
   "main": "./dist/vitallens.cjs.js",
   "module": "./dist/vitallens.esm.js",

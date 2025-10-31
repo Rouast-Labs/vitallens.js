@@ -50,6 +50,7 @@ export class VitalLensAPIHandler extends MethodHandler {
 
     if (
       options.method === 'vitallens-1.0' ||
+      options.method === 'vitallens-1.1' ||
       options.method === 'vitallens-2.0'
     ) {
       this.requestedModelName = options.method;
