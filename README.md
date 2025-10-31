@@ -131,10 +131,10 @@ When creating a new `VitalLens` instance, you can configure various options:
 
 | Parameter           | Description                                                                                | Default        |
 | ------------------- | ------------------------------------------------------------------------------------------ | -------------- |
-| `method`            | Inference method: `vitallens`, `g`, `chrom`, or `pos`.                             | `vitallens`  |
-| `apiKey`            | API key for the VitalLens API (required for method `vitallens`).                         | `null`         |
+| `method`            | Inference method: `vitallens`, `g`, `chrom`, or `pos`.                                     | `vitallens`    |
+| `apiKey`            | API key for the VitalLens API (required for method `vitallens`).                           | `null`         |
 | `globalRoi`         | Optional region of interest for face detection (object with `{ x0, y0, x1, y1 }`).         | `undefined`    |
-| `waveformMode`      | Optional setting how waveform is returned: `incremental`, `windowed`, or `complete`. | *(see below)*  |
+| `waveformMode`      | Optional setting how waveform is returned: `incremental`, `windowed`, or `complete`.       | *(see below)*  |
 | `overrideFpsTarget` | Override for the target frames per second (fps) used during inference.                     | `undefined`    |
 | `fDetFs`            | Frequency (in Hz) at which face detection should be performed.                             | `1`            |
 
@@ -146,6 +146,7 @@ You can choose from several rPPG methods:
 - `vitallens`: The recommended method. Uses the VitalLens API and automatically selects the best model for your API key (e.g., VitalLens 2.0 with HRV support)
 - `vitallens-2.0`: Forces the use of the VitalLens 2.0 model.
 - `vitallens-1.0`: Forces the use of the VitalLens 1.0 model.
+- `vitallens-1.1`: Forces the use of the VitalLens 1.1 model.
 - `pos`, `chrom`, `g`: Classic rPPG algorithms that run locally and do not require and API key.
 
 ### Understanding the results
@@ -158,8 +159,8 @@ When analyzing a video stream, `VitalLens` returns estimation results continuous
 |------------------------|---------------------|---------------------------|-----------------------------------------------------------------------------------------------------|
 | `ppg_waveform`         | Continuous waveform | Depends on `waveformMode` | Always                                                                                              |
 | `heart_rate`           | Global value        | Up to last 10 seconds     | Face present for at least 5 seconds                                                                 |
-| `respiratory_waveform` | Continuous waveform | Depends on `waveformMode` | Using `vitallens`, `vitallens-1.0`, or `vitallens-2.0`                                              |
-| `respiratory_rate`     | Global value        | Up to last 30 seconds     | Face present for at least 10 seconds using `vitallens`, `vitallens-1.0`, or `vitallens-2.0`         |
+| `respiratory_waveform` | Continuous waveform | Depends on `waveformMode` | Using `vitallens`, `vitallens-1.0`, `vitallens-1.1`, or `vitallens-2.0`                             |
+| `respiratory_rate`     | Global value        | Up to last 30 seconds     | Face present for at least 10 seconds using `vitallens`, `vitallens-1.0`, `vitallens-1.1`, or `vitallens-2.0` |
 | `hrv_sdnn`             | Global value        | Up to last 60 seconds     | Face present for at least 20 seconds using `vitallens`, or `vitallens-2.0`                          |
 | `hrv_rmssd`            | Global value        | Up to last 60 seconds     | Face present for at least 20 seconds using `vitallens`, or `vitallens-2.0`                          |
 | `hrv_lfhf`             | Global value        | Up to last 60 seconds     | Face present for at least 55 seconds using `vitallens`, or `vitallens-2.0`                          |
@@ -172,8 +173,8 @@ When analyzing a video file, `VitalLens` returns one estimation result for the e
 |------------------------|---------------------|---------------------------|-----------------------------------------------------------------------------------------------------|
 | `ppg_waveform`         | Continuous waveform | Depends on `waveformMode` | Always                                                                                              |
 | `heart_rate`           | Global value        | Entire video              | Video is at least 5 seconds long                                                                    |
-| `respiratory_waveform` | Continuous waveform | Depends on `waveformMode` | Using `vitallens`, `vitallens-1.0`, or `vitallens-2.0`                                              |
-| `respiratory_rate`     | Global value        | Entire video              | Video is at least 10 seconds long using `vitallens`, `vitallens-1.0`, or `vitallens-2.0`            |
+| `respiratory_waveform` | Continuous waveform | Depends on `waveformMode` | Using `vitallens`, `vitallens-1.0`, `vitallens-1.1`, or `vitallens-2.0`                             |
+| `respiratory_rate`     | Global value        | Entire video              | Video is at least 10 seconds long using `vitallens`, `vitallens-1.0`, `vitallens-1.1`, or `vitallens-2.0` |
 | `hrv_sdnn`             | Global value        | Entire video              | Face present for at least 20 seconds using `vitallens`, or `vitallens-2.0`                          |
 | `hrv_rmssd`            | Global value        | Entire video              | Face present for at least 20 seconds using `vitallens`, or `vitallens-2.0`                          |
 | `hrv_lfhf`             | Global value        | Entire video              | Face present for at least 55 seconds using `vitallens`, or `vitallens-2.0`                          |
