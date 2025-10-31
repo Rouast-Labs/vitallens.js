@@ -86,7 +86,6 @@ export abstract class RestClientBase implements IRestClient {
     mode: InferenceMode,
     state?: Float32Array
   ): Promise<VitalLensAPIResponse> {
-
     if (mode === 'stream') {
       // Stream mode: binary (application/octet-stream)
       // Put metadata and state in the headers.
