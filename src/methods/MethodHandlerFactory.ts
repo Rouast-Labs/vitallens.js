@@ -27,6 +27,7 @@ export class MethodHandlerFactory {
     switch (options.method) {
       case 'vitallens':
       case 'vitallens-1.0':
+      case 'vitallens-1.1':
       case 'vitallens-2.0': {
         if (!dependencies.restClient) {
           throw new Error('RestClient is required for VitalLensAPIHandler');
