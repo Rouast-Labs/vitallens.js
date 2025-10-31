@@ -60,11 +60,10 @@ console.log(result);
 
 ### Browser
 
-For browser usage, you can either bundle `vitallens.js` with your project or load it directly from a CDN. In addition to the core API, `vitallens.js` also provides pre-built web component widgets. We offer three variants:
+For browser usage, you can either bundle `vitallens.js` with your project or load it directly from a CDN. In addition to the core API, `vitallens.js` also provides pre-built web component widgets. We offer two variants:
 
-- **Unified Widget:** Supports both file and webcam modes with mode toggles.
-- **File-Only Widget:** For processing video files only.
-- **Webcam-Only Widget:** For live webcam streaming only.
+- **Vitals Monitor:** Easy-to-use vitals monitor with basic readings.
+- **Advanced Widget:** For advanced users. Supports both file and webcam inputs, video and waveform views.
 
 For example, using **jsDelivr**:
 
@@ -73,7 +72,7 @@ For example, using **jsDelivr**:
 <script src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
 
 <!-- Or pin a specific version -->
-<script src="https://cdn.jsdelivr.net/npm/vitallens@0.2.2/dist/vitallens.browser.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vitallens@0.2.3/dist/vitallens.browser.js"></script>
 
 <!-- Use with core API -->
 <video id="my-video" autoplay muted playsinline></video>
@@ -97,15 +96,11 @@ For example, using **jsDelivr**:
   })();
 </script>
 
-<!-- Or use our widget -->
+<!-- Or use the vitals monitor -->
+<vitallens-vitals-monitor api-key="YOUR_API_KEY"></vitallens-vitals-monitor>
+
+<!-- Or use the advanced widget: -->
 <vitallens-widget api-key="YOUR_API_KEY"></vitallens-widget>
-
-<!-- Or, to use a specialized widget: -->
-<!-- File-only widget -->
-<vitallens-file-widget api-key="YOUR_API_KEY"></vitallens-file-widget>
-
-<!-- Webcam-only widget -->
-<vitallens-webcam-widget api-key="YOUR_API_KEY"></vitallens-webcam-widget>
 ```
 
 Alternatively, you can use **unpkg**:
@@ -227,24 +222,17 @@ npm run build
 Also, note that each example requires an API key. Replace `YOUR_API_KEY` with your actual API key when running the examples.
 
 - **Browser Vitals Monitor:**  
-  [examples/browser/widget.html](examples/browser/widget.html)  
+  [examples/browser/vitals_monitor.html](examples/browser/vitals_monitor.html)  
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser
   ```
 
-- **Browser Unified Widget:**  
+- **Browser Vitals Monitor:**  
   [examples/browser/widget.html](examples/browser/widget.html)  
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser-widget
-  ```
-
-- **Browser File Input Widget:**  
-  [examples/browser/file_widget.html](examples/browser/file_widget.html)  
-  To run this example, execute:
-  ```bash
-  API_KEY=YOUR_API_KEY npm run start:browser-widget-file
   ```
 
 - **Browser File Input Minimal:**  
@@ -258,7 +246,7 @@ Also, note that each example requires an API key. Replace `YOUR_API_KEY` with yo
   [examples/browser/webcam_widget.html](examples/browser/webcam_widget.html)  
   To run this example, execute:
   ```bash
-  API_KEY=YOUR_API_KEY npm run start:brobrowser-widget-webcam
+  API_KEY=YOUR_API_KEY npm run start:browser-widget-webcam
   ```
 
 - **Browser Webcam Input Minimal:**  
