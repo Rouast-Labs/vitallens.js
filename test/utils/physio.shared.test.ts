@@ -187,7 +187,7 @@ describe('estimateRateFromFFT', () => {
   it('should throw an error if the waveform is empty', () => {
     expect(() => {
       estimateRateFromFFT([], 30, 0.5, 3.5);
-    }).toThrowError(
+    }).toThrow(
       'Invalid waveform data, sampling frequency, or frequency range.'
     );
   });
@@ -195,7 +195,7 @@ describe('estimateRateFromFFT', () => {
   it('should throw an error if samplingFrequency is non-positive', () => {
     expect(() => {
       estimateRateFromFFT([1, 2, 3], 0, 0.5, 3.5);
-    }).toThrowError(
+    }).toThrow(
       'Invalid waveform data, sampling frequency, or frequency range.'
     );
   });
@@ -203,7 +203,7 @@ describe('estimateRateFromFFT', () => {
   it('should throw an error if minFrequency is greater than or equal to maxFrequency', () => {
     expect(() => {
       estimateRateFromFFT([1, 2, 3], 30, 3.5, 0.5);
-    }).toThrowError(
+    }).toThrow(
       'Invalid waveform data, sampling frequency, or frequency range.'
     );
   });

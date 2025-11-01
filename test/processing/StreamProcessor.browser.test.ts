@@ -123,7 +123,7 @@ describe('StreamProcessor (Browser)', () => {
       );
       expect(() =>
         (proc as any).triggerFaceDetection(mockFrame as unknown as Frame, 1)
-      ).toThrowError('Face detection worker does not exist.');
+      ).toThrow('Face detection worker does not exist.');
     });
 
     it('should send postMessage with correct data and release the frame', () => {
