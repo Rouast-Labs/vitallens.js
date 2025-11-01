@@ -125,7 +125,7 @@ describe('VitalLensController (Node)', () => {
       const mockVideoElement = {} as any;
       await expect(
         controller.setVideoStream(mockStream, mockVideoElement)
-      ).rejects.toThrowError(
+      ).rejects.toThrow(
         'setVideoStream is not supported yet in the Node environment.'
       );
     });
