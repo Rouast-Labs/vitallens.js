@@ -112,9 +112,7 @@ describe('Frame Class', () => {
     test('throws for unsupported dtypes', () => {
       const tensor = tf.tensor([1, 2, 3], [3], 'bool' as tf.DataType);
 
-      expect(() => Frame.fromTensor(tensor)).toThrowError(
-        /Unsupported dtype: bool/
-      );
+      expect(() => Frame.fromTensor(tensor)).toThrow(/Unsupported dtype: bool/);
     });
   });
 
@@ -134,7 +132,7 @@ describe('Frame Class', () => {
     test('throws for mismatched raw data size', () => {
       const shape = [2, 1, 4]; // Expects 8 elements
       const array = new Uint8Array([1, 2, 3, 4, 5, 6]); // Only 6 elements
-      expect(() => Frame.fromUint8Array(array, shape)).toThrowError(
+      expect(() => Frame.fromUint8Array(array, shape)).toThrow(
         /Mismatch in raw data size/
       );
     });
@@ -160,7 +158,7 @@ describe('Frame Class', () => {
     test('throws for mismatched raw data size', () => {
       const shape = [2, 2]; // expects 4 elements
       const data = new Float32Array([1.1, 2.2, 3.3]); // Only 3 elements
-      expect(() => Frame.fromFloat32Array(data, shape)).toThrowError(
+      expect(() => Frame.fromFloat32Array(data, shape)).toThrow(
         /Mismatch in raw data size/
       );
     });
@@ -225,7 +223,7 @@ describe('Frame Class', () => {
         dtype: 'uint8' as tf.DataType,
       });
 
-      expect(() => frame.getTensor()).toThrowError(
+      expect(() => frame.getTensor()).toThrow(
         /Mismatch in tensor size: expected 6, but got 3/
       );
     });
@@ -245,7 +243,7 @@ describe('Frame Class', () => {
       expect(frame.hasTensor()).toBe(true);
       // Release again: refCount becomes 0, tensor should be disposed.
       frame.release();
-      expect(() => frame.getTensor()).toThrowError();
+      expect(() => frame.getTensor()).toThrow();
     });
   });
 

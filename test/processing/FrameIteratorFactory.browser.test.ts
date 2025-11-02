@@ -57,7 +57,7 @@ describe('FrameIteratorFactory (Browser)', () => {
   });
 
   it('should throw an error if neither MediaStream nor HTMLVideoElement is provided', () => {
-    expect(() => factory.createStreamFrameIterator()).toThrowError(
+    expect(() => factory.createStreamFrameIterator()).toThrow(
       'Either a MediaStream or an HTMLVideoElement must be provided.'
     );
   });
