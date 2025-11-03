@@ -1,8 +1,6 @@
 import { VitalLens } from '../core/VitalLens.browser';
 import { VitalLensOptions, VitalLensResult, Vital } from '../types';
 
-// TODO: Fix anything we have broken and modernise
-
 export abstract class VitalLensWidgetBase extends HTMLElement {
   protected vitalLensInstance?: VitalLens;
   protected apiKey: string | null = null;
