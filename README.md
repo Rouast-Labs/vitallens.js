@@ -60,24 +60,38 @@ console.log(result);
 
 ### Browser
 
-For browser usage, you can either bundle `vitallens.js` with your project or load it directly from a CDN. In addition to the core API, `vitallens.js` also provides pre-built web component widgets. We offer two variants:
+For browser usage, you have two options: using the pre-built Web Components or importing the core `VitalLens` class directly.
 
-- **Vitals Monitor:** Easy-to-use vitals monitor with basic readings.
-- **Advanced Widget:** For advanced users. Supports both file and webcam inputs, video and waveform views.
+**Option 1: Using the Web Components (Recommended)**
 
-For example, using **jsDelivr**:
+This is the easiest way to get started. Just add the module script from a CDN, and you can use the custom elements directly in your HTML.
 
 ```html
-<!-- Latest version -->
-<script src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
 
-<!-- Or pin a specific version -->
-<script src="https://cdn.jsdelivr.net/npm/vitallens@0.2.3/dist/vitallens.browser.js"></script>
+<!-- Easy-to-use vitals monitor with basic readings -->
+<vitallens-vitals-monitor api-key="YOUR_API_KEY"></vitallens-vitals-monitor>
 
-<!-- Use with core API -->
+<!-- Advanced widget. Supports both file and webcam inputs, video and waveform views -->
+<vitallens-widget api-key="YOUR_API_KEY"></vitallens-widget>
+```
+
+**Option 2: Using the Core API**
+
+If you need more control, you can import the `VitalLens` class directly into your own JavaScript module.
+
+```html
 <video id="my-video" autoplay muted playsinline></video>
+
 <script type="module">
+  // Import latest version from jsDelivr (recommended)
   import { VitalLens } from 'https://cdn.jsdelivr.net/npm/vitallens';
+
+  // Or pin a specific version:
+  // import { VitalLens } from 'https://cdn.jsdelivr.net/npm/vitallens@0.2.3';
+  
+  // Or use Skypack:
+  // import { VitalLens } from 'https://cdn.skypack.dev/vitallens';
 
   (async () => {
     try {
@@ -94,27 +108,6 @@ For example, using **jsDelivr**:
       console.error("Failed to start VitalLens:", err);
     }
   })();
-</script>
-
-<!-- Or use the vitals monitor -->
-<vitallens-vitals-monitor api-key="YOUR_API_KEY"></vitallens-vitals-monitor>
-
-<!-- Or use the advanced widget: -->
-<vitallens-widget api-key="YOUR_API_KEY"></vitallens-widget>
-```
-
-Alternatively, you can use **unpkg**:
-
-```html
-<script src="https://unpkg.com/vitallens/dist/vitallens.browser.js"></script>
-```
-
-Or **Skypack** if you prefer ES modules:
-
-```html
-<script type="module">
-  import { VitalLens } from 'https://cdn.skypack.dev/vitallens';
-  // Continue as above…
 </script>
 ```
 
@@ -142,7 +135,7 @@ You can choose from several rPPG methods:
 - `vitallens-2.0`: Forces the use of the VitalLens 2.0 model.
 - `vitallens-1.0`: Forces the use of the VitalLens 1.0 model.
 - `vitallens-1.1`: Forces the use of the VitalLens 1.1 model.
-- `pos`, `chrom`, `g`: Classic rPPG algorithms that run locally and do not require and API key.
+- `pos`, `chrom`, `g`: Classic rPPG algorithms that run locally and do not require an API key.
 
 ### Understanding the results
 
@@ -221,42 +214,35 @@ npm run build
 
 Also, note that each example requires an API key. Replace `YOUR_API_KEY` with your actual API key when running the examples.
 
-- **Browser Vitals Monitor:**  
+- **Browser - Vitals Monitor:**
   [examples/browser/vitals_monitor.html](examples/browser/vitals_monitor.html)  
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser
   ```
 
-- **Browser Vitals Monitor:**  
+- **Browser - Advanced Widget:**
   [examples/browser/widget.html](examples/browser/widget.html)  
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser-widget
   ```
 
-- **Browser File Input Minimal:**  
+- **Browser - Minimal File Input:**
   [examples/browser/file_minimal.html](examples/browser/file_minimal.html)  
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser-file-minimal
   ```
 
-- **Browser Webcam Input Widget:**  
-  [examples/browser/webcam_widget.html](examples/browser/webcam_widget.html)  
-  To run this example, execute:
-  ```bash
-  API_KEY=YOUR_API_KEY npm run start:browser-widget-webcam
-  ```
-
-- **Browser Webcam Input Minimal:**  
+- **Browser - Minimal Webcam Input:**
   [examples/browser/webcam_minimal.html](examples/browser/webcam_minimal.html)  
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser-webcam-minimal
   ```
 
-- **Node File Processing:**  
+- **Node - File Processing:**
   [examples/node/file.js](examples/node/file.js)  
   To run this example, execute:
   ```bash
