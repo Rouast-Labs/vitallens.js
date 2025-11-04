@@ -39,7 +39,7 @@ Using a different language or platform? We also have a [Python client](https://g
   Perform rapid face detection when required—or optionally, pass a global region of interest (ROI) to skip detection for even faster processing.
 
 - **Pre-Built Web Component Widgets:**  
-  In addition to the core API, vitallens.js provides ready-to-use web components. Use the unified widget (supporting both file and webcam modes) or choose the specialized file-only or webcam-only widget for streamlined integration.
+  In addition to the core API, vitallens.js provides ready-to-use web components. Try our simple vitals monitor widget (as seen in the above gif), or use an advanced widget showing vitals, video, and waveforms (supports both file and webcam modes).
 
 ## Installation
 
