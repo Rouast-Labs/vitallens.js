@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://www.rouast.com/api/">
-    <img src="./assets/logo.svg" alt="VitalLens API Logo" height="80px" width="80px"/>
+    <img src="https://raw.githubusercontent.com/Rouast-Labs/vitallens.js/main/assets/logo.svg" alt="VitalLens API Logo" height="80px" width="80px"/>
   </a>
   <h1>vitallens.js</h1>
   <p align="center">
@@ -15,6 +15,10 @@
 </div>
 
 `vitallens.js` is the official JavaScript client for the [**VitalLens API**](https://www.rouast.com/api/), a service for estimating physiological vital signs like heart rate, respiratory rate, and heart rate variability (HRV) from facial video.
+
+<div align="center">
+  <img src="./assets/demo.gif" alt="vitallens.js demo" width="500">
+</div>
 
 Using a different language or platform? We also have a [Python client](https://github.com/Rouast-Labs/vitallens-python) and [iOS app](https://apps.apple.com/us/app/vitallens/id6472757649).
 
