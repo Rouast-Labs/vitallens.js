@@ -208,6 +208,86 @@ export interface VitalLensResult {
 }
 ```
 
+### Core API Lifecycle: Managing the Instance
+
+When using the core `VitalLens` class, you are responsible for managing the instance's lifecycle. This involves controlling the stream and listening for events.
+
+#### 1. Controlling the Stream
+
+You can control a live video stream at any time using these methods:
+
+  * **`vl.startVideoStream()`**: Starts or resumes processing.
+  * **`vl.pauseVideoStream()`**: Pauses processing. The webcam stays on, but no new data is sent.
+  * **`vl.stopVideoStream()`**: Stops processing, stops the webcam, and clears all internal buffers.
+
+```js
+// Example: A simple pause/resume button
+let isProcessing = true;
+myButton.onclick = () => {
+if (isProcessing) {
+  vl.pauseVideoStream();
+  myButton.textContent = 'Resume';
+} else {
+  vl.startVideoStream();
+  myButton.textContent = 'Pause';
+}
+isProcessing = !isProcessing;
+};
+```
+
+#### 2. Listening for Events
+
+Your application should listen for events to receive data and handle errors.
+
+  * **`vitals` (On Success)**
+    This event fires continuously during a stream whenever a new vital sign packet is ready.
+
+```js
+vitallens.addEventListener('vitals', (result) => {
+  console.log('Vitals:', result);
+  // Update your UI here
+});
+```
+
+  * **`streamReset` (On Recoverable Error)**
+    This event fires if the network becomes too unstable. The library logs a `VitalLensAPIError` for debugging, stops the stream to prevent a crash, and emits this event. Your application should listen for this to handle the reset.
+
+    **Best Practice:** Listen for this event, notify the user, and automatically restart the stream.
+
+```js
+vitallens.addEventListener('streamReset', (eventData) => {
+  console.warn('Stream was reset:', eventData.message);
+  
+  // 1. Notify user and stop the old stream
+  showMyErrorPopup('Connection unstable. Reconnecting...');
+  vl.stopVideoStream();
+
+  // 2. Wait 3 seconds and restart
+  setTimeout(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      videoElement.srcObject = stream;
+      await vl.setVideoStream(stream, videoElement);
+      vl.startVideoStream();
+      hideMyErrorPopup();
+    } catch (err) {
+      console.error('Failed to restart stream:', err);
+      showMyErrorPopup('Could not reconnect. Please try again manually.');
+    }
+  }, 3000);
+});
+```
+
+  * **`fileProgress` (File Processing)**
+    This event fires multiple times when calling `processVideoFile` to provide text updates on the processing stages.
+
+```js
+vitallens.addEventListener('fileProgress', (message) => {
+  console.log('File progress:', message); // e.g., "Detecting faces..."
+  showLoadingSpinner(message);
+});
+```
+
 ## Examples
 
 Before running any of the examples, make sure to build the project by executing:
