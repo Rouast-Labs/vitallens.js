@@ -177,7 +177,9 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
 
     // If face confidence is too low, show a loader and reset the UI.
     if (faceConfidence < FACE_CONFIDENCE_THRESHOLD) {
-      this.showVitalsLoader('Searching for face...');
+      this.showVitalsLoader(
+        'Low confidence: Face camera, ensure good light, and hold still.'
+      );
       this.resetUI();
       this.canvasElement
         .getContext('2d')!
