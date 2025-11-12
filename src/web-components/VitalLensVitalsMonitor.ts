@@ -139,6 +139,36 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected async handleStreamReset(event: { message: string }): Promise<void> {
+    this.statusIndicator.className = 'status-indicator status-issue';
+    this.statusTextElement.textContent = 'Reconnecting...';
+    this.vitalsContentElement.style.display = 'none';
+    this.feedbackMessageElement.textContent =
+      'Connection unstable. Reconnecting...';
+    this.feedbackMessageElement.style.display = 'block';
+
+    if (this.vitalLensInstance) {
+      this.vitalLensInstance.stopVideoStream();
+    }
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach((track) => track.stop());
+      this.mediaStream = null;
+    }
+
+    this.isProcessingFlag = false;
+
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    try {
+      await this.toggleProcessing();
+    } catch (err) {
+      console.error('Failed to automatically restart monitor:', err);
+      this.showError('Could not restart. Please click to try again.');
+      this.resetUI();
+    }
+  }
+
   protected updateUI(result: VitalLensResult): void {
     // const { heart_rate, respiratory_rate, hrv_sdnn } = result.vital_signs;
     // const debugLog = {
