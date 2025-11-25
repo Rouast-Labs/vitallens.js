@@ -240,11 +240,12 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   reset(): void {
     this.vitalsEstimateManager.resetAll();
-    if (this.bufferManager) {
-      // We might want to keep the buffer for immediate restart,
-      // but for a hard logic reset, clearing is safer.
+    if (this.streamProcessor) {
+      // If streaming, let the processor handle the reset (clears ROI + Buffers)
+      this.streamProcessor.reset();
+    } else if (this.bufferManager) {
+      // Fallback for file mode or uninitialized stream
       this.bufferManager.cleanup();
-      // Re-init buffer manager if needed is handled by StreamProcessor loop
     }
   }
 
