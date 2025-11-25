@@ -11,15 +11,21 @@ enum ScanState {
   FAILED = 'failed',
 }
 
+// --- ICONS ---
+const ICON_BOLT = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/></svg>`;
+const ICON_LEAF = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;"><path d="M0.004,2.018c-0,0 3.845,-0.848 6.317,-0.745c2.473,0.103 5.363,0.932 6.932,2.595c1.371,1.455 2.181,3.357 2.513,5.295c0.399,2.33 0.167,4.591 0.167,4.591c-0,-0 -1.278,-2.833 -2.991,-4.61c-2.549,-2.643 -6.431,-4.037 -6.431,-4.037c0,0 3.377,2.399 5.03,4.131c2.252,2.357 3.373,4.947 3.373,4.947c-0,0 -2.196,0.851 -5.65,0.437c-1.639,-0.196 -4.155,-1.186 -6.493,-4.654c-1.996,-2.96 -2.836,-6.909 -2.767,-7.95Z"/></svg>`;
+
+// --- CONFIG ---
+const DEBUG_MODE = false;
+
 const CONFIG = {
   LOCAL_WINDOW: 3,
   THRESHOLD_PRESENCE: 0.5,
   FACE_GATE_FRAMES: 3,
-
-  API_WINDOW: 15,
+  API_WINDOW_SEC: 1.0,
   THRESHOLD_QUALITY: 0.5,
   FINAL_THRESHOLD: 0.6,
-  WARMUP_SEC: 3.3,
+  WARMUP_SEC: 4.0,
   MAX_RETRIES: 2,
   MIN_DURATION_DEFAULT: 30,
 };
@@ -28,6 +34,7 @@ const CIRCUMFERENCE = 932;
 
 export class VitalLensVitalsScan extends VitalLensWidgetBase {
   private state: ScanState = ScanState.IDLE;
+  private targetFps: number = 15; // Default to Eco
 
   private warmupStart: number = 0;
   private scanStart: number | null = null;
@@ -47,6 +54,16 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   constructor() {
     super();
     this.shadowRoot!.innerHTML = widget.replace(/__LOGO_URL__/g, logoUrl);
+
+    // Inject SVGs
+    const leafContainer = this.shadowRoot!.querySelector(
+      '#icon-leaf-container'
+    );
+    const boltContainer = this.shadowRoot!.querySelector(
+      '#icon-bolt-container'
+    );
+    if (leafContainer) leafContainer.innerHTML = ICON_LEAF;
+    if (boltContainer) boltContainer.innerHTML = ICON_BOLT;
   }
 
   protected getElements(): void {
@@ -54,6 +71,9 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
       this.shadowRoot!.querySelector(id) as HTMLElement;
     this.els = {
       startButton: query('#btn-start'),
+      modeSwitch: query('#mode-switch'),
+      iconLeaf: query('#icon-leaf-container'),
+      iconBolt: query('#icon-bolt-container'),
       restartButton: query('#btn-restart'),
       detailsButton: query('#btn-details'),
       video: query('#video'),
@@ -83,6 +103,8 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     this.els.detailsButton.addEventListener('click', () =>
       this.toggleDetails()
     );
+    this.els.modeSwitch.addEventListener('click', () => this.toggleMode());
+
     this.updateStateUI(ScanState.IDLE);
   }
 
@@ -97,7 +119,7 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     await super.initVitalLensInstance({
       ...options,
       method: 'vitallens',
-      overrideFpsTarget: 15,
+      overrideFpsTarget: this.targetFps,
       fDetFs: 1.0,
       waveformMode: 'complete',
     });
@@ -115,27 +137,34 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   }
 
   // ===========================================================================
-  // HARDWARE MANAGEMENT
+  // HARDWARE & UI MANAGEMENT
   // ===========================================================================
 
   private stopCamera() {
     const videoEl = this.els.video as HTMLVideoElement;
     if (!videoEl || !videoEl.srcObject) return;
-
     const stream = videoEl.srcObject as MediaStream;
-    const tracks = stream.getTracks();
-
-    tracks.forEach((track) => {
+    stream.getTracks().forEach((track) => {
       track.stop();
       stream.removeTrack(track);
     });
-
     videoEl.srcObject = null;
+  }
+
+  private toggleMode() {
+    this.targetFps = this.targetFps === 15 ? 30 : 15;
+
+    if (this.targetFps === 15) {
+      this.els.iconLeaf.classList.add('active');
+      this.els.iconBolt.classList.remove('active');
+    } else {
+      this.els.iconLeaf.classList.remove('active');
+      this.els.iconBolt.classList.add('active');
+    }
   }
 
   // ===========================================================================
   // STREAM A: LOCAL PRESENCE LOGIC (1Hz)
-  // Controls: IDLE -> DETECTING -> SCANNING && Hard Resets
   // ===========================================================================
 
   private onLocalFaceDetected(
@@ -152,9 +181,10 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     } else if (this.state === ScanState.SCANNING) {
       const avgPresence = this.getAverage(this.localFaceHistory);
       if (avgPresence < CONFIG.THRESHOLD_PRESENCE) {
-        console.warn(
-          `[Local Watchdog] Face lost (Avg: ${avgPresence.toFixed(2)}). Triggering Hard Reset.`
-        );
+        if (DEBUG_MODE)
+          console.warn(
+            `[Local Watchdog] Face lost (Avg: ${avgPresence.toFixed(2)}). Triggering Hard Reset.`
+          );
         this.triggerHardReset();
       }
     }
@@ -185,8 +215,7 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   }
 
   // ===========================================================================
-  // STREAM B: API QUALITY LOGIC (15Hz)
-  // Controls: Scan Progress && Soft Resets
+  // STREAM B: API QUALITY LOGIC (Variable Hz)
   // ===========================================================================
 
   protected updateUI(result: VitalLensResult): void {
@@ -196,26 +225,29 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
 
   private onApiResultReceived(result: VitalLensResult) {
     const now = Date.now() / 1000;
+    const apiWindowSize = Math.round(this.targetFps * CONFIG.API_WINDOW_SEC);
 
     const getLast = (arr?: number[]) =>
       arr && arr.length ? arr[arr.length - 1] : 0;
     const avgFace = this.updateBuffer(
       this.apiBuffers.face,
       getLast(result.face?.confidence),
-      CONFIG.API_WINDOW
+      apiWindowSize
     );
     const avgPpg = this.updateBuffer(
       this.apiBuffers.ppg,
       getLast(result.vital_signs?.ppg_waveform?.confidence),
-      CONFIG.API_WINDOW
+      apiWindowSize
     );
     const avgResp = this.updateBuffer(
       this.apiBuffers.resp,
       getLast(result.vital_signs?.respiratory_waveform?.confidence),
-      CONFIG.API_WINDOW
+      apiWindowSize
     );
 
-    this.els.debugOverlay.textContent = `Face: ${avgFace.toFixed(2)} | PPG: ${avgPpg.toFixed(2)} | Resp: ${avgResp.toFixed(2)}`;
+    if (DEBUG_MODE) {
+      this.els.debugOverlay.textContent = `Face: ${avgFace.toFixed(2)} | PPG: ${avgPpg.toFixed(2)} | Resp: ${avgResp.toFixed(2)}`;
+    }
 
     if (now - this.warmupStart < CONFIG.WARMUP_SEC) {
       if (!this.scanStart) this.els.statusText.textContent = 'Calibrating...';
@@ -227,7 +259,7 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
       this.els.statusText.textContent = 'Scanning...';
     }
 
-    if (this.apiBuffers.face.length >= CONFIG.API_WINDOW) {
+    if (this.apiBuffers.face.length >= apiWindowSize * 0.8) {
       if (
         avgFace < CONFIG.THRESHOLD_QUALITY ||
         avgPpg < CONFIG.THRESHOLD_QUALITY ||
@@ -258,13 +290,10 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     this.retryCount = 0;
     this.updateStateUI(ScanState.DETECTING_FACE);
 
-    if (this.vitalLensInstance) {
-      this.vitalLensInstance.stopVideoStream();
-    } else {
-      await this.initVitalLensInstance();
-    }
-
+    if (this.vitalLensInstance) this.vitalLensInstance.stopVideoStream();
     this.stopCamera();
+
+    await this.initVitalLensInstance();
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -277,7 +306,6 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
       });
 
       (this.els.video as HTMLVideoElement).srcObject = stream;
-
       await this.vitalLensInstance!.setVideoStream(
         stream,
         this.els.video as HTMLVideoElement
@@ -294,14 +322,11 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
 
   private transitionToScanning() {
     this.updateStateUI(ScanState.SCANNING);
-
     this.warmupStart = Date.now() / 1000;
     this.scanStart = null;
     this.localFaceHistory = [];
     this.apiBuffers = { face: [], ppg: [], resp: [] };
-
     this.els.statusText.textContent = 'Calibrating...';
-
     this.vitalLensInstance!.reset();
     this.vitalLensInstance!.setInferenceEnabled(true);
   }
@@ -317,6 +342,7 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     this.updateStateUI(ScanState.DETECTING_FACE);
     this.els.statusText.textContent = 'Face lost';
   }
+
   private triggerSoftReset(reason: string) {
     this.retryCount++;
     this.clearStatusTimeout();
@@ -326,11 +352,10 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
       this.els.statusText.textContent = 'Could not get clear reading.';
       this.updateStateUI(ScanState.FAILED);
     } else {
-      console.warn(`[Soft Reset] ${reason}`);
+      if (DEBUG_MODE) console.warn(`[Soft Reset] ${reason}`);
       this.warmupStart = Date.now() / 1000;
       this.scanStart = null;
       this.apiBuffers = { face: [], ppg: [], resp: [] };
-
       this.els.statusText.textContent = reason + ' Restarting...';
       this.updateProgress(0);
       this.statusTimeout = window.setTimeout(() => {
@@ -342,11 +367,9 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   private finishScan(result: VitalLensResult, requiredVitals: Vital[]) {
     this.vitalLensInstance!.setInferenceEnabled(false);
     this.vitalLensInstance!.stopVideoStream();
-
     this.stopCamera();
 
     const { vital_signs } = result;
-
     const allConfident = requiredVitals.every((v) => {
       const val = vital_signs[v];
       if (!val) return true;
@@ -369,15 +392,13 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   private resetFlow() {
     this.clearStatusTimeout();
     if (this.vitalLensInstance) this.vitalLensInstance.stopVideoStream();
-
     this.stopCamera();
-
     this.updateProgress(0);
     this.updateStateUI(ScanState.IDLE);
   }
 
   // ===========================================================================
-  // HELPERS
+  // HELPERS & UI
   // ===========================================================================
 
   private getRequirements(modelName?: string): Vital[] {
@@ -422,16 +443,19 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     }
   }
 
-  // ===========================================================================
-  // UI RENDERING
-  // ===========================================================================
-
   private updateStateUI(newState: ScanState) {
     this.state = newState;
-    const { startButton, aperture, resultCard, statusText, debugOverlay } =
-      this.els;
+    const {
+      startButton,
+      modeSwitch,
+      aperture,
+      resultCard,
+      statusText,
+      debugOverlay,
+    } = this.els;
 
     startButton.classList.add('hidden');
+    modeSwitch.classList.add('hidden-toggle');
     aperture.classList.remove('scanning');
     resultCard.classList.remove('visible');
     statusText.classList.remove('visible');
@@ -441,16 +465,17 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     switch (newState) {
       case ScanState.IDLE:
         startButton.classList.remove('hidden');
+        modeSwitch.classList.remove('hidden-toggle');
         break;
       case ScanState.DETECTING_FACE:
         statusText.classList.add('visible');
-        debugOverlay.classList.remove('hidden');
+        if (DEBUG_MODE) debugOverlay.classList.remove('hidden');
         break;
       case ScanState.SCANNING:
         statusText.textContent = 'Scanning...';
         statusText.classList.add('visible');
         aperture.classList.add('scanning');
-        debugOverlay.classList.remove('hidden');
+        if (DEBUG_MODE) debugOverlay.classList.remove('hidden');
         break;
       case ScanState.COMPLETE:
         resultCard.classList.add('visible');
@@ -460,6 +485,7 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
         statusText.style.color = '#ff4444';
         startButton.textContent = 'Retry';
         startButton.classList.remove('hidden');
+        modeSwitch.classList.remove('hidden-toggle');
         break;
     }
   }

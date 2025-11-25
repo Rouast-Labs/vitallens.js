@@ -9,10 +9,10 @@
     position: relative;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: white;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);    
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);     
     --oval-width: 260px;
     --oval-height: 350px;
-    --primary-color: #007bff;
+    --primary-color: #46a3db;
   }
   
   #video-container {
@@ -49,11 +49,13 @@
     border-radius: 50%;
     box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.7);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     overflow: visible; 
     pointer-events: auto;
     transition: box-shadow 0.3s ease;
+    gap: 16px;
   }
 
   .scanning #aperture {
@@ -83,7 +85,7 @@
     transition: stroke-dashoffset 0.2s linear; 
     opacity: 0;
   }
-  
+   
   .scanning #progress-fg { opacity: 1; }
 
   /* --- LAYOUT --- */
@@ -120,7 +122,7 @@
   #status-text.visible { opacity: 1; }
 
   #btn-start {
-    position: absolute;
+    position: relative; 
     z-index: 30;
     pointer-events: auto;
     background: var(--primary-color);
@@ -134,9 +136,48 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     transition: opacity 0.2s, transform 0.1s;
   }
-  #btn-start:hover { background: #0069d9; transform: scale(1.02); }
+  #btn-start:hover { background: #358bc0; transform: scale(1.02); } /* Slightly darker brand blue */
   #btn-start:active { transform: scale(0.98); }
-  
+
+  /* --- MODE SWITCH --- */
+  .mode-switch {
+    background: rgba(255,255,255,0.15);
+    border-radius: 24px;
+    padding: 4px;
+    display: flex;
+    pointer-events: auto;
+    cursor: pointer; /* Entire toggle is clickable */
+    width: 90px;
+    justify-content: space-between;
+    z-index: 30;
+    transition: opacity 0.3s, transform 0.1s;
+  }
+  .mode-switch:active {
+    transform: scale(0.95);
+  }
+  .mode-switch.hidden-toggle {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .mode-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 50%;
+    color: rgba(255,255,255,0.5);
+    transition: all 0.3s ease;
+    width: 36px;
+    height: 36px;
+    box-sizing: border-box;
+    pointer-events: none; /* Let clicks pass to container */
+  }
+  .mode-option.active {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+   
   .hidden {
     display: none !important;
     opacity: 0 !important;
@@ -214,7 +255,9 @@
   }
   #btn-restart:hover { border-color: #fff; color: #fff; }
 
+  /* DEBUG OVERLAY - Hidden by default */
   #debug-overlay {
+    display: none; /* Disabled per request */
     position: absolute;
     bottom: 10px;
     left: 10px;
@@ -240,7 +283,7 @@
     <img src="__LOGO_URL__" alt="VitalLens API">
   </a>
 
-  <div id="debug-overlay" class="hidden">Debug Info</div>
+  <div id="debug-overlay"></div>
 
   <div class="ui-layer">
     
@@ -253,6 +296,11 @@
         </svg>
 
         <button id="btn-start">Start Scan</button>
+        
+        <div id="mode-switch" class="mode-switch">
+          <div class="mode-option active" id="icon-leaf-container"></div>
+          <div class="mode-option" id="icon-bolt-container"></div>
+        </div>
     </div>
 
     <div id="status-container">
