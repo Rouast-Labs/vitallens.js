@@ -216,8 +216,8 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       if (nmsIndices.length > 0) {
         const selectedBox = frameBoxes[nmsIndices[0]];
         const [xMin, yMin, xMax, yMax] = selectedBox;
-        roi = { x0: xMin, y0: yMin, x1: xMax, y1: yMax };
         confidence = frameScores[nmsIndices[0]];
+        roi = { x0: xMin, y0: yMin, x1: xMax, y1: yMax, confidence };
         faceFound = true;
       }
       detectionInfos.push({
@@ -351,6 +351,7 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       y0: roi1.y0 * (1 - t) + roi2.y0 * t,
       x1: roi1.x1 * (1 - t) + roi2.x1 * t,
       y1: roi1.y1 * (1 - t) + roi2.y1 * t,
+      confidence: (roi1.confidence || 0) * (1 - t) + (roi2.confidence || 0) * t,
     });
 
     // Get sorted scanned frame indices.
@@ -363,7 +364,9 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
       if (detectionMap.has(i)) {
         // Use the detection from the scanned frame.
         const det = detectionMap.get(i)!;
-        finalROIs.push(det.roi ? det.roi : { x0: 0, y0: 0, x1: 0, y1: 0 });
+        finalROIs.push(
+          det.roi ? det.roi : { x0: 0, y0: 0, x1: 0, y1: 0, confidence: 0 }
+        );
       } else {
         // Find the nearest previous and next scanned frames with a valid detection.
         let prevIndex = -1;
@@ -393,12 +396,12 @@ export abstract class FaceDetectorAsyncBase implements IFaceDetector {
           const t = (i - prevIndex) / (nextIndex - prevIndex);
           interpROI = interpolateROI(detPrev.roi!, detNext.roi!, t);
         } else if (prevIndex !== -1) {
-          interpROI = detectionMap.get(prevIndex)!.roi!;
+          interpROI = { ...detectionMap.get(prevIndex)!.roi! };
         } else if (nextIndex !== -1) {
-          interpROI = detectionMap.get(nextIndex)!.roi!;
+          interpROI = { ...detectionMap.get(nextIndex)!.roi! };
         } else {
           // No valid detections available – return a default ROI.
-          interpROI = { x0: 0, y0: 0, x1: 0, y1: 0 };
+          interpROI = { x0: 0, y0: 0, x1: 0, y1: 0, confidence: 0 };
         }
         finalROIs.push(interpROI);
       }

@@ -14,6 +14,7 @@ import { BufferedResultsConsumer } from './BufferedResultsConsumer';
 export abstract class StreamProcessorBase {
   private isPaused = true;
   private isPredicting = false;
+  protected inferenceEnabled = true;
   protected isDetecting = false;
   protected roi: ROI | null = null;
   protected pendingRoi: ROI | null = null;
@@ -41,6 +42,7 @@ export abstract class StreamProcessorBase {
    * @param onPredict - Callback invoked with each new VitalLensResult.
    * @param onNoFace - Callback invoked when face is lost.
    * @param onStreamReset - Callback invoked when stream is reset.
+   * @param onFaceDetected - Callback for raw face detection events.
    */
   constructor(
     protected options: VitalLensOptions,
@@ -52,7 +54,13 @@ export abstract class StreamProcessorBase {
     private bufferedResultsConsumer: BufferedResultsConsumer | null,
     private onPredict: (result: VitalLensResult) => Promise<void>,
     protected onNoFace: () => Promise<void>,
-    protected onStreamReset: () => Promise<void>
+    protected onStreamReset: () => Promise<void>,
+    protected onFaceDetected?: (
+      face: {
+        coordinates: [number, number, number, number];
+        confidence: number;
+      } | null
+    ) => void
   ) {
     this.methodHandler = methodHandler;
     this.fDetFs = this.options.fDetFs ?? FDET_DEFAULT_FS_STREAM;
@@ -64,6 +72,13 @@ export abstract class StreamProcessorBase {
         console.error('Face detection worker error:', error);
       };
     }
+  }
+
+  /**
+   * Enable or disable the API inference step.
+   */
+  setInferenceEnabled(enabled: boolean) {
+    this.inferenceEnabled = enabled;
   }
 
   /**
@@ -130,8 +145,9 @@ export abstract class StreamProcessorBase {
             );
           }
 
-          // If buffers + method are ready, run a prediction
+          // If inference enabled and buffers + method are ready, run a prediction
           if (
+            this.inferenceEnabled &&
             this.bufferManager.isReady() &&
             this.methodHandler.getReady() &&
             !this.isPredicting

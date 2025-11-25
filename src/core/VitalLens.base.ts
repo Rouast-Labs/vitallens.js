@@ -46,6 +46,14 @@ export abstract class VitalLensBase {
   }
 
   /**
+   * Controls whether API inference is enabled.
+   * Set to false to perform local face detection only (saving costs).
+   */
+  setInferenceEnabled(enabled: boolean): void {
+    this.controller.setInferenceEnabled(enabled);
+  }
+
+  /**
    * Starts processing for live streams or resumes if paused.
    */
   startVideoStream(): void {
@@ -64,6 +72,13 @@ export abstract class VitalLensBase {
    */
   stopVideoStream(): void {
     this.controller.stopVideoStream();
+  }
+
+  /**
+   * Resets all internal buffers and estimation states.
+   */
+  reset(): void {
+    this.controller.reset();
   }
 
   /**

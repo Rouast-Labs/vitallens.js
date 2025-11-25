@@ -57,7 +57,13 @@ export class VitalLensController extends VitalLensControllerBase {
     bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>,
-    onStreamReset: () => Promise<void>
+    onStreamReset: () => Promise<void>,
+    onFaceDetected?: (
+      face: {
+        coordinates: [number, number, number, number];
+        confidence: number;
+      } | null
+    ) => void
   ): IStreamProcessor {
     return new StreamProcessor(
       options,
@@ -69,7 +75,8 @@ export class VitalLensController extends VitalLensControllerBase {
       bufferedResultsConsumer,
       onPredict,
       onNoFace,
-      onStreamReset
+      onStreamReset,
+      onFaceDetected
     );
   }
 }

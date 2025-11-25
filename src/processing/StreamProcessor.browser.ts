@@ -62,10 +62,20 @@ export class StreamProcessor extends StreamProcessorBase {
       this.pendingRoi = null;
       this.bufferManager.cleanup();
       this.onNoFace();
+      if (this.onFaceDetected) this.onFaceDetected(null);
       return;
     }
     // Use the first detection
     const det = detections[0];
+
+    if (this.onFaceDetected) {
+      // Assuming det is valid here.
+      this.onFaceDetected({
+        coordinates: [det.x0, det.y0, det.x1, det.y1],
+        confidence: det.confidence ?? 1.0,
+      });
+    }
+
     const shouldUpdateROI =
       checkROIValid(det) &&
       (this.roi === null ||
