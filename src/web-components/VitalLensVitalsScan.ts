@@ -23,8 +23,8 @@ const CONFIG = {
   API_WINDOW_SEC: 1.0,
   THRESHOLD_QUALITY: 0.5,
   FINAL_THRESHOLD: 0.6,
-  WARMUP_SEC: 3.2,
-  MAX_RETRIES: 2,
+  WARMUP_SEC: 3.0,
+  MAX_RETRIES: 3,
   MIN_DURATION_DEFAULT: 30,
 };
 
@@ -34,18 +34,18 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   private state: ScanState = ScanState.IDLE;
   private targetFps: number = 15;
 
-  // Usage Tracking
-  private usageStart: number | null = null;
+  private accumulatedApiTime: number = 0;
+  private currentApiSessionStart: number | null = null;
   private finalDurationStr: string = '';
 
-  // Scan Logic
   private warmupStart: number = 0;
   private scanStart: number | null = null;
   private statusTimeout: number | null = null;
   private retryCount: number = 0;
+  private isOffCenter = false;
 
-  private localFaceHistory: number[] = [];
   private consecutiveFaceFrames = 0;
+
   private apiBuffers = {
     face: [] as number[],
     ppg: [] as number[],
@@ -177,22 +177,28 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   private onLocalFaceDetected(
     face: { coordinates: number[]; confidence: number } | null
   ) {
-    this.updateBuffer(
-      this.localFaceHistory,
-      face ? face.confidence : 0,
-      CONFIG.LOCAL_WINDOW
-    );
+    const currentConfidence = face ? face.confidence : 0;
 
     if (this.state === ScanState.DETECTING_FACE) {
       this.handleDetectingState(face);
     } else if (this.state === ScanState.SCANNING) {
-      const avgPresence = this.getAverage(this.localFaceHistory);
-      if (avgPresence < CONFIG.THRESHOLD_PRESENCE) {
+      if (currentConfidence < CONFIG.THRESHOLD_PRESENCE) {
         if (DEBUG_MODE)
           console.warn(
-            `[Local Watchdog] Face lost (Avg: ${avgPresence.toFixed(2)}). Triggering Hard Reset.`
+            `[Local Watchdog] Face lost (Conf: ${currentConfidence}). Triggering Hard Reset.`
           );
         this.triggerHardReset();
+        return;
+      }
+
+      if (face) {
+        const isCentered = this.isFaceCentered(face.coordinates);
+        if (!isCentered) {
+          this.isOffCenter = true;
+          this.els.statusText.textContent = 'Center your face';
+        } else {
+          this.isOffCenter = false;
+        }
       }
     }
   }
@@ -205,9 +211,11 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
 
     if (face) {
       const isCentered = this.isFaceCentered(face.coordinates);
-      if (face.confidence < 0.7) message = 'Face not clear';
-      else if (!isCentered) message = 'Center your face';
-      else {
+      if (!isCentered) {
+        message = 'Center your face';
+      } else if (face.confidence < 0.7) {
+        message = 'Face not clear';
+      } else {
         message = 'Hold still...';
         isValid = true;
       }
@@ -236,6 +244,7 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
 
     const getLast = (arr?: number[]) =>
       arr && arr.length ? arr[arr.length - 1] : 0;
+
     const avgFace = this.updateBuffer(
       this.apiBuffers.face,
       getLast(result.face?.confidence),
@@ -256,11 +265,9 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
       this.els.debugOverlay.textContent = `Face: ${avgFace.toFixed(2)} | PPG: ${avgPpg.toFixed(2)} | Resp: ${avgResp.toFixed(2)}`;
     }
 
-    // Check if the status text is locked by a soft reset message
     const isMsgLocked = this.statusTimeout !== null;
 
     if (now - this.warmupStart < CONFIG.WARMUP_SEC) {
-      // Only update text if not locked by a reset message
       if (!this.scanStart && !isMsgLocked) {
         this.els.statusText.textContent = 'Calibrating...';
       }
@@ -269,7 +276,14 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
 
     if (!this.scanStart) {
       this.scanStart = now;
-      if (!isMsgLocked) {
+      this.apiBuffers = { face: [], ppg: [], resp: [] };
+      return;
+    }
+
+    if (!isMsgLocked) {
+      if (this.isOffCenter) {
+        this.els.statusText.textContent = 'Center your face';
+      } else {
         this.els.statusText.textContent = 'Scanning...';
       }
     }
@@ -298,13 +312,38 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   }
 
   // ===========================================================================
-  // STATE TRANSITIONS
+  // STATE TRANSITIONS & TIME TRACKING
   // ===========================================================================
+
+  private startApiSession() {
+    if (!this.currentApiSessionStart) {
+      this.currentApiSessionStart = Date.now() / 1000;
+    }
+  }
+
+  private stopApiSession() {
+    if (this.currentApiSessionStart) {
+      const duration = Date.now() / 1000 - this.currentApiSessionStart;
+      this.accumulatedApiTime += duration;
+      this.currentApiSessionStart = null;
+    }
+  }
+
+  private getUsageStats(): { seconds: number; frames: number } {
+    let total = this.accumulatedApiTime;
+    if (this.currentApiSessionStart) {
+      total += Date.now() / 1000 - this.currentApiSessionStart;
+    }
+    return {
+      seconds: total,
+      frames: Math.round(total * this.targetFps),
+    };
+  }
 
   private async startFlow() {
     this.retryCount = 0;
-    // Reset usage timer because this is an explicit start/retry action
-    this.usageStart = null;
+    this.accumulatedApiTime = 0;
+    this.currentApiSessionStart = null;
     this.updateStateUI(ScanState.DETECTING_FACE);
 
     if (this.vitalLensInstance) this.vitalLensInstance.stopVideoStream();
@@ -342,36 +381,37 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
 
     const now = Date.now() / 1000;
     this.warmupStart = now;
-
-    // Start tracking usage if not already started
-    if (!this.usageStart) {
-      this.usageStart = now;
-    }
-
     this.scanStart = null;
-    this.localFaceHistory = [];
+    this.isOffCenter = false;
+
     this.apiBuffers = { face: [], ppg: [], resp: [] };
 
     this.els.statusText.textContent = 'Calibrating...';
+    this.updateProgress(0);
 
     this.vitalLensInstance!.reset();
     this.vitalLensInstance!.setInferenceEnabled(true);
+    this.startApiSession();
   }
 
   private triggerHardReset() {
     this.vitalLensInstance!.setInferenceEnabled(false);
+    this.stopApiSession();
+
     this.vitalLensInstance!.reset();
     this.updateProgress(0);
-
-    // Ensure no pending messages overwrite hard reset state
     this.clearStatusTimeout();
 
-    this.usageStart = null; // Face lost = Session lost
-    this.consecutiveFaceFrames = 0;
-    this.localFaceHistory = [];
+    this.retryCount++;
 
-    this.updateStateUI(ScanState.DETECTING_FACE);
-    this.els.statusText.textContent = 'Face lost';
+    if (this.retryCount > CONFIG.MAX_RETRIES) {
+      this.els.statusText.textContent = 'Face lost too many times.';
+      this.updateStateUI(ScanState.FAILED);
+    } else {
+      this.consecutiveFaceFrames = 0;
+      this.updateStateUI(ScanState.DETECTING_FACE);
+      this.els.statusText.textContent = 'Face lost';
+    }
   }
 
   private triggerSoftReset(reason: string) {
@@ -380,29 +420,29 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
 
     if (this.retryCount > CONFIG.MAX_RETRIES) {
       this.vitalLensInstance!.setInferenceEnabled(false);
+      this.stopApiSession();
       this.els.statusText.textContent = 'Could not get clear reading.';
       this.updateStateUI(ScanState.FAILED);
     } else {
       if (DEBUG_MODE) console.warn(`[Soft Reset] ${reason}`);
       this.warmupStart = Date.now() / 1000;
       this.scanStart = null;
-      // Do NOT reset usageStart here
-      this.apiBuffers = { face: [], ppg: [], resp: [] };
+
       this.els.statusText.textContent = reason + ' Restarting...';
       this.updateProgress(0);
+
       this.statusTimeout = window.setTimeout(() => {
         this.statusTimeout = null;
-      }, 3000);
+      }, 2000);
     }
   }
 
   private finishScan(result: VitalLensResult, requiredVitals: Vital[]) {
-    // Calculate Total Usage before stopping
-    const duration = Date.now() / 1000 - (this.usageStart || 0);
-    const frames = Math.round(duration * this.targetFps);
-    this.finalDurationStr = `${duration.toFixed(1)}s (≈${frames}f)`;
+    const stats = this.getUsageStats();
+    this.finalDurationStr = `${stats.seconds.toFixed(1)}s (≈${stats.frames}f)`;
 
     this.vitalLensInstance!.setInferenceEnabled(false);
+    this.stopApiSession();
     this.vitalLensInstance!.stopVideoStream();
     this.stopCamera();
 
@@ -431,7 +471,8 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     if (this.vitalLensInstance) this.vitalLensInstance.stopVideoStream();
     this.stopCamera();
     this.updateProgress(0);
-    this.usageStart = null;
+    this.accumulatedApiTime = 0;
+    this.currentApiSessionStart = null;
     this.updateStateUI(ScanState.IDLE);
   }
 
@@ -452,8 +493,10 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     const video = this.els.video as HTMLVideoElement;
     const vw = video.videoWidth || 640,
       vh = video.videoHeight || 480;
-    const mx = vw * 0.25,
-      my = vh * 0.25;
+
+    const mx = vw * 0.375;
+    const my = vh * 0.375;
+
     return cx > mx && cx < vw - mx && cy > my && cy < vh - my;
   }
 
@@ -553,7 +596,6 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     const faceConfs = result.face?.confidence || [];
     this.els.valFaceConf.textContent = pct(this.getAverage(faceConfs));
 
-    // Display the total usage time + frames
     this.els.valDuration.textContent = this.finalDurationStr;
   }
 
