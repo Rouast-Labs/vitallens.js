@@ -167,7 +167,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
             await this.vitalsEstimateManager.produceBufferedResults(
               incrementalResult,
               frameIterator.getId(),
-              'windowed'
+              this.options.waveformMode || 'windowed'
             );
           // Send the results to be delivered
           if (bufferedResults && bufferedResults.length) {
