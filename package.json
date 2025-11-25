@@ -1,6 +1,6 @@
 {
   "name": "vitallens",
-  "version": "0.2.3",
+  "version": "0.3.1",
   "description": "VitalLens: Estimate vital signs such as heart rate and respiratory rate from face video.",
   "main": "./dist/vitallens.cjs.js",
   "module": "./dist/vitallens.esm.js",
@@ -32,6 +32,8 @@
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.{ts,js,json,css,md}\"",
     "start:browser": "EXAMPLE_TO_OPEN=browser/vitals_monitor node scripts/server.cjs",
+    "start:vitals-monitor": "EXAMPLE_TO_OPEN=browser/vitals_monitor node scripts/server.cjs",
+    "start:vitals-scan": "EXAMPLE_TO_OPEN=browser/vitals_scan node scripts/server.cjs",
     "start:browser-widget": "EXAMPLE_TO_OPEN=browser/widget node scripts/server.cjs",
     "start:browser-widget-file": "EXAMPLE_TO_OPEN=browser/file_widget node scripts/server.cjs",
     "start:browser-file-minimal": "EXAMPLE_TO_OPEN=browser/file_minimal node scripts/server.cjs",

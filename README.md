@@ -302,7 +302,14 @@ Also, note that each example requires an API key. Replace `YOUR_API_KEY` with yo
   [examples/browser/vitals_monitor.html](examples/browser/vitals_monitor.html)  
   To run this example, execute:
   ```bash
-  API_KEY=YOUR_API_KEY npm run start:browser
+  API_KEY=YOUR_API_KEY npm run start:vitals-monitor
+  ```
+
+- **Browser - Vitals Scan:**
+  [examples/browser/vitals_scan.html](examples/browser/vitals_scan.html)  
+  To run this example, execute:
+  ```bash
+  API_KEY=YOUR_API_KEY npm run start:vitals-scan
   ```
 
 - **Browser - Advanced Widget:**
