@@ -77,11 +77,12 @@ self.onmessage = async (event: MessageEvent) => {
     }
 
     // Convert to absolute coordinates
-    const absoluteDets = dets.map(({ x0, y0, x1, y1 }) => ({
+    const absoluteDets = dets.map(({ x0, y0, x1, y1, confidence }) => ({
       x0: Math.round(x0 * w),
       y0: Math.round(y0 * h),
       x1: Math.round(x1 * w),
       y1: Math.round(y1 * h),
+      confidence: confidence ?? 1.0,
     }));
 
     // Return the detections along with any additional info.

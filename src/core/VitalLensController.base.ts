@@ -85,7 +85,13 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>,
-    onStreamReset: () => Promise<void>
+    onStreamReset: () => Promise<void>,
+    onFaceDetected?: (
+      face: {
+        coordinates: [number, number, number, number];
+        confidence: number;
+      } | null
+    ) => void
   ): IStreamProcessor;
 
   /**
@@ -176,14 +182,27 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
           'vitals',
           this.vitalsEstimateManager.getEmptyResult()
         );
+        this.dispatchEvent('faceDetected', null);
       },
       async () => {
         // onStreamReset - dispatch a public event so the UI can react.
         this.dispatchEvent('streamReset', {
           message: 'Connection unstable. Stream is resetting.',
         });
+      },
+      (face) => {
+        this.dispatchEvent('faceDetected', face);
       }
     );
+  }
+
+  /**
+   * Sets whether API inference is enabled.
+   */
+  setInferenceEnabled(enabled: boolean): void {
+    if (this.streamProcessor) {
+      this.streamProcessor.setInferenceEnabled(enabled);
+    }
   }
 
   /**
@@ -214,6 +233,19 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.streamProcessor = null;
     }
     this.vitalsEstimateManager.resetAll();
+  }
+
+  /**
+   * Resets internal state.
+   */
+  reset(): void {
+    this.vitalsEstimateManager.resetAll();
+    if (this.bufferManager) {
+      // We might want to keep the buffer for immediate restart,
+      // but for a hard logic reset, clearing is safer.
+      this.bufferManager.cleanup();
+      // Re-init buffer manager if needed is handled by StreamProcessor loop
+    }
   }
 
   /**
