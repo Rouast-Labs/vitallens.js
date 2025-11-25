@@ -75,13 +75,6 @@ export abstract class StreamProcessorBase {
   }
 
   /**
-   * Enable or disable the API inference step.
-   */
-  setInferenceEnabled(enabled: boolean) {
-    this.inferenceEnabled = enabled;
-  }
-
-  /**
    * Initializes the StreamProcessor, setting up a global ROI if provided.
    */
   init() {
@@ -93,6 +86,13 @@ export abstract class StreamProcessorBase {
         1
       );
     }
+  }
+
+  /**
+   * Enable or disable the API inference step.
+   */
+  setInferenceEnabled(enabled: boolean) {
+    this.inferenceEnabled = enabled;
   }
 
   /**
@@ -249,5 +249,15 @@ export abstract class StreamProcessorBase {
     this.bufferedResultsConsumer?.stop();
     this.methodHandler.cleanup();
     this.bufferManager.cleanup();
+  }
+
+  /**
+   * Clears the ROI and buffers.
+   */
+  reset(): void {
+    this.roi = null;
+    this.pendingRoi = null;
+    this.bufferManager.cleanup();
+    this.isPredicting = false;
   }
 }

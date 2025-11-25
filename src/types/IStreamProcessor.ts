@@ -4,4 +4,5 @@ export interface IStreamProcessor {
   isProcessing(): boolean;
   stop(): void;
   setInferenceEnabled(enabled: boolean): void;
+  reset(): void;
 }
