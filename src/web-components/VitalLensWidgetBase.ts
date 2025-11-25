@@ -50,6 +50,7 @@ export abstract class VitalLensWidgetBase extends HTMLElement {
       method: 'vitallens',
       apiKey: this.apiKey ?? undefined,
       proxyUrl: this.proxyUrl ?? undefined,
+      waveformMode: 'windowed',
       ...options,
     };
 

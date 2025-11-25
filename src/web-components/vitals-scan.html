@@ -9,11 +9,9 @@
     position: relative;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: white;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    
-    /* CHANGE: Increased dimensions slightly */
-    --oval-width: 240px;
-    --oval-height: 320px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);    
+    --oval-width: 260px;
+    --oval-height: 350px;
     --primary-color: #007bff;
   }
   
@@ -80,9 +78,8 @@
 
   #progress-fg {
     stroke: var(--primary-color);
-    /* CHANGE: Circumference of 240x320 oval (rx=115, ry=155) is approx 853 */
-    stroke-dasharray: 853;
-    stroke-dashoffset: 853; /* Start hidden */
+    stroke-dasharray: 932;
+    stroke-dashoffset: 932; /* Start hidden */
     transition: stroke-dashoffset 0.2s linear; 
     opacity: 0;
   }
@@ -140,7 +137,11 @@
   #btn-start:hover { background: #0069d9; transform: scale(1.02); }
   #btn-start:active { transform: scale(0.98); }
   
-  .hidden { opacity: 0 !important; pointer-events: none !important; }
+  .hidden {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
 
   /* --- RESULTS --- */
   #result-card {
@@ -174,6 +175,11 @@
     padding: 16px;
     text-align: center;
     border: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px; 
   }
 
   .res-label {
@@ -207,6 +213,24 @@
     transition: all 0.2s;
   }
   #btn-restart:hover { border-color: #fff; color: #fff; }
+
+  #debug-overlay {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #ffff00;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 4px 8px;
+    border-radius: 4px;
+    z-index: 200;
+    pointer-events: none;
+    white-space: pre-wrap;
+    text-shadow: 1px 1px 1px #000;
+  }
+
+  .conf-row { font-size: 10px; color: #888; margin-top: 4px; }
 </style>
 
 <div id="video-container">
@@ -216,14 +240,16 @@
     <img src="__LOGO_URL__" alt="VitalLens API">
   </a>
 
+  <div id="debug-overlay" class="hidden">Debug Info</div>
+
   <div class="ui-layer">
     
     <div id="aperture">
-        <svg id="progress-svg" viewBox="0 0 240 320">
+        <svg id="progress-svg" viewBox="0 0 260 350">
             <path id="progress-fg" class="ring-stroke" 
-                  d="M 120 5 
-                     A 115 155 0 1 1 120 315
-                     A 115 155 0 1 1 120 5" />
+                  d="M 130 5 
+                     A 125 170 0 1 1 130 345
+                     A 125 170 0 1 1 130 5" />
         </svg>
 
         <button id="btn-start">Start Scan</button>
@@ -235,31 +261,53 @@
   </div>
 
   <div id="result-card">
-    <img src="__LOGO_URL__" class="result-logo" alt="VitalLens">
+    <a href="https://www.rouast.com/api" target="_blank" class="result-logo">
+      <img src="__LOGO_URL__" alt="VitalLens" style="height: 28px; display: block;">
+    </a>
     
     <div class="result-grid">
       <div class="res-box">
         <div class="res-label">Heart Rate</div>
-        <span id="val-hr" class="res-val">--</span><span class="res-unit">bpm</span>
+        <div>
+          <span id="val-hr" class="res-val">--</span><span class="res-unit">bpm</span>
+        </div>
+        <div class="conf-row hidden">Conf: <span id="conf-hr">--</span></div>
       </div>
+
       <div class="res-box">
         <div class="res-label">Respiration</div>
-        <span id="val-rr" class="res-val">--</span><span class="res-unit">rpm</span>
+        <div>
+          <span id="val-rr" class="res-val">--</span><span class="res-unit">rpm</span>
+        </div>
+        <div class="conf-row hidden">Conf: <span id="conf-rr">--</span></div>
       </div>
 
       <div class="hrv-row hidden" id="hrv-container">
         <div>
             <div class="res-label">HRV (SDNN)</div>
-            <span id="val-sdnn" class="hrv-val">--</span><span class="res-unit">ms</span>
+            <div>
+              <span id="val-sdnn" class="hrv-val">--</span><span class="res-unit">ms</span>
+            </div>
+            <div class="conf-row hidden">Conf: <span id="conf-sdnn">--</span></div>
         </div>
         <div>
             <div class="res-label">HRV (RMSSD)</div>
-            <span id="val-rmssd" class="hrv-val">--</span><span class="res-unit">ms</span>
+            <div>
+              <span id="val-rmssd" class="hrv-val">--</span><span class="res-unit">ms</span>
+            </div>
+            <div class="conf-row hidden">Conf: <span id="conf-rmssd">--</span></div>
         </div>
       </div>
     </div>
 
-    <button id="btn-restart">Scan Again</button>
+    <div id="face-conf-display" class="hidden" style="font-size: 12px; color: #888; margin-bottom: 15px;">
+        Avg Face Confidence: <span id="val-face-conf">--</span>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+        <button id="btn-restart">Scan Again</button>
+        <button id="btn-details" style="background: transparent; border: 1px solid #444; color: #888;">View Details</button>
+    </div>
   </div>
   
   <div id="errorPopup" style="display:none; position:absolute; top:20px; left:50%; transform:translateX(-50%); background:#d32f2f; color:white; padding:8px 16px; border-radius:20px; font-size:13px; z-index:200;"></div>
