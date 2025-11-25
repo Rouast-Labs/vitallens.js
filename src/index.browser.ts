@@ -1,4 +1,5 @@
 import './web-components/VitalLensVitalsMonitor';
+import './web-components/VitalLensVitalsScan';
 import './web-components/VitalLensWidgetUnified';
 import './web-components/VitalLensWidgetFile';
 import './web-components/VitalLensWidgetWebcam';

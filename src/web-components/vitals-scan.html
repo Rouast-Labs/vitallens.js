@@ -1,0 +1,266 @@
+<style>
+  :host {
+    display: block;
+    width: 320px;
+    height: 480px; 
+    background: #000;
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    
+    /* CHANGE: Increased dimensions slightly */
+    --oval-width: 240px;
+    --oval-height: 320px;
+    --primary-color: #007bff;
+  }
+  
+  #video-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.2) scaleX(-1);
+    transform-origin: center;
+  }
+
+  .brand-logo {
+    position: absolute;
+    top: 20px; left: 20px;
+    z-index: 20;
+    pointer-events: auto;
+    opacity: 0.9;
+  }
+  .brand-logo img { height: 26px; display: block; }
+
+  /* --- THE APERTURE --- */
+  #aperture {
+    margin-top: auto;
+    margin-bottom: 20px;
+    position: relative;
+    width: var(--oval-width);
+    height: var(--oval-height);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible; 
+    pointer-events: auto;
+    transition: box-shadow 0.3s ease;
+  }
+
+  .scanning #aperture {
+    box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.85);
+  }
+
+  /* --- PROGRESS RING --- */
+  #progress-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; 
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .ring-stroke {
+    fill: none;
+    stroke-width: 5;
+    stroke-linecap: round; 
+  }
+
+  #progress-fg {
+    stroke: var(--primary-color);
+    /* CHANGE: Circumference of 240x320 oval (rx=115, ry=155) is approx 853 */
+    stroke-dasharray: 853;
+    stroke-dashoffset: 853; /* Start hidden */
+    transition: stroke-dashoffset 0.2s linear; 
+    opacity: 0;
+  }
+  
+  .scanning #progress-fg { opacity: 1; }
+
+  /* --- LAYOUT --- */
+  .ui-layer {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none; 
+  }
+
+  #status-container {
+    margin-bottom: auto;
+    margin-top: 20px;
+    text-align: center;
+    height: 40px;
+    width: 100%;
+    z-index: 20;
+  }
+  
+  #status-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.3);
+    padding: 6px 16px;
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #status-text.visible { opacity: 1; }
+
+  #btn-start {
+    position: absolute;
+    z-index: 30;
+    pointer-events: auto;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  #btn-start:hover { background: #0069d9; transform: scale(1.02); }
+  #btn-start:active { transform: scale(0.98); }
+  
+  .hidden { opacity: 0 !important; pointer-events: none !important; }
+
+  /* --- RESULTS --- */
+  #result-card {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #1c1c1e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  #result-card.visible { opacity: 1; pointer-events: auto; }
+
+  .result-logo { margin-bottom: 30px; opacity: 0.9; height: 28px; }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 85%;
+    margin-bottom: 40px;
+  }
+
+  .res-box {
+    background: rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .res-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #888;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .res-val { font-size: 24px; font-weight: 700; color: #fff; }
+  .res-unit { font-size: 12px; color: #666; margin-left: 2px; }
+
+  .hrv-row {
+    grid-column: span 2;
+    display: flex;
+    justify-content: space-around;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 10px;
+    padding-top: 15px;
+  }
+  .hrv-val { font-size: 18px; font-weight: 700; }
+
+  #btn-restart {
+    background: transparent;
+    border: 1px solid #444;
+    color: #ccc;
+    padding: 10px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  #btn-restart:hover { border-color: #fff; color: #fff; }
+</style>
+
+<div id="video-container">
+  <video id="video" autoplay muted playsinline></video>
+
+  <a href="https://www.rouast.com/api" target="_blank" class="brand-logo">
+    <img src="__LOGO_URL__" alt="VitalLens API">
+  </a>
+
+  <div class="ui-layer">
+    
+    <div id="aperture">
+        <svg id="progress-svg" viewBox="0 0 240 320">
+            <path id="progress-fg" class="ring-stroke" 
+                  d="M 120 5 
+                     A 115 155 0 1 1 120 315
+                     A 115 155 0 1 1 120 5" />
+        </svg>
+
+        <button id="btn-start">Start Scan</button>
+    </div>
+
+    <div id="status-container">
+        <span id="status-text" class="visible">Initialize...</span>
+    </div>
+  </div>
+
+  <div id="result-card">
+    <img src="__LOGO_URL__" class="result-logo" alt="VitalLens">
+    
+    <div class="result-grid">
+      <div class="res-box">
+        <div class="res-label">Heart Rate</div>
+        <span id="val-hr" class="res-val">--</span><span class="res-unit">bpm</span>
+      </div>
+      <div class="res-box">
+        <div class="res-label">Respiration</div>
+        <span id="val-rr" class="res-val">--</span><span class="res-unit">rpm</span>
+      </div>
+
+      <div class="hrv-row hidden" id="hrv-container">
+        <div>
+            <div class="res-label">HRV (SDNN)</div>
+            <span id="val-sdnn" class="hrv-val">--</span><span class="res-unit">ms</span>
+        </div>
+        <div>
+            <div class="res-label">HRV (RMSSD)</div>
+            <span id="val-rmssd" class="hrv-val">--</span><span class="res-unit">ms</span>
+        </div>
+      </div>
+    </div>
+
+    <button id="btn-restart">Scan Again</button>
+  </div>
+  
+  <div id="errorPopup" style="display:none; position:absolute; top:20px; left:50%; transform:translateX(-50%); background:#d32f2f; color:white; padding:8px 16px; border-radius:20px; font-size:13px; z-index:200;"></div>
+</div>
