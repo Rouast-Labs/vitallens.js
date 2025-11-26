@@ -17,7 +17,7 @@
 `vitallens.js` is the official JavaScript client for the [**VitalLens API**](https://www.rouast.com/api/), a service for estimating physiological vital signs like heart rate, respiratory rate, and heart rate variability (HRV) from facial video.
 
 <div align="center">
-  <img src="./assets/demo.webp" alt="vitallens.js demo" width="250">
+  <img src="./assets/demo.webp" alt="vitallens.js demo" width="266">
 </div>
 
 Using a different language or platform? We also have a [Python client](https://github.com/Rouast-Labs/vitallens-python) and [iOS app](https://apps.apple.com/us/app/vitallens/id6472757649).
