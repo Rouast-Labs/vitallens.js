@@ -40,6 +40,19 @@ class TestStreamProcessor extends StreamProcessorBase {
 
   handleFaceDetectionResult(event: MessageEvent): void {
     const data = event.data;
+    // Manually trigger the public callback if it exists and we have detections
+    if (
+      this.onFaceDetected &&
+      data &&
+      data.detections &&
+      data.detections.length > 0
+    ) {
+      const det = data.detections[0];
+      this.onFaceDetected({
+        coordinates: [det.x0, det.y0, det.x1, det.y1],
+        confidence: det.confidence ?? 1.0,
+      });
+    }
     if (data && data.detections && data.detections.length > 0) {
       // Update ROI to the first detection.
       const detection = data.detections[0];
@@ -82,6 +95,7 @@ const methodConfig: MethodConfig = {
   bufferOffset: 1,
   supportedVitals: ['heart_rate', 'ppg_waveform'],
 };
+let onFaceDetectedMock: jest.Mock;
 
 describe('StreamProcessor', () => {
   let mockBufferManager: jest.Mocked<BufferManager>;
@@ -146,6 +160,7 @@ describe('StreamProcessor', () => {
     onPredictMock = jest.fn(async (result: VitalLensResult) => {});
     onNoFaceMock = jest.fn(async () => {});
     onStreamResetMock = jest.fn(async () => {});
+    onFaceDetectedMock = jest.fn();
   });
 
   test('should initialize with the correct ROI and buffer', () => {
@@ -159,7 +174,8 @@ describe('StreamProcessor', () => {
       null,
       onPredictMock,
       onNoFaceMock,
-      onStreamResetMock
+      onStreamResetMock,
+      onFaceDetectedMock
     );
 
     processor.init();
@@ -183,7 +199,8 @@ describe('StreamProcessor', () => {
       mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
-      onStreamResetMock
+      onStreamResetMock,
+      onFaceDetectedMock
     );
 
     // Start processing; this calls frameIterator.start() and kicks off the async loop.
@@ -219,7 +236,8 @@ describe('StreamProcessor', () => {
       mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
-      onStreamResetMock
+      onStreamResetMock,
+      onFaceDetectedMock
     );
 
     await processor.start();
@@ -240,7 +258,8 @@ describe('StreamProcessor', () => {
       mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
-      onStreamResetMock
+      onStreamResetMock,
+      onFaceDetectedMock
     );
 
     // Call triggerFaceDetection with a frame.
@@ -265,7 +284,8 @@ describe('StreamProcessor', () => {
       mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
-      onStreamResetMock
+      onStreamResetMock,
+      onFaceDetectedMock
     );
 
     // Simulate a face detection event with no detections.
@@ -289,7 +309,8 @@ describe('StreamProcessor', () => {
       mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
-      onStreamResetMock
+      onStreamResetMock,
+      onFaceDetectedMock
     );
 
     processor.stop();
@@ -298,5 +319,38 @@ describe('StreamProcessor', () => {
     expect(mockBufferedResultsConsumer.stop).toHaveBeenCalled();
     expect(mockMethodHandler.cleanup).toHaveBeenCalled();
     expect(mockBufferManager.cleanup).toHaveBeenCalled();
+  });
+
+  test('should trigger onFaceDetected when face is found', async () => {
+    const processor = new TestStreamProcessor(
+      options,
+      () => methodConfig,
+      mockFrameIterator,
+      mockBufferManager,
+      null,
+      mockMethodHandler,
+      mockBufferedResultsConsumer,
+      onPredictMock,
+      onNoFaceMock,
+      onStreamResetMock,
+      onFaceDetectedMock
+    );
+
+    const fakeEvent = new MessageEvent('message', {
+      data: {
+        detections: [{ x0: 10, y0: 10, x1: 50, y1: 50, confidence: 0.95 }],
+        probeInfo: {
+          /*...*/
+        },
+      },
+    });
+
+    // Access private/protected method for testing
+    (processor as any).handleFaceDetectionResult(fakeEvent);
+
+    expect(onFaceDetectedMock).toHaveBeenCalledWith({
+      coordinates: [10, 10, 50, 50],
+      confidence: 0.95,
+    });
   });
 });

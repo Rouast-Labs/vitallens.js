@@ -62,13 +62,16 @@ class TestVitalLensController extends VitalLensControllerBase {
     methodHandler: MethodHandler,
     bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
-    onNoFace: () => Promise<void>
+    onNoFace: () => Promise<void>,
+    onFaceDetected?: (face: any) => void
   ): IStreamProcessor {
     return {
       init: jest.fn(),
       start: jest.fn(),
       isProcessing: jest.fn(),
       stop: jest.fn(),
+      setInferenceEnabled: jest.fn(),
+      reset: jest.fn(),
     };
   }
 }
@@ -176,6 +179,10 @@ describe('VitalLensControllerBase', () => {
       mockStreamProcessor = {
         isProcessing: jest.fn().mockReturnValue(false),
         start: jest.fn(),
+        setInferenceEnabled: jest.fn(),
+        reset: jest.fn(),
+        stop: jest.fn(),
+        init: jest.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as IStreamProcessor;
 
@@ -188,6 +195,10 @@ describe('VitalLensControllerBase', () => {
       mockStreamProcessor = {
         isProcessing: jest.fn().mockReturnValue(true),
         start: jest.fn(),
+        setInferenceEnabled: jest.fn(),
+        reset: jest.fn(),
+        stop: jest.fn(),
+        init: jest.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as IStreamProcessor;
 
@@ -201,7 +212,11 @@ describe('VitalLensControllerBase', () => {
       // Create a mock stream processor that is processing
       mockStreamProcessor = {
         isProcessing: jest.fn().mockReturnValue(true),
+        start: jest.fn(),
+        setInferenceEnabled: jest.fn(),
+        reset: jest.fn(),
         stop: jest.fn(),
+        init: jest.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as IStreamProcessor;
       controller['vitalsEstimateManager'].resetAll = jest.fn();
@@ -215,7 +230,11 @@ describe('VitalLensControllerBase', () => {
       // Create a mock stream processor that is not processing
       mockStreamProcessor = {
         isProcessing: jest.fn().mockReturnValue(false),
+        start: jest.fn(),
+        setInferenceEnabled: jest.fn(),
+        reset: jest.fn(),
         stop: jest.fn(),
+        init: jest.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as IStreamProcessor;
       controller['vitalsEstimateManager'].resetAll = jest.fn();
@@ -232,7 +251,12 @@ describe('VitalLensControllerBase', () => {
     test('should stop the streamProcessor (if exists) and reset vitalsEstimateManager', () => {
       // Create a mock stream processor that is processing
       mockStreamProcessor = {
+        isProcessing: jest.fn().mockReturnValue(true),
         stop: jest.fn(),
+        start: jest.fn(),
+        setInferenceEnabled: jest.fn(),
+        reset: jest.fn(),
+        init: jest.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as IStreamProcessor;
       controller['vitalsEstimateManager'].resetAll = jest.fn();
@@ -446,6 +470,48 @@ describe('VitalLensControllerBase', () => {
       controller['streamProcessor'] =
         fakeStreamProcessor as unknown as IStreamProcessor;
       expect(controller['isProcessing']()).toBe(false);
+    });
+  });
+
+  describe('setInferenceEnabled', () => {
+    test('should call setInferenceEnabled on streamProcessor if it exists', () => {
+      const mockProc = {
+        isProcessing: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(),
+        init: jest.fn(),
+        setInferenceEnabled: jest.fn(),
+        reset: jest.fn(),
+      };
+      controller['streamProcessor'] = mockProc as unknown as IStreamProcessor;
+
+      controller.setInferenceEnabled(true);
+      expect(mockProc.setInferenceEnabled).toHaveBeenCalledWith(true);
+    });
+  });
+
+  describe('reset', () => {
+    test('should call reset on streamProcessor if it exists', () => {
+      const mockProc = {
+        isProcessing: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(),
+        init: jest.fn(),
+        setInferenceEnabled: jest.fn(),
+        reset: jest.fn(),
+      };
+      controller['streamProcessor'] = mockProc as unknown as IStreamProcessor;
+
+      controller.reset();
+      expect(mockProc.reset).toHaveBeenCalled();
+    });
+
+    test('should cleanup bufferManager if streamProcessor does not exist', () => {
+      controller['streamProcessor'] = null;
+      controller['bufferManager'].cleanup = jest.fn();
+
+      controller.reset();
+      expect(controller['bufferManager'].cleanup).toHaveBeenCalled();
     });
   });
 });

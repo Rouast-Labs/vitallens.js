@@ -6,6 +6,8 @@ jest.mock('../../src/core/VitalLensController.node', () => ({
     startVideoStream: jest.fn(),
     pauseVideoStream: jest.fn(),
     stopVideoStream: jest.fn(),
+    setInferenceEnabled: jest.fn(),
+    reset: jest.fn(),
     processVideoFile: jest.fn(async () => ({
       message: 'Processed file successfully.',
     })),
@@ -63,5 +65,17 @@ describe('VitalLens (Node)', () => {
   test('should call dispose on the controller on close', () => {
     vitalLens.close();
     expect(vitalLens['controller'].dispose).toHaveBeenCalled();
+  });
+
+  test('should call setInferenceEnabled on the controller', () => {
+    vitalLens.setInferenceEnabled(true);
+    expect(vitalLens['controller'].setInferenceEnabled).toHaveBeenCalledWith(
+      true
+    );
+  });
+
+  test('should call reset on the controller', () => {
+    vitalLens.reset();
+    expect(vitalLens['controller'].reset).toHaveBeenCalled();
   });
 });

@@ -90,6 +90,7 @@ describe('VitalLensController (Node)', () => {
       const dummyOnPredict = jest.fn();
       const dummyOnNoFace = jest.fn();
       const dummyOnStreamReset = jest.fn();
+      const dummyOnFaceDetected = jest.fn();
 
       const streamProcessor = (controller as any).createStreamProcessor(
         dummyOptions,
@@ -101,7 +102,8 @@ describe('VitalLensController (Node)', () => {
         dummyBufferedResultsConsumer,
         dummyOnPredict,
         dummyOnNoFace,
-        dummyOnStreamReset
+        dummyOnStreamReset,
+        dummyOnFaceDetected
       );
       expect(StreamProcessor).toHaveBeenCalledWith(
         dummyOptions,
@@ -113,7 +115,8 @@ describe('VitalLensController (Node)', () => {
         dummyBufferedResultsConsumer,
         dummyOnPredict,
         dummyOnNoFace,
-        dummyOnStreamReset
+        dummyOnStreamReset,
+        dummyOnFaceDetected
       );
       expect(streamProcessor).toBeInstanceOf(StreamProcessor);
     });

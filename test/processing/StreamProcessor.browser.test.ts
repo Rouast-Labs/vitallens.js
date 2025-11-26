@@ -42,6 +42,8 @@ describe('StreamProcessor (Browser)', () => {
   const dummyBufferedResultsConsumer = {} as any;
   const dummyOnPredict = jest.fn(async (result) => {});
   const dummyOnNoFace = jest.fn(async () => {});
+  const dummyOnStreamReset = jest.fn();
+  const dummyOnFaceDetected = jest.fn();
 
   // Minimal BufferManager mock.
   const fakeBufferManager: BufferManager = {
@@ -104,7 +106,9 @@ describe('StreamProcessor (Browser)', () => {
       dummyMethodHandler,
       dummyBufferedResultsConsumer,
       dummyOnPredict,
-      dummyOnNoFace
+      dummyOnNoFace,
+      dummyOnStreamReset,
+      dummyOnFaceDetected
     );
   });
 
@@ -119,7 +123,9 @@ describe('StreamProcessor (Browser)', () => {
         dummyMethodHandler,
         dummyBufferedResultsConsumer,
         dummyOnPredict,
-        dummyOnNoFace
+        dummyOnNoFace,
+        dummyOnStreamReset,
+        dummyOnFaceDetected
       );
       expect(() =>
         (proc as any).triggerFaceDetection(mockFrame as unknown as Frame, 1)
@@ -274,6 +280,26 @@ describe('StreamProcessor (Browser)', () => {
       expect((processor as any).roi).toEqual(currentROI);
       // No new buffer should be added.
       expect(fakeBufferManager.addBuffer).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('onFaceDetected', () => {
+    it('should call onFaceDetected callback on valid detection', () => {
+      const event = new MessageEvent('message', {
+        data: {
+          id: 1,
+          detections: [{ x0: 10, y0: 10, x1: 50, y1: 50, confidence: 0.99 }],
+          probeInfo: { width: 640, height: 480 },
+          timestamp: 1.0,
+        },
+      });
+
+      (processor as any).handleFaceDetectionResult(event);
+
+      expect(dummyOnFaceDetected).toHaveBeenCalledWith({
+        coordinates: [10, 10, 50, 50],
+        confidence: 0.99,
+      });
     });
   });
 });
