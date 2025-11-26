@@ -17,7 +17,7 @@
 `vitallens.js` is the official JavaScript client for the [**VitalLens API**](https://www.rouast.com/api/), a service for estimating physiological vital signs like heart rate, respiratory rate, and heart rate variability (HRV) from facial video.
 
 <div align="center">
-  <img src="./assets/demo.gif" alt="vitallens.js demo" width="500">
+  <img src="./assets/demo.webp" alt="vitallens.js demo" width="250">
 </div>
 
 Using a different language or platform? We also have a [Python client](https://github.com/Rouast-Labs/vitallens-python) and [iOS app](https://apps.apple.com/us/app/vitallens/id6472757649).
@@ -39,7 +39,7 @@ Using a different language or platform? We also have a [Python client](https://g
   Perform rapid face detection when required—or optionally, pass a global region of interest (ROI) to skip detection for even faster processing.
 
 - **Pre-Built Web Component Widgets:**  
-  In addition to the core API, vitallens.js provides ready-to-use web components. Try our simple vitals monitor widget (as seen in the above gif), or use an advanced widget showing vitals, video, and waveforms (supports both file and webcam modes).
+  In addition to the core API, vitallens.js provides ready-to-use web components. Try our vitals scan widget (as seen in the above gif) to perform 30-second scans, the user-friendly vitals monitor widget for continuous monitoring, or use an advanced widget showing vitals, video, and waveforms (supports both file and webcam modes).
 
 ## Installation
 
@@ -72,6 +72,9 @@ This is the easiest way to get started. Just add the module script from a CDN, a
 
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
+
+<!-- Basic 30-second vitals scan -->
+<vitallens-vitals-scan api-key="YOUR_API_KEY"></vitallens-vitals-scan>
 
 <!-- Easy-to-use vitals monitor with basic readings -->
 <vitallens-vitals-monitor api-key="YOUR_API_KEY"></vitallens-vitals-monitor>
@@ -298,43 +301,43 @@ npm run build
 
 Also, note that each example requires an API key. Replace `YOUR_API_KEY` with your actual API key when running the examples.
 
-- **Browser - Vitals Monitor:**
-  [examples/browser/vitals_monitor.html](examples/browser/vitals_monitor.html)  
-  To run this example, execute:
-  ```bash
-  API_KEY=YOUR_API_KEY npm run start:vitals-monitor
-  ```
-
 - **Browser - Vitals Scan:**
-  [examples/browser/vitals_scan.html](examples/browser/vitals_scan.html)  
+  [examples/browser/vitals_scan.html](examples/browser/vitals_scan.html)
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:vitals-scan
   ```
 
+- **Browser - Vitals Monitor:**
+  [examples/browser/vitals_monitor.html](examples/browser/vitals_monitor.html)
+  To run this example, execute:
+  ```bash
+  API_KEY=YOUR_API_KEY npm run start:vitals-monitor
+  ```
+
 - **Browser - Advanced Widget:**
-  [examples/browser/widget.html](examples/browser/widget.html)  
+  [examples/browser/widget.html](examples/browser/widget.html)
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser-widget
   ```
 
 - **Browser - Minimal File Input:**
-  [examples/browser/file_minimal.html](examples/browser/file_minimal.html)  
+  [examples/browser/file_minimal.html](examples/browser/file_minimal.html)
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser-file-minimal
   ```
 
 - **Browser - Minimal Webcam Input:**
-  [examples/browser/webcam_minimal.html](examples/browser/webcam_minimal.html)  
+  [examples/browser/webcam_minimal.html](examples/browser/webcam_minimal.html)
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:browser-webcam-minimal
   ```
 
 - **Node - File Processing:**
-  [examples/node/file.js](examples/node/file.js)  
+  [examples/node/file.js](examples/node/file.js)
   To run this example, execute:
   ```bash
   API_KEY=YOUR_API_KEY npm run start:node-file

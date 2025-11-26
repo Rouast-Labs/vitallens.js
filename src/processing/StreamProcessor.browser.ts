@@ -52,17 +52,24 @@ export class StreamProcessor extends StreamProcessorBase {
    */
   protected handleFaceDetectionResult(event: MessageEvent): void {
     const { id, detections, probeInfo, timestamp, error } = event.data;
+
+    this.lastFaceDetectionTime = timestamp;
+    this.isDetecting = false;
+
     if (error) {
       console.error(`Face detection error (id: ${id}):`, error);
       return;
     }
-    if (!detections || detections.length < 1) {
+
+    const hasValidDetection =
+      detections && detections.length > 0 && checkROIValid(detections[0]);
+
+    if (!hasValidDetection) {
       // No face detected.
       this.roi = null;
       this.pendingRoi = null;
       this.bufferManager.cleanup();
       this.onNoFace();
-      if (this.onFaceDetected) this.onFaceDetected(null);
       return;
     }
     // Use the first detection
@@ -97,8 +104,5 @@ export class StreamProcessor extends StreamProcessorBase {
         this.bufferManager.addBuffer(newRoi, this.methodConfig, timestamp);
       }
     }
-
-    this.lastFaceDetectionTime = timestamp;
-    this.isDetecting = false;
   }
 }
