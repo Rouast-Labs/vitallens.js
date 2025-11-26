@@ -151,7 +151,19 @@ describe('VitalLensController (Browser)', () => {
       expect(
         controller['frameIteratorFactory']!.createStreamFrameIterator
       ).toHaveBeenCalledWith(mockStream, mockVideoElement);
-      expect(StreamProcessor).toHaveBeenCalled();
+      expect(StreamProcessor).toHaveBeenCalledWith(
+        mockOptions,
+        expect.any(Function), // getConfig
+        expect.any(Object), // frameIterator
+        expect.any(Object), // bufferManager
+        expect.any(Object), // faceDetectionWorker
+        expect.any(Object), // methodHandler
+        expect.any(Object), // bufferedResultsConsumer
+        expect.any(Function), // onPredict
+        expect.any(Function), // onNoFace
+        expect.any(Function), // onStreamReset (NEW)
+        expect.any(Function) // onFaceDetected (NEW)
+      );
     });
   });
 });

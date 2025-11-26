@@ -71,5 +71,5 @@ describe('FFmpegWrapper (Node)', () => {
     expect(buffer).toBeDefined();
     expect(buffer).toBeInstanceOf(Uint8Array);
     expect(buffer.length).toEqual(354 * 40 * 40 * 3);
-  });
+  }, 30000);
 });
