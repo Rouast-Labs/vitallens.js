@@ -9,6 +9,7 @@ enum ScanState {
   SCANNING = 'scanning',
   COMPLETE = 'complete',
   FAILED = 'failed',
+  FACE_LOST = 'face_lost',
 }
 
 const ICON_BOLT = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/></svg>`;
@@ -72,10 +73,15 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     const query = (id: string) =>
       this.shadowRoot!.querySelector(id) as HTMLElement;
     this.els = {
+      startScreen: query('#start-screen'),
+      scanScene: query('#scan-scene'),
+      headerTitle: query('#header-title'),
       startButton: query('#btn-start'),
-      modeContainer: query('#mode-container'),
+      stopButton: query('#btn-stop'),
       modeSwitch: query('#mode-switch'),
-      modeLabel: query('#mode-label'),
+      modeTitle: query('#mode-title'),
+      modeDesc: query('#mode-desc'),
+      animCheckbox: query('#anim-checkbox'),
       iconLeaf: query('#icon-leaf-container'),
       iconBolt: query('#icon-bolt-container'),
       restartButton: query('#btn-restart'),
@@ -103,12 +109,45 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
 
   connectedCallback() {
     super.connectedCallback();
+
     this.els.startButton.addEventListener('click', () => this.startFlow());
+    this.els.stopButton.addEventListener('click', () => this.resetFlow());
     this.els.restartButton.addEventListener('click', () => this.resetFlow());
     this.els.detailsButton.addEventListener('click', () =>
       this.toggleDetails()
     );
     this.els.modeSwitch.addEventListener('click', () => this.toggleMode());
+
+    const cb = this.els.animCheckbox as HTMLInputElement;
+    cb.addEventListener('change', () => {
+      if (cb.checked) {
+        this.classList.add('anim-enabled');
+      } else {
+        this.classList.remove('anim-enabled');
+      }
+    });
+
+    if (this.hasAttribute('fx-enabled')) {
+      cb.checked = true;
+      this.classList.add('anim-enabled');
+    }
+
+    const defaultMode = this.getAttribute('default-mode');
+    if (defaultMode === 'standard') {
+      this.targetFps = 30;
+      this.els.iconLeaf.classList.remove('active', 'eco');
+      this.els.iconBolt.classList.add('active', 'std');
+      this.els.modeTitle.textContent = 'Standard Mode';
+      this.els.modeDesc.textContent =
+        'Higher accuracy, requires faster connection';
+    } else {
+      this.targetFps = 15;
+      this.els.iconLeaf.classList.add('active', 'eco');
+      this.els.iconBolt.classList.remove('active', 'std');
+      this.els.modeTitle.textContent = 'Eco Mode';
+      this.els.modeDesc.textContent =
+        'Standard accuracy, for slower connections';
+    }
 
     this.updateStateUI(ScanState.IDLE);
   }
@@ -133,6 +172,7 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
       this.vitalLensInstance.addEventListener(
         'faceDetected',
         (data: unknown) => {
+          console.log('faceDetected:', data);
           this.onLocalFaceDetected(
             data as { coordinates: number[]; confidence: number } | null
           );
@@ -162,11 +202,14 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     if (this.targetFps === 15) {
       this.els.iconLeaf.classList.add('active', 'eco');
       this.els.iconBolt.classList.remove('active', 'std');
-      this.els.modeLabel.textContent = 'Eco Mode';
+      this.els.modeTitle.textContent = 'Eco Mode';
+      this.els.modeDesc.textContent = 'Good accuracy, for slower connection';
     } else {
       this.els.iconLeaf.classList.remove('active', 'eco');
       this.els.iconBolt.classList.add('active', 'std');
-      this.els.modeLabel.textContent = 'Standard Mode';
+      this.els.modeTitle.textContent = 'Standard Mode';
+      this.els.modeDesc.textContent =
+        'Higher accuracy, requires faster connection';
     }
   }
 
@@ -177,6 +220,8 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   private onLocalFaceDetected(
     face: { coordinates: number[]; confidence: number } | null
   ) {
+    if (this.state === ScanState.FACE_LOST) return;
+
     const currentConfidence = face ? face.confidence : 0;
 
     if (this.state === ScanState.DETECTING_FACE) {
@@ -408,9 +453,14 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
       this.els.statusText.textContent = 'Face lost too many times.';
       this.updateStateUI(ScanState.FAILED);
     } else {
-      this.consecutiveFaceFrames = 0;
-      this.updateStateUI(ScanState.DETECTING_FACE);
+      this.updateStateUI(ScanState.FACE_LOST);
       this.els.statusText.textContent = 'Face lost';
+      this.statusTimeout = window.setTimeout(() => {
+        if (this.state === ScanState.FACE_LOST) {
+          this.consecutiveFaceFrames = 0;
+          this.updateStateUI(ScanState.DETECTING_FACE);
+        }
+      }, 2000);
     }
   }
 
@@ -527,47 +577,72 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
   private updateStateUI(newState: ScanState) {
     this.state = newState;
     const {
-      startButton,
-      modeContainer,
-      aperture,
+      startScreen,
+      scanScene,
       resultCard,
+      aperture,
       statusText,
       debugOverlay,
+      stopButton,
+      headerTitle,
     } = this.els;
 
-    startButton.classList.add('hidden');
-    modeContainer.classList.add('hidden-toggle');
-    aperture.classList.remove('scanning');
+    startScreen.classList.add('hidden');
+    scanScene.classList.remove('visible');
     resultCard.classList.remove('visible');
-    statusText.classList.remove('visible');
-    statusText.style.color = '#fff';
+
+    aperture.classList.remove('scanning');
+    stopButton.classList.remove('visible');
     debugOverlay.classList.add('hidden');
+    statusText.style.color = '#fff';
+
+    headerTitle.classList.remove('visible');
 
     switch (newState) {
       case ScanState.IDLE:
-        startButton.classList.remove('hidden');
-        modeContainer.classList.remove('hidden-toggle');
+        startScreen.classList.remove('hidden');
+        headerTitle.classList.add('visible');
         break;
+
       case ScanState.DETECTING_FACE:
+        scanScene.classList.add('visible');
         statusText.classList.add('visible');
+        statusText.textContent = 'Looking for face...';
+        stopButton.classList.add('visible');
         if (DEBUG_MODE) debugOverlay.classList.remove('hidden');
         break;
+
       case ScanState.SCANNING:
+        scanScene.classList.add('visible');
         statusText.textContent = 'Scanning...';
         statusText.classList.add('visible');
         aperture.classList.add('scanning');
+        stopButton.classList.add('visible');
         if (DEBUG_MODE) debugOverlay.classList.remove('hidden');
         break;
-      case ScanState.COMPLETE:
-        resultCard.classList.add('visible');
-        break;
-      case ScanState.FAILED:
+
+      case ScanState.FACE_LOST:
+        scanScene.classList.add('visible');
         statusText.classList.add('visible');
         statusText.style.color = '#ff4444';
-        startButton.textContent = 'Retry';
-        startButton.classList.remove('hidden');
-        modeContainer.classList.remove('hidden-toggle');
+        stopButton.classList.add('visible');
+        if (DEBUG_MODE) debugOverlay.classList.remove('hidden');
         break;
+
+      case ScanState.COMPLETE:
+        resultCard.classList.add('visible');
+        headerTitle.classList.add('visible');
+        break;
+
+      case ScanState.FAILED:
+        startScreen.classList.remove('hidden');
+        headerTitle.classList.add('visible');
+        this.els.startButton.textContent = 'Retry Scan';
+        break;
+    }
+
+    if (newState === ScanState.IDLE) {
+      this.els.startButton.textContent = 'Start Scan';
     }
   }
 
