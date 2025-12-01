@@ -172,7 +172,6 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
       this.vitalLensInstance.addEventListener(
         'faceDetected',
         (data: unknown) => {
-          console.log('faceDetected:', data);
           this.onLocalFaceDetected(
             data as { coordinates: number[]; confidence: number } | null
           );
