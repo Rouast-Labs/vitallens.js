@@ -231,7 +231,7 @@ export class VitalLensAPIHandler extends MethodHandler {
 
     try {
       const metadata: { origin: string; model?: string } = {
-        origin: 'vitallens.js',
+        origin: this.options.origin || 'vitallens.js',
         ...(this.requestedModelName && { model: this.requestedModelName }),
       };
 

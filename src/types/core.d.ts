@@ -39,6 +39,7 @@ export interface VitalLensOptions {
   method: Method;
   apiKey?: string;
   proxyUrl?: string;
+  origin?: 'vitallens.js' | 'test';
   waveformMode?: 'incremental' | 'windowed' | 'complete';
   requestMode?: 'rest';
   overrideFpsTarget?: number;
