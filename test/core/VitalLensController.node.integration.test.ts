@@ -40,6 +40,7 @@ describe('VitalLensController Integration (Node)', () => {
       apiKey: API_KEY,
       method: 'vitallens',
       requestMode: 'rest',
+      origin: 'test',
     };
 
     controller = new VitalLensController(options);
