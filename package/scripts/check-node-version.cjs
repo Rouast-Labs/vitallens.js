@@ -4,16 +4,13 @@ const semver = require('semver');
 const currentVersion = process.version;
 const platform = process.platform;
 
-// For Windows: Warn if not using the exact verified version
+// For Windows: require exactly Node 18.16.1
 if (platform === 'win32') {
-  if (currentVersion !== 'v18.16.1') {
-    console.warn(
-      `\x1b[33m%s\x1b[0m`,
-      `WARNING: You are using Node ${currentVersion} on Windows.\n` +
-        `VitalLens is tested specifically on Node v18.16.1 for Windows.\n` +
-        `The AI engine (tfjs-node) installation might fail on your version.\n` +
-        `If it fails, 'vitallens' will still be installed for browser usage, but server-side inference will not work.\n`
+  if (!semver.satisfies(currentVersion, '>=18.0.0')) {
+    console.error(
+      `Error: This project requires Node 18 or above on Windows. Detected version: ${currentVersion}.`
     );
+    process.exit(1);
   }
 } else {
   // For macOS and Linux: require Node 18.x or Node 20.x
