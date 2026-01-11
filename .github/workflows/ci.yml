@@ -53,16 +53,19 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        node-version: ["18.16.1", "20"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Node.js
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v6
         with:
-          node-version: "18.16.1"
+          node-version: ${{ matrix.node-version }}
 
       - name: Install ffmpeg
         uses: Iamshankhadeep/setup-ffmpeg@v1.2
