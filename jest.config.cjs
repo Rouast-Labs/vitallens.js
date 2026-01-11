@@ -32,7 +32,7 @@ module.exports = {
           '<rootDir>/__mocks__/modelJsonMock.js',
         'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1\\.bin$':
           '<rootDir>/__mocks__/modelBinMock.js',
-        '^tfjs-provider$': '<rootDir>/src/tfjs-provider.node.ts',
+        '^tfjs-provider$': '<rootDir>/src/tfjs-provider.browser.worker.ts',
       },
       setupFilesAfterEnv: ['./jest.setup.ts'],
     },
