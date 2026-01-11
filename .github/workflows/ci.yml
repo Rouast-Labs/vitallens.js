@@ -55,7 +55,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        node-version: ["18.16.1", "20"]
+        node-version: ["18", "20"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -90,15 +90,14 @@ jobs:
       - name: Lint code
         run: npm run lint
 
-      - name: Test with Jest (Browser only)
-        # On Windows Node 20: Run only browser tests since Node will fail
+      - name: Test with Jest (Browser only to avoid node tfjs)
         if: matrix.node-version == '20'
         env:
           VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
-        run: npm test -- --selectProjects browser
+        run: npx jest --selectProjects browser --testPathIgnorePatterns FaceDetectorAsyncIntegration
 
       - name: Test with Jest (Full)
-        if: matrix.node-version != '20'
+        if: matrix.node-version == '18'
         env:
           VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
         run: npm test
