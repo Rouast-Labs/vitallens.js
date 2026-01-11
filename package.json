@@ -93,7 +93,9 @@
   },
   "peerDependencies": {
     "@tensorflow/tfjs": "^4.22.0",
-    "@tensorflow/tfjs-core": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0"
+  },
+  "optionalDependencies": {
     "@tensorflow/tfjs-node": "^4.22.0"
   },
   "devDependencies": {
