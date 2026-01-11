@@ -90,7 +90,15 @@ jobs:
       - name: Lint code
         run: npm run lint
 
-      - name: Test with Jest
+      - name: Test with Jest (Browser only)
+        # On Windows Node 20: Run only browser tests since Node will fail
+        if: matrix.node-version == '20'
+        env:
+          VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
+        run: npm test -- --selectProjects browser
+
+      - name: Test with Jest (Full)
+        if: matrix.node-version != '20'
         env:
           VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
         run: npm test
