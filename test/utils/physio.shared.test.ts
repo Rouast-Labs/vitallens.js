@@ -3,6 +3,7 @@ import {
   estimateHeartRate,
   estimateRespiratoryRate,
   estimateHrvFromDetectionSequences,
+  estimateHrv,
   findPeaks,
 } from '../../src/utils/physio';
 
@@ -422,6 +423,14 @@ describe('estimateHeartRate', () => {
     const estimatedHr = estimateHeartRate(ppgWaveform, fs);
     expect(estimatedHr).toBeCloseTo(hr, 0);
   });
+
+  it('should accept an optional context argument without error', () => {
+    const fs = 30;
+    const ppgWaveform = generateSyntheticPPG({ duration: 5, fs, hr: 60 });
+    expect(() => {
+      estimateHeartRate(ppgWaveform, fs, { estimatedHeartRate: 60 });
+    }).not.toThrow();
+  });
 });
 
 describe('estimateRespiratoryRate', () => {
@@ -435,6 +444,51 @@ describe('estimateRespiratoryRate', () => {
     );
     const estimatedRr = estimateRespiratoryRate(respWaveform, fs);
     expect(estimatedRr).toBeCloseTo(rr, 0);
+  });
+
+  it('should accept an optional context argument without error', () => {
+    const fs = 50;
+    const respWaveform = Array.from({ length: 300 }, (_, i) =>
+      Math.sin(i * 0.1)
+    );
+    expect(() => {
+      estimateRespiratoryRate(respWaveform, fs, { confidence: [] });
+    }).not.toThrow();
+  });
+});
+
+describe('estimateHrv (High-Level Wrapper)', () => {
+  const fs = 30;
+
+  it('should return null for empty signal', () => {
+    const result = estimateHrv([], fs, 'sdnn');
+    expect(result).toBeNull();
+  });
+
+  it('should successfully compute a value for a valid signal', () => {
+    const signal = generateSyntheticPPG({ duration: 10, fs, hr: 60 });
+    const result = estimateHrv(signal, fs, 'sdnn');
+    expect(typeof result).toBe('number');
+  });
+
+  it('should utilize confidence context (returning null if confidence is 0)', () => {
+    const signal = generateSyntheticPPG({ duration: 10, fs, hr: 60 });
+    const confidence = new Array(signal.length).fill(0.0);
+    const result = estimateHrv(signal, fs, 'sdnn', { confidence });
+    expect(result).toBeNull();
+  });
+
+  it('should accept timestamps in context without error', () => {
+    const signal = generateSyntheticPPG({ duration: 10, fs, hr: 60 });
+    const timestamps = signal.map((_, i) => i / fs);
+    const result = estimateHrv(signal, fs, 'sdnn', { timestamps });
+    expect(typeof result).toBe('number');
+  });
+
+  it('should accept estimatedHeartRate in context without error', () => {
+    const signal = generateSyntheticPPG({ duration: 10, fs, hr: 60 });
+    const result = estimateHrv(signal, fs, 'sdnn', { estimatedHeartRate: 60 });
+    expect(typeof result).toBe('number');
   });
 });
 
