@@ -20,8 +20,11 @@ export const CALC_HR_MIN_WINDOW_SIZE = 5;
 export const CALC_RR_WINDOW_SIZE = 30;
 export const CALC_RR_MIN_WINDOW_SIZE = 10;
 export const CALC_HRV_SDNN_MIN_T = 20;
+export const CALC_HRV_SDNN_MAX_T = 60;
 export const CALC_HRV_RMSSD_MIN_T = 20;
+export const CALC_HRV_RMSSD_MAX_T = 60;
 export const CALC_HRV_LFHF_MIN_T = 55;
+export const CALC_HRV_LFHF_MAX_T = 60;
 
 // HRV Frequency Bands [Hz]
 export const HRV_LF_BAND: [number, number] = [0.04, 0.15];
