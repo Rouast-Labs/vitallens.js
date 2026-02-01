@@ -118,7 +118,7 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
   },
   hrv_lfhf: {
     type: 'derived',
-    unit: 'ms',
+    unit: 'ratio',
     displayName: 'Heart Rate Variability (LF/HF)',
     sourceSignal: 'ppg_waveform',
     minTime: CALC_HRV_LFHF_MIN_T,
