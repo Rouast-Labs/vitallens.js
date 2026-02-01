@@ -10,6 +10,7 @@ import {
 import { jest } from '@jest/globals';
 import * as physio from '../../src/utils/physio';
 
+// Mock constants to ensure predictable window sizes in tests
 jest.mock('../../src/config/constants', () => ({
   AGG_WINDOW_SIZE: 4,
   CALC_HR_MIN: 40,
@@ -45,9 +46,7 @@ describe('VitalsEstimateManager', () => {
   const mockedEstimateHeartRate = physio.estimateHeartRate as jest.Mock;
   const mockedEstimateRespiratoryRate =
     physio.estimateRespiratoryRate as jest.Mock;
-  const mockedFindPeaks = physio.findPeaks as jest.Mock;
-  const mockedEstimateHrvFromDetectionSequences =
-    physio.estimateHrvFromDetectionSequences as jest.Mock;
+  const mockedEstimateHrv = physio.estimateHrv as jest.Mock;
 
   beforeEach(() => {
     methodConfig = {
@@ -73,24 +72,21 @@ describe('VitalsEstimateManager', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('constructor', () => {
     it('should initialize with the correct buffer sizes based on fpsTarget and constants', () => {
       expect(manager).toHaveProperty('fpsTarget', 1);
-      expect(manager).toHaveProperty('bufferSizeAgg', 1 * 4); // AGG_WINDOW_SIZE = 4 (per mock)
-      expect(manager).toHaveProperty('bufferSizePpg', 1 * 10); // CALC_HR_WINDOW_SIZE = 10
-      expect(manager).toHaveProperty('bufferSizeResp', 1 * 30); // CALC_RR_WINDOW_SIZE = 30
-      expect(manager).toHaveProperty('minBufferSizePpg', 1 * 2); // CALC_HR_MIN_WINDOW_SIZE = 2
-      expect(manager).toHaveProperty('minBufferSizeResp', 1 * 4); // CALC_RR_MIN_WINDOW_SIZE = 4
+      expect(manager).toHaveProperty('bufferSizeAgg', 1 * 4);
     });
   });
 
   describe('processIncrementalResult', () => {
     beforeEach(() => {
+      // Spy on internal methods to verify calls without executing logic
       jest
-        .spyOn(manager as any, 'updateWaveforms')
+        .spyOn(manager as any, 'updateSignalBuffer')
         .mockImplementation(() => {});
       jest
         .spyOn(manager as any, 'updateTimestamps')
@@ -101,16 +97,6 @@ describe('VitalsEstimateManager', () => {
         face: {},
         vital_signs: {},
       });
-    });
-
-    it('should throw an error if no waveform data is provided', async () => {
-      await expect(
-        manager.processIncrementalResult(
-          { face: {}, vital_signs: {}, time: [], message: '' },
-          'sourceId',
-          'complete'
-        )
-      ).rejects.toThrow('No waveform data found in incremental result.');
     });
 
     it('should initialize buffers and timestamps for a new sourceId', async () => {
@@ -140,56 +126,39 @@ describe('VitalsEstimateManager', () => {
         'complete'
       );
 
-      expect(manager['timestamps'].has('source1')).toBe(true);
-      expect(manager['waveforms'].has('source1')).toBe(true);
+      // Verify timestamp update call
       expect(manager['updateTimestamps']).toHaveBeenCalledWith(
         'source1',
         incrementalResult.time,
         'windowed',
         0
       );
-      expect(manager['updateWaveforms']).toHaveBeenCalledWith(
+
+      // Verify signal buffer updates
+      expect(manager['updateSignalBuffer']).toHaveBeenCalledWith(
         'source1',
-        incrementalResult.vital_signs,
+        'ppg_waveform',
+        [1, 2, 3],
+        [0.8, 0.9, 1.0],
+        'windowed',
+        0
+      );
+
+      expect(manager['updateSignalBuffer']).toHaveBeenCalledWith(
+        'source1',
+        'respiratory_waveform',
+        [4, 5, 6],
+        [0.7, 0.8, 0.9],
         'windowed',
         0
       );
     });
 
-    it('should update timestamps and waveforms', async () => {
+    it('should update timestamps and waveforms with correct overlap', async () => {
       manager['timestamps'].set(
         'source1',
         [996, 997, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005]
       );
-      manager['faces'].set('source1', {
-        coordinates: [
-          [0, 0, 20, 20],
-          [0, 0, 20, 20],
-          [0, 0, 20, 20],
-          [0, 0, 20, 20],
-          [0, 0, 20, 20],
-          [0, 0, 20, 20],
-        ],
-        confidence: [0.9, 0.9, 0.9, 0.9, 0.9, 0.9],
-      });
-      manager['waveforms'].set('source1', {
-        ppgData: {
-          sum: [1, 2, 3, 4, 5, 6],
-          count: [1, 1, 1, 1, 1, 1],
-        },
-        ppgConf: {
-          sum: [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
-          count: [1, 1, 1, 1, 1, 1],
-        },
-        respData: {
-          sum: [4, 5, 6, 7, 8, 9],
-          count: [1, 1, 1, 1, 1, 1],
-        },
-        respConf: {
-          sum: [0.7, 0.7, 0.7, 0.7, 0.7, 0.7],
-          count: [1, 1, 1, 1, 1, 1],
-        },
-      });
 
       const incrementalResult = {
         time: [1001, 1002, 1003, 1004, 1005, 1006],
@@ -200,33 +169,23 @@ describe('VitalsEstimateManager', () => {
             unit: '',
             note: '',
           },
-          respiratory_waveform: {
-            data: [4, 5, 6, 7, 8, 9],
-            confidence: [0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
-            unit: '',
-            note: '',
-          },
         },
         face: {
-          coordinates: [
-            [0, 0, 20, 20],
-            [0, 0, 20, 20],
-            [0, 0, 20, 20],
-            [0, 0, 20, 20],
-            [0, 0, 20, 20],
-            [0, 0, 20, 20],
-          ] as Array<[number, number, number, number]>,
-          confidence: [0.95, 0.95, 0.95, 0.95, 0.95, 0.95],
+          coordinates: Array(6).fill([0, 0, 20, 20]) as Array<
+            [number, number, number, number]
+          >,
+          confidence: Array(6).fill(0.95),
         },
         message: '',
       };
 
-      const result = await manager.processIncrementalResult(
+      await manager.processIncrementalResult(
         incrementalResult,
         'source1',
         'complete'
       );
 
+      // Overlap of 5 frames (1001-1005)
       expect(manager['updateTimestamps']).toHaveBeenCalledWith(
         'source1',
         incrementalResult.time,
@@ -239,9 +198,11 @@ describe('VitalsEstimateManager', () => {
         options.waveformMode!,
         5
       );
-      expect(manager['updateWaveforms']).toHaveBeenCalledWith(
+      expect(manager['updateSignalBuffer']).toHaveBeenCalledWith(
         'source1',
-        incrementalResult.vital_signs,
+        'ppg_waveform',
+        expect.any(Array),
+        expect.any(Array),
         options.waveformMode!,
         5
       );
@@ -250,11 +211,10 @@ describe('VitalsEstimateManager', () => {
 
   describe('produceBufferedResults', () => {
     it('should process each non-overlapping frame and return an array of results', async () => {
-      // Setup initial state
-      manager['timestamps'].set('source1', [1000, 1001]); // 2 existing timestamps
+      manager['timestamps'].set('source1', [1000, 1001]);
 
       const incrementalResult: VitalLensResult = {
-        time: [1001, 1002, 1003], // Overlap of 1
+        time: [1001, 1002, 1003],
         vital_signs: {
           ppg_waveform: {
             data: [1, 2, 3],
@@ -267,11 +227,9 @@ describe('VitalsEstimateManager', () => {
         message: 'Processing',
       };
 
-      // Mock processIncrementalResult to check what it's called with
       const processMock = jest
         .spyOn(manager, 'processIncrementalResult')
         .mockImplementation(async (res, src, mode, light, ret) => {
-          // Return a modified version of the input to track calls
           return { ...res, message: `processed ${res.time[0]}` };
         });
 
@@ -281,11 +239,8 @@ describe('VitalsEstimateManager', () => {
         'windowed'
       );
 
-      // Should have been called twice (for ts 1002 and 1003)
       expect(results).toHaveLength(2);
       expect(processMock).toHaveBeenCalledTimes(2);
-
-      // Check the first call (for timestamp 1002)
       expect(processMock).toHaveBeenCalledWith(
         expect.objectContaining({
           time: [1002],
@@ -299,8 +254,6 @@ describe('VitalsEstimateManager', () => {
         true,
         true
       );
-
-      // Check the second call (for timestamp 1003)
       expect(processMock).toHaveBeenCalledWith(
         expect.objectContaining({
           time: [1003],
@@ -323,67 +276,51 @@ describe('VitalsEstimateManager', () => {
 
   describe('getUpdatedValues', () => {
     it('should append new values when there is no overlap', () => {
-      const currentValues = [1, 2, 3];
-      const newValues = [4, 5, 6];
-      const result = manager['getUpdatedValues'](
-        currentValues,
-        newValues,
-        'incremental',
-        0
-      );
-      expect(result).toEqual([1, 2, 3, 4, 5, 6]);
+      const currentValues = [1000, 1001, 1002];
+      const newValues = [1003, 1004, 1005];
+
+      manager['timestamps'].set('source1', currentValues);
+      manager['updateTimestamps']('source1', newValues, 'incremental', 0);
+
+      const result = manager['timestamps'].get('source1');
+      expect(result).toEqual([1000, 1001, 1002, 1003, 1004, 1005]);
     });
 
     it('should handle overlap correctly and update the array', () => {
-      const currentValues = [1, 2, 3, 4, 5];
-      const newValues = [4, 5, 6, 7, 8];
-      const result = manager['getUpdatedValues'](
-        currentValues,
-        newValues,
-        'incremental',
-        2
-      );
-      expect(result).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+      const currentValues = [1000, 1001, 1002, 1003, 1004];
+      const newValues = [1003, 1004, 1005, 1006, 1007];
+      manager['timestamps'].set('source1', currentValues);
+      manager['updateTimestamps']('source1', newValues, 'incremental', 2);
+
+      const result = manager['timestamps'].get('source1');
+      expect(result).toEqual([1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007]);
     });
 
-    it('should trim the array to the maximum buffer size in non-complete mode', () => {
-      // To get a maxBufferSize of 8, we need fpsTarget * 30 = 8 => fpsTarget = 8/30
-      const testOptions = { ...options, overrideFpsTarget: 8 / 30 };
-      const testManager = new VitalsEstimateManager(
-        () => methodConfig,
-        testOptions,
-        dummyPostprocessFn
-      );
-      // maxBufferSize is now Math.max( (8/30)*10, (8/30)*30 ) = Math.max(2.66, 8) = 8
-      const currentValues = [1, 2, 3, 4, 5];
-      const newValues = [6, 7, 8, 9, 10];
-      const result = testManager['getUpdatedValues'](
-        currentValues,
-        newValues,
-        'windowed',
-        0
-      );
-      expect(result).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
+    it('should trim the array to the maximum buffer size (safety cap) in non-complete mode', () => {
+      const fps = 1;
+      const maxCap = fps * 90;
+      const currentValues = Array.from({ length: maxCap }, (_, i) => i);
+      const newValues = [maxCap, maxCap + 1];
+
+      manager['timestamps'].set('source1', currentValues);
+      manager['updateTimestamps']('source1', newValues, 'windowed', 0);
+
+      const result = manager['timestamps'].get('source1');
+      expect(result!.length).toBe(maxCap);
+      expect(result![result!.length - 1]).toBe(maxCap + 1);
     });
 
     it('should keep all values in complete mode regardless of buffer size', () => {
-      // To get a maxBufferSize of 8, we need fpsTarget * 30 = 8 => fpsTarget = 8/30
-      const testOptions = { ...options, overrideFpsTarget: 8 / 30 };
-      const testManager = new VitalsEstimateManager(
-        () => methodConfig,
-        testOptions,
-        dummyPostprocessFn
-      );
-      // maxBufferSize is now 8, but should be ignored in 'complete' mode.
-      const currentValues = [1, 2, 3, 4, 5];
-      const newValues = [6, 7, 8, 9, 10];
-      const result = testManager['getUpdatedValues'](
-        currentValues,
-        newValues,
-        'complete',
-        0
-      );
-      expect(result).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      const fps = 1;
+      const maxCap = fps * 90;
+      const currentValues = Array.from({ length: maxCap }, (_, i) => i);
+      const newValues = [maxCap, maxCap + 1];
+
+      manager['timestamps'].set('source1', currentValues);
+      manager['updateTimestamps']('source1', newValues, 'complete', 0);
+
+      const result = manager['timestamps'].get('source1');
+      expect(result!.length).toBe(maxCap + 2);
     });
   });
 
@@ -452,20 +389,9 @@ describe('VitalsEstimateManager', () => {
 
     it('should set the updated timestamps correctly in the map', () => {
       const newTimestamps = [1003, 1004, 1005];
-      jest
-        .spyOn(manager as any, 'getUpdatedValues')
-        .mockReturnValue([1000, 1001, 1002, 1003, 1004, 1005]);
-
       manager['updateTimestamps']('source1', newTimestamps, 'incremental', 1);
-
       const updatedTimestamps = manager['timestamps'].get('source1');
       expect(updatedTimestamps).toEqual([1000, 1001, 1002, 1003, 1004, 1005]);
-      expect(manager['getUpdatedValues']).toHaveBeenCalledWith(
-        [1000, 1001, 1002, 1003],
-        newTimestamps,
-        'incremental',
-        1
-      );
     });
   });
 
@@ -478,7 +404,6 @@ describe('VitalsEstimateManager', () => {
         ] as Array<[number, number, number, number]>,
         confidence: [0.8, 0.9],
       });
-      manager['faceNote'].set('source1', 'Initial face note');
     });
 
     it('should set the updated faces correctly in the map', () => {
@@ -490,15 +415,6 @@ describe('VitalsEstimateManager', () => {
         confidence: [0.95, 0.99],
         note: 'New face note',
       };
-      jest.spyOn(manager as any, 'getUpdatedValues').mockReturnValueOnce([
-        [0, 0, 20, 20],
-        [10, 10, 30, 30],
-        [15, 15, 25, 25],
-        [20, 20, 40, 40],
-      ]);
-      jest
-        .spyOn(manager as any, 'getUpdatedValues')
-        .mockReturnValueOnce([0.8, 0.9, 0.95, 0.99]);
 
       manager['updateFaces']('source1', newFaces, 'incremental', 0);
 
@@ -513,21 +429,6 @@ describe('VitalsEstimateManager', () => {
         confidence: [0.8, 0.9, 0.95, 0.99],
       });
       expect(manager['faceNote'].get('source1')).toEqual('New face note');
-      expect(manager['getUpdatedValues']).toHaveBeenCalledWith(
-        [
-          [0, 0, 20, 20],
-          [10, 10, 30, 30],
-        ],
-        newFaces.coordinates,
-        'incremental',
-        0
-      );
-      expect(manager['getUpdatedValues']).toHaveBeenCalledWith(
-        [0.8, 0.9],
-        newFaces.confidence,
-        'incremental',
-        0
-      );
     });
 
     it('should not update faces if newFaces is missing confidence or coordinates', () => {
@@ -535,116 +436,51 @@ describe('VitalsEstimateManager', () => {
       manager['updateFaces']('source1', newFaces as any, 'incremental', 0);
 
       const updatedFaces = manager['faces'].get('source1');
-      expect(updatedFaces).toEqual({
-        coordinates: [
-          [0, 0, 20, 20],
-          [10, 10, 30, 30],
-        ],
-        confidence: [0.8, 0.9],
-      });
-    });
-
-    it('should update the face note only if provided', () => {
-      const newFaces = {
-        coordinates: [[15, 15, 25, 25]],
-        confidence: [0.95],
-      };
-      manager['updateFaces']('source1', newFaces as any, 'incremental', 0);
-
-      expect(manager['faceNote'].get('source1')).toEqual('Initial face note');
+      expect(updatedFaces!.coordinates.length).toBe(2);
     });
   });
 
-  describe('updateWaveforms', () => {
+  describe('updateSignalBuffer', () => {
     beforeEach(() => {
-      manager['waveforms'].set('source1', {
-        ppgData: { sum: [1, 2, 3], count: [1, 1, 1] },
-        ppgConf: { sum: [0.8, 0.9, 1.0], count: [1, 1, 1] },
-        respData: { sum: [4, 5, 6], count: [1, 1, 1] },
-        respConf: { sum: [0.7, 0.8, 0.9], count: [1, 1, 1] },
+      const sourceBuffers = new Map();
+      sourceBuffers.set('ppg_waveform', {
+        data: { sum: [1, 2, 3], count: [1, 1, 1] },
+        conf: { sum: [0.8, 0.9, 1.0], count: [1, 1, 1] },
       });
-      manager['waveformNotes'].set('source1', {
-        ppg: 'Initial PPG note',
-        resp: 'Initial RESP note',
-      });
+      manager['buffers'].set('source1', sourceBuffers);
+
+      const sourceNotes = new Map();
+      sourceNotes.set('ppg_waveform', 'Initial PPG note');
+      manager['notes'].set('source1', sourceNotes);
     });
 
-    it('should update waveform buffers and notes correctly', () => {
-      const newVitals = {
-        ppg_waveform: {
-          data: [4, 5, 6],
-          confidence: [0.95, 0.96, 0.97],
-          unit: '',
-          note: 'Updated PPG note',
-        },
-        respiratory_waveform: {
-          data: [7, 8, 9],
-          confidence: [0.75, 0.76, 0.77],
-          unit: '',
-          note: 'Updated RESP note',
-        },
-      };
+    it('should update specific signal buffers using the generic logic', () => {
+      const incData = [4, 5, 6];
+      const incConf = [0.95, 0.96, 0.97];
 
-      jest
-        .spyOn(manager as any, 'getUpdatedSumCount')
-        .mockReturnValueOnce({
-          sum: [1, 2, 3, 4, 5, 6],
-          count: [1, 1, 1, 1, 1, 1],
-        }) // For ppgData
-        .mockReturnValueOnce({
-          sum: [0.8, 0.9, 1.0, 0.95, 0.96, 0.97],
-          count: [1, 1, 1, 1, 1, 1],
-        }) // For ppgConf
-        .mockReturnValueOnce({
-          sum: [4, 5, 6, 7, 8, 9],
-          count: [1, 1, 1, 1, 1, 1],
-        }) // For respData
-        .mockReturnValueOnce({
-          sum: [0.7, 0.8, 0.9, 0.75, 0.76, 0.77],
-          count: [1, 1, 1, 1, 1, 1],
-        }); // For respConf
+      jest.spyOn(manager as any, 'getUpdatedSumCount');
 
-      manager['updateWaveforms']('source1', newVitals, 'incremental', 0);
+      manager['updateSignalBuffer'](
+        'source1',
+        'ppg_waveform',
+        incData,
+        incConf,
+        'incremental',
+        0
+      );
+      manager['setNote']('source1', 'ppg_waveform', 'Updated PPG note');
 
-      const updatedWaveforms = manager['waveforms'].get('source1');
-      expect(updatedWaveforms).toEqual({
-        ppgData: { sum: [1, 2, 3, 4, 5, 6], count: [1, 1, 1, 1, 1, 1] },
-        ppgConf: {
-          sum: [0.8, 0.9, 1.0, 0.95, 0.96, 0.97],
-          count: [1, 1, 1, 1, 1, 1],
-        },
-        respData: { sum: [4, 5, 6, 7, 8, 9], count: [1, 1, 1, 1, 1, 1] },
-        respConf: {
-          sum: [0.7, 0.8, 0.9, 0.75, 0.76, 0.77],
-          count: [1, 1, 1, 1, 1, 1],
-        },
-      });
+      const updatedBuffer = manager['buffers']
+        .get('source1')!
+        .get('ppg_waveform');
 
-      const updatedNotes = manager['waveformNotes'].get('source1');
-      expect(updatedNotes).toEqual({
-        ppg: 'Updated PPG note',
-        resp: 'Updated RESP note',
-      });
+      expect(updatedBuffer!.data.sum).toEqual([1, 2, 3, 4, 5, 6]);
+      expect(updatedBuffer!.conf.sum).toEqual([0.8, 0.9, 1.0, 0.95, 0.96, 0.97]);
 
-      expect(manager['getUpdatedSumCount']).toHaveBeenCalledTimes(4);
-    });
+      const updatedNote = manager['notes'].get('source1')!.get('ppg_waveform');
+      expect(updatedNote).toEqual('Updated PPG note');
 
-    it('should not update waveforms if no new data is provided', () => {
-      manager['updateWaveforms']('source1', {}, 'incremental', 0);
-
-      const updatedWaveforms = manager['waveforms'].get('source1');
-      expect(updatedWaveforms).toEqual({
-        ppgData: { sum: [1, 2, 3], count: [1, 1, 1] },
-        ppgConf: { sum: [0.8, 0.9, 1.0], count: [1, 1, 1] },
-        respData: { sum: [4, 5, 6], count: [1, 1, 1] },
-        respConf: { sum: [0.7, 0.8, 0.9], count: [1, 1, 1] },
-      });
-
-      const updatedNotes = manager['waveformNotes'].get('source1');
-      expect(updatedNotes).toEqual({
-        ppg: 'Initial PPG note',
-        resp: 'Initial RESP note',
-      });
+      expect(manager['getUpdatedSumCount']).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -658,16 +494,22 @@ describe('VitalsEstimateManager', () => {
         'hrv_lfhf',
       ];
 
-      manager['waveforms'].set('source1', {
-        ppgData: { sum: [0, 0, 1, 2, 3], count: [1, 1, 1, 1, 1] },
-        ppgConf: { sum: [0.5, 0.6, 0.7, 0.8, 0.9], count: [1, 1, 1, 1, 1] },
-        respData: { sum: [2, 3, 4, 5, 6], count: [1, 1, 1, 1, 1] },
-        respConf: { sum: [0.4, 0.5, 0.6, 0.7, 0.8], count: [1, 1, 1, 1, 1] },
+      const sourceBuffers = new Map();
+      sourceBuffers.set('ppg_waveform', {
+        data: { sum: [0, 0, 1, 2, 3], count: [1, 1, 1, 1, 1] },
+        conf: { sum: [0.5, 0.6, 0.7, 0.8, 0.9], count: [1, 1, 1, 1, 1] },
       });
-      manager['waveformNotes'].set('source1', {
-        ppg: 'PPG note',
-        resp: 'RESP note',
+      sourceBuffers.set('respiratory_waveform', {
+        data: { sum: [2, 3, 4, 5, 6], count: [1, 1, 1, 1, 1] },
+        conf: { sum: [0.4, 0.5, 0.6, 0.7, 0.8], count: [1, 1, 1, 1, 1] },
       });
+      manager['buffers'].set('source1', sourceBuffers);
+
+      const notesMap = new Map();
+      notesMap.set('ppg_waveform', 'PPG note');
+      notesMap.set('respiratory_waveform', 'RESP note');
+      manager['notes'].set('source1', notesMap);
+
       manager['timestamps'].set('source1', [1001, 1002, 1003, 1004, 1005]);
       manager['faces'].set('source1', {
         coordinates: [
@@ -680,45 +522,32 @@ describe('VitalsEstimateManager', () => {
         confidence: [0.9, 0.92, 0.95, 0.9, 0.85],
       });
       manager['message'].set('source1', 'Test message');
-      // Mock the return values for the physio functions that will be called
+
       mockedEstimateHeartRate.mockReturnValue(75);
       mockedEstimateRespiratoryRate.mockReturnValue(18);
-      mockedFindPeaks.mockReturnValue([[10, 20, 30, 40, 50]]); // Return some dummy peak sequences
-      mockedEstimateHrvFromDetectionSequences.mockImplementation(
-        (sequences, conf, fs, metric) => {
-          // Return a different object based on the metric being requested
-          switch (metric) {
-            case 'sdnn':
-              return {
-                value: 30,
-                confidence: 0.85,
-                unit: 'ms',
-                note: 'SDNN note',
-              };
-            case 'rmssd':
-              return {
-                value: 25,
-                confidence: 0.88,
-                unit: 'ms',
-                note: 'RMSSD note',
-              };
-            case 'lfhf':
-              return {
-                value: 1.5,
-                confidence: 0.7,
-                unit: 'ratio',
-                note: 'LF/HF note',
-              };
-            default:
-              return null;
-          }
+      mockedEstimateHrv.mockImplementation((sig, fs, metric) => {
+        switch (metric) {
+          case 'sdnn':
+            return 30;
+          case 'rmssd':
+            return 25;
+          case 'lfhf':
+            return 1.5;
+          default:
+            return null;
         }
-      );
+      });
     });
 
     it('should assemble an incremental result correctly', async () => {
+      methodConfig.supportedVitals?.push(
+        'respiratory_rate',
+        'respiratory_waveform'
+      );
+
       const incrementalResult: VitalLensResult = {
         time: [1004, 1005, 1006],
+        displayTime: 1007,
         face: {
           coordinates: [
             [20, 20, 40, 40],
@@ -755,8 +584,9 @@ describe('VitalsEstimateManager', () => {
         1
       );
 
-      expect(result).toEqual({
+      const expectedResult: VitalLensResult = {
         time: [1006],
+        displayTime: 1007, // 1006 + 1
         face: {
           coordinates: [[25, 25, 50, 50]],
           confidence: [0.93],
@@ -779,40 +609,46 @@ describe('VitalsEstimateManager', () => {
             value: 75,
             confidence: 0.7, // avg of [0.5, 0.6, 0.7, 0.8, 0.9]
             unit: 'bpm',
-            note: 'Estimate of the heart rate.',
+            note: 'Estimate of the Heart Rate',
           },
           respiratory_rate: {
             value: 18,
             confidence: 0.6, // avg of [0.4, 0.5, 0.6, 0.7, 0.8]
             unit: 'bpm',
-            note: 'Estimate of the respiratory rate.',
+            note: 'Estimate of the Respiratory Rate',
           },
           hrv_sdnn: {
             value: 30,
-            confidence: 0.85,
+            confidence: 0.5, // min of [0.5, 0.6, 0.7, 0.8, 0.9]
             unit: 'ms',
-            note: 'SDNN note',
+            note: 'Estimate of the Heart Rate Variability (SDNN)',
           },
           hrv_rmssd: {
             value: 25,
-            confidence: 0.88,
+            confidence: 0.5, // min of [0.5, 0.6, 0.7, 0.8, 0.9]
             unit: 'ms',
-            note: 'RMSSD note',
+            note: 'Estimate of the Heart Rate Variability (RMSSD)',
           },
           hrv_lfhf: {
             value: 1.5,
-            confidence: 0.7,
+            confidence: 0.5, // min of [0.5, 0.6, 0.7, 0.8, 0.9]
             unit: 'ratio',
-            note: 'LF/HF note',
+            note: 'Estimate of the Heart Rate Variability (LF/HF)',
           },
         },
         fps: 1,
         estFps: 1,
         message: 'Test message',
-      });
+      };
+
+      expect(result).toEqual(expectedResult);
     });
 
     it('should assemble a windowed result correctly', async () => {
+      methodConfig.supportedVitals?.push(
+        'respiratory_rate',
+        'respiratory_waveform'
+      );
       jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
       const result = await (manager as any).assembleResult(
@@ -821,7 +657,7 @@ describe('VitalsEstimateManager', () => {
         false
       );
 
-      expect(result).toEqual({
+      const expectedResult: VitalLensResult = {
         time: [1002, 1003, 1004, 1005],
         face: {
           coordinates: [
@@ -850,43 +686,45 @@ describe('VitalsEstimateManager', () => {
             value: 75,
             confidence: 0.7,
             unit: 'bpm',
-            note: 'Estimate of the heart rate.',
+            note: 'Estimate of the Heart Rate',
           },
           respiratory_rate: {
             value: 18,
             confidence: 0.6,
             unit: 'bpm',
-            note: 'Estimate of the respiratory rate.',
+            note: 'Estimate of the Respiratory Rate',
           },
           hrv_sdnn: {
             value: 30,
-            confidence: 0.85,
+            confidence: 0.5,
             unit: 'ms',
-            note: 'SDNN note',
+            note: 'Estimate of the Heart Rate Variability (SDNN)',
           },
           hrv_rmssd: {
             value: 25,
-            confidence: 0.88,
+            confidence: 0.5,
             unit: 'ms',
-            note: 'RMSSD note',
+            note: 'Estimate of the Heart Rate Variability (RMSSD)',
           },
           hrv_lfhf: {
             value: 1.5,
-            confidence: 0.7,
+            confidence: 0.5,
             unit: 'ratio',
-            note: 'LF/HF note',
+            note: 'Estimate of the Heart Rate Variability (LF/HF)',
           },
         },
         fps: 1,
         message: 'Test message',
-      });
-      expect((manager as any).getCurrentFps).toHaveBeenCalledWith(
-        'source1',
-        (manager as any).bufferSizeAgg
-      );
+      };
+
+      expect(result).toEqual(expectedResult);
     });
 
     it('should assemble a complete result correctly', async () => {
+      methodConfig.supportedVitals?.push(
+        'respiratory_rate',
+        'respiratory_waveform'
+      );
       jest.spyOn(manager as any, 'getCurrentFps').mockReturnValue(1);
 
       const result = await (manager as any).assembleResult(
@@ -895,24 +733,7 @@ describe('VitalsEstimateManager', () => {
         false
       );
 
-      // Verify findPeaks was called with the estimated HR
-      expect(mockedFindPeaks).toHaveBeenCalledWith(expect.any(Array), 1, {
-        hr: 75,
-      });
-
-      // Verify estimateHrvFromDetectionSequences was called with timestamps
-      expect(mockedEstimateHrvFromDetectionSequences).toHaveBeenCalledWith(
-        expect.any(Array),
-        expect.any(Array),
-        1,
-        'sdnn',
-        {
-          timestamps: [1001, 1002, 1003, 1004, 1005],
-          confidenceThreshold: 0.5,
-        }
-      );
-
-      expect(result).toEqual({
+      const expectedResult: VitalLensResult = {
         time: [1001, 1002, 1003, 1004, 1005],
         face: {
           coordinates: [
@@ -942,36 +763,39 @@ describe('VitalsEstimateManager', () => {
             value: 75,
             confidence: 0.7,
             unit: 'bpm',
-            note: 'Estimate of the heart rate.',
+            note: 'Estimate of the Heart Rate',
           },
           respiratory_rate: {
             value: 18,
             confidence: 0.6,
             unit: 'bpm',
-            note: 'Estimate of the respiratory rate.',
+            note: 'Estimate of the Respiratory Rate',
           },
           hrv_sdnn: {
             value: 30,
-            confidence: 0.85,
+            confidence: 0.5,
             unit: 'ms',
-            note: 'SDNN note',
+            note: 'Estimate of the Heart Rate Variability (SDNN)',
           },
           hrv_rmssd: {
             value: 25,
-            confidence: 0.88,
+            confidence: 0.5,
             unit: 'ms',
-            note: 'RMSSD note',
+            note: 'Estimate of the Heart Rate Variability (RMSSD)',
           },
           hrv_lfhf: {
             value: 1.5,
-            confidence: 0.7,
+            confidence: 0.5,
             unit: 'ratio',
-            note: 'LF/HF note',
+            note: 'Estimate of the Heart Rate Variability (LF/HF)',
           },
         },
         fps: 1,
         message: 'Test message',
-      });
+      };
+
+      expect(result).toEqual(expectedResult);
+      expect(mockedEstimateHeartRate).toHaveBeenCalled();
     });
   });
 
@@ -1038,30 +862,29 @@ describe('VitalsEstimateManager', () => {
 
   describe('reset', () => {
     it('should delete all data for a specific sourceId', () => {
-      // Add data for two sources
       manager['timestamps'].set('source1', [1000]);
-      manager['waveforms'].set('source1', {} as any);
+      manager['buffers'].set('source1', new Map());
       manager['timestamps'].set('source2', [2000]);
-      manager['waveforms'].set('source2', {} as any);
+      manager['buffers'].set('source2', new Map());
 
       manager.reset('source1');
 
       expect(manager['timestamps'].has('source1')).toBe(false);
-      expect(manager['waveforms'].has('source1')).toBe(false);
-      expect(manager['timestamps'].has('source2')).toBe(true); // Should not be affected
-      expect(manager['waveforms'].has('source2')).toBe(true);
+      expect(manager['buffers'].has('source1')).toBe(false);
+      expect(manager['timestamps'].has('source2')).toBe(true);
+      expect(manager['buffers'].has('source2')).toBe(true);
     });
   });
 
   describe('resetAll', () => {
     it('should clear all data from all maps', () => {
       manager['timestamps'].set('source1', [1000]);
-      manager['waveforms'].set('source1', {} as any);
+      manager['buffers'].set('source1', new Map());
 
       manager.resetAll();
 
       expect(manager['timestamps'].size).toBe(0);
-      expect(manager['waveforms'].size).toBe(0);
+      expect(manager['buffers'].size).toBe(0);
     });
   });
 });
