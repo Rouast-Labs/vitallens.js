@@ -33,7 +33,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     private getConfig: () => MethodConfig,
     private options: VitalLensOptions,
     private postprocessFn: (
-      signalType: 'ppg' | 'resp',
+      signalType: string,
       data: number[],
       fps: number,
       light: boolean
@@ -84,11 +84,13 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
   ) {
     const buffer = this.ensureBuffer(sourceId, vitalName);
 
+    // Determine the max window size needed for this vital.
     let maxWindowSize = this.fpsTarget * AGG_WINDOW_SIZE;
 
     for (const meta of Object.values(VITAL_REGISTRY)) {
       if (meta.sourceSignal === vitalName && meta.minTime) {
-        const requiredSamples = this.fpsTarget * (meta.maxTime || meta.minTime);
+        const requiredSamples =
+          this.fpsTarget * (meta.windowSize || meta.minTime);
         if (requiredSamples > maxWindowSize) maxWindowSize = requiredSamples;
       }
     }
@@ -112,6 +114,10 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     buffer.conf = updatedConf;
   }
 
+  /**
+   * Returns an array of buffered results, one for each time step in the incremental result.
+   * Used primarily in streaming to "smooth out" delivery if processing is slower than realtime.
+   */
   async produceBufferedResults(
     incrementalResult: VitalLensResult,
     sourceId: string,
@@ -121,6 +127,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     const newTimestamps: number[] = incrementalResult.time;
     const waveformMode = this.options.waveformMode || defaultWaveformMode;
 
+    // Determine overlap to find new frames
     const overlap = Math.min(
       currentTimestamps.length,
       Math.max(
@@ -216,12 +223,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
     // Update faces
     if (incrementalResult.face) {
-      this.updateFaces(
-        sourceId,
-        incrementalResult.face,
-        waveformMode,
-        overlap
-      );
+      this.updateFaces(sourceId, incrementalResult.face, waveformMode, overlap);
     }
 
     // Update message
@@ -345,12 +347,21 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     const currentFps =
       this.getCurrentFps(sourceId, this.fpsTarget * 10) || this.fpsTarget;
 
+    // Customize order in which vitals are processed
     let supportedVitals = (this.methodConfig.supportedVitals || []) as string[];
     supportedVitals = [...supportedVitals].sort((a, b) => {
       const typeA = VITAL_REGISTRY[a]?.type;
       const typeB = VITAL_REGISTRY[b]?.type;
-      if (typeA === typeB) return 0;
-      return typeA === 'provided' ? -1 : 1;
+      if (typeA !== typeB) {
+        return typeA === 'provided' ? -1 : 1;
+      }
+      if (typeA === 'derived') {
+        const isRateA = a.includes('rate');
+        const isRateB = b.includes('rate');
+        if (isRateA && !isRateB) return -1;
+        if (!isRateA && isRateB) return 1;
+      }
+      return 0;
     });
 
     for (const vitalName of supportedVitals) {
@@ -369,7 +380,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             (v, i) => v / buffer.conf.count[i]
           );
 
-          // Apply Waveform Mode Slicing
+          // Apply waveform mode slicing
           let sliceData: number[] = [];
           let sliceConf: number[] = [];
 
@@ -399,21 +410,22 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
               break;
           }
 
-          // Apply Post-Processing (Detrending/Smoothing)
+          // Apply postprocessing
           if (sliceData.length > 0) {
-            const signalType = vitalName.includes('ppg')
-              ? 'ppg'
-              : vitalName.includes('resp')
-              ? 'resp'
-              : null;
-
-            if (signalType) {
-              const shouldProcess =
-                waveformMode !== 'incremental' || sliceData.length > 30;
-
+            const isWaveform =
+              vitalName === 'ppg_waveform' ||
+              vitalName === 'respiratory_waveform';
+            if (isWaveform) {
+              let shouldProcess = false;
+              if (waveformMode !== 'incremental') {
+                const minSamples = (meta.minTime || 0) * currentFps;
+                if (sliceData.length >= minSamples) {
+                  shouldProcess = true;
+                }
+              }
               if (shouldProcess) {
                 sliceData = this.postprocessFn(
-                  signalType,
+                  vitalName,
                   sliceData,
                   currentFps,
                   light
@@ -436,11 +448,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       }
 
       // === CASE B: DERIVED SIGNALS (Calculated locally) ===
-      else if (
-        meta.type === 'derived' &&
-        meta.sourceSignal &&
-        meta.calcFunc
-      ) {
+      else if (meta.type === 'derived' && meta.sourceSignal && meta.calcFunc) {
         const sourceBuffer = sourceBuffers.get(meta.sourceSignal);
 
         if (sourceBuffer) {
@@ -459,25 +467,22 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             let calcData = avgData;
             let calcConf = avgConf;
 
-            if (meta.maxTime) {
-              const maxSamples = Math.floor(meta.maxTime * currentFps);
+            if (meta.windowSize && waveformMode !== 'complete') {
+              const maxSamples = Math.floor(meta.windowSize * currentFps);
               calcData = avgData.slice(-maxSamples);
               calcConf = avgConf.slice(-maxSamples);
             }
 
-            const signalType = meta.sourceSignal.includes('ppg')
-              ? 'ppg'
-              : 'resp';
+            // Preprocess source signal before calculation
             calcData = this.postprocessFn(
-              signalType,
+              meta.sourceSignal!,
               calcData,
               currentFps,
               light
             );
 
             // Context for calculation
-            const estimatedHeartRate =
-              result.vital_signs['heart_rate']?.value;
+            const estimatedHeartRate = result.vital_signs['heart_rate']?.value;
 
             const value = meta.calcFunc(calcData, currentFps, {
               confidence: calcConf,
@@ -539,10 +544,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
     if (overlap === 0) {
       updatedSum = [...currentSum, ...incremental];
-      updatedCount = [
-        ...currentCount,
-        ...Array(incremental.length).fill(1),
-      ];
+      updatedCount = [...currentCount, ...Array(incremental.length).fill(1)];
     } else {
       const existingTailSum = currentSum.slice(-overlap);
       const incrementalHead = incremental.slice(0, overlap);
@@ -621,14 +623,8 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
     if (newFaces.coordinates && newFaces.confidence) {
       this.faces.set(sourceId, {
-        coordinates: merge(
-          currentFaces.coordinates,
-          newFaces.coordinates
-        ),
-        confidence: merge(
-          currentFaces.confidence,
-          newFaces.confidence
-        ),
+        coordinates: merge(currentFaces.coordinates, newFaces.coordinates),
+        confidence: merge(currentFaces.confidence, newFaces.confidence),
       });
     }
     if (newFaces.note) this.faceNote.set(sourceId, newFaces.note);
@@ -639,20 +635,14 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (!timestamps || timestamps.length < 2) {
       return null;
     }
-    const timeDiffs = timestamps
-      .slice(1)
-      .map((t, i) => t - timestamps[i]);
+    const timeDiffs = timestamps.slice(1).map((t, i) => t - timestamps[i]);
     const avgTimeDiff =
       timeDiffs.reduce((acc, val) => acc + val, 0) / timeDiffs.length;
     return avgTimeDiff > 0 ? 1 / avgTimeDiff : null;
   }
 
   async getResult(sourceId: string): Promise<VitalLensResult> {
-    return await this.assembleResult(
-      sourceId,
-      'complete',
-      false
-    );
+    return await this.assembleResult(sourceId, 'complete', false);
   }
 
   getEmptyResult(): VitalLensResult {

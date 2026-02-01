@@ -26,7 +26,7 @@ export interface VitalMeta {
   aggregation?: 'mean' | 'min' | null;
   sourceSignal?: string;
   minTime?: number;
-  maxTime?: number;
+  windowSize?: number;
   /**
    * Calculates the vital sign value from a signal segment.
    * @param signal The raw signal data (e.g. PPG).
@@ -47,33 +47,35 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     unit: 'unitless',
     displayName: 'PPG Waveform',
     aggregation: null,
+    minTime: CALC_HR_MIN_WINDOW_SIZE,
   },
   respiratory_waveform: {
     type: 'provided',
     unit: 'unitless',
     displayName: 'Respiratory Waveform',
     aggregation: null,
+    minTime: CALC_RR_MIN_WINDOW_SIZE,
   },
   sbp: {
     type: 'provided',
     unit: 'mmHg',
     displayName: 'Systolic Blood Pressure',
     aggregation: 'mean',
-    maxTime: 10,
+    windowSize: 10,
   },
   dbp: {
     type: 'provided',
     unit: 'mmHg',
     displayName: 'Diastolic Blood Pressure',
     aggregation: 'mean',
-    maxTime: 10,
+    windowSize: 10,
   },
   spo2: {
     type: 'provided',
     unit: '%',
     displayName: 'Blood Oxygen (SpO2)',
     aggregation: 'mean',
-    maxTime: 10,
+    windowSize: 10,
   },
   // Derived signals (Computed locally)
   heart_rate: {
@@ -82,7 +84,7 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     displayName: 'Heart Rate',
     sourceSignal: 'ppg_waveform',
     minTime: CALC_HR_MIN_WINDOW_SIZE,
-    maxTime: CALC_HR_WINDOW_SIZE,
+    windowSize: CALC_HR_WINDOW_SIZE,
     aggregation: 'mean',
     calcFunc: estimateHeartRate,
   },
@@ -92,7 +94,7 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     displayName: 'Respiratory Rate',
     sourceSignal: 'respiratory_waveform',
     minTime: CALC_RR_MIN_WINDOW_SIZE,
-    maxTime: CALC_RR_WINDOW_SIZE,
+    windowSize: CALC_RR_WINDOW_SIZE,
     aggregation: 'mean',
     calcFunc: estimateRespiratoryRate,
   },
@@ -102,7 +104,7 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     displayName: 'Heart Rate Variability (SDNN)',
     sourceSignal: 'ppg_waveform',
     minTime: CALC_HRV_SDNN_MIN_T,
-    maxTime: CALC_HRV_SDNN_MAX_T,
+    windowSize: CALC_HRV_SDNN_MAX_T,
     aggregation: 'min',
     calcFunc: (sig, fs, ctx) => estimateHrv(sig, fs, 'sdnn', ctx),
   },
@@ -112,7 +114,7 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     displayName: 'Heart Rate Variability (RMSSD)',
     sourceSignal: 'ppg_waveform',
     minTime: CALC_HRV_RMSSD_MIN_T,
-    maxTime: CALC_HRV_RMSSD_MAX_T,
+    windowSize: CALC_HRV_RMSSD_MAX_T,
     aggregation: 'min',
     calcFunc: (sig, fs, ctx) => estimateHrv(sig, fs, 'rmssd', ctx),
   },
@@ -122,7 +124,7 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     displayName: 'Heart Rate Variability (LF/HF)',
     sourceSignal: 'ppg_waveform',
     minTime: CALC_HRV_LFHF_MIN_T,
-    maxTime: CALC_HRV_LFHF_MAX_T,
+    windowSize: CALC_HRV_LFHF_MAX_T,
     aggregation: 'min',
     calcFunc: (sig, fs, ctx) => estimateHrv(sig, fs, 'lfhf', ctx),
   },
