@@ -40,14 +40,14 @@ export class GHandler extends SimpleMethodHandler {
   /**
    * Postprocess the estimated signal.
    * Applies detrending and standardization.
-   * @param signalType The type of signal ('ppg' or 'resp').
+   * @param signalType The signal type (irrelevant here - always ppg_waveform).
    * @param data The raw estimated signal.
    * @param fps The sampling frequency.
    * @param light Whether to do only light processing.
    * @returns The filtered pulse signal.
    */
   postprocess(
-    signalType: 'ppg' | 'resp',
+    signalType: string,
     data: number[],
     fps: number,
     light: boolean
