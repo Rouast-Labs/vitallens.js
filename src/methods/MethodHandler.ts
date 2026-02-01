@@ -47,14 +47,14 @@ export abstract class MethodHandler {
 
   /**
    * Postprocess the estimated signal. Subclasses must implement this.
-   * @param signalType The signal type.
+   * @param signalType The signal type (irrelevant here - always ppg_waveform).
    * @param data The raw estimated signal.
    * @param fps The sampling frequency of the estimated signal.
    * @param light Whether to do only light processing.
    * @returns The filtered signal.
    */
   abstract postprocess(
-    signalType: 'ppg' | 'resp',
+    signalType: string,
     data: number[],
     fps: number,
     light: boolean

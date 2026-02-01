@@ -263,21 +263,21 @@ export class VitalLensAPIHandler extends MethodHandler {
 
   /**
    * Postprocess the estimated signal.
-   * @param signalType The signal type.
+   * @param signalType The signal type (e.g. 'ppg_waveform' or 'respiratory_waveform').
    * @param data The raw estimated signal.
    * @param fps The sampling frequency of the estimated signal.
    * @param light Whether to do only light processing.
    * @returns The filtered signal.
    */
   postprocess(
-    signalType: 'ppg' | 'resp',
+    signalType: string,
     data: number[],
     fps: number,
     light: boolean
   ): number[] {
     let windowSize: number;
     let processed;
-    if (signalType === 'ppg') {
+    if (signalType === 'ppg_waveform') {
       processed = light ? data : adaptiveDetrend(data, fps, CALC_HR_MIN / 60);
       windowSize = movingAverageSizeForResponse(fps, CALC_HR_MAX / 60);
     } else {
