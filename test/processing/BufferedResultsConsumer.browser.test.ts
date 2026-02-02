@@ -25,8 +25,8 @@ describe('BufferedResultsConsumer', () => {
 
   it('should add results to the queue', () => {
     const results: VitalLensResult[] = [
-      { displayTime: 1, time: [], face: {}, vital_signs: {}, message: '' },
-      { displayTime: 2, time: [], face: {}, vital_signs: {}, message: '' },
+      { display_time: 1, time: [], face: {}, vital_signs: {}, message: '' },
+      { display_time: 2, time: [], face: {}, vital_signs: {}, message: '' },
     ];
     consumer.addResults(results);
     // Accessing a private property for testing purposes
@@ -41,9 +41,9 @@ describe('BufferedResultsConsumer', () => {
     expect((consumer as any).isRunning).toBe(false);
   });
 
-  it('should dispatch a result when its displayTime has passed', () => {
+  it('should dispatch a result when its display_time has passed', () => {
     const result: VitalLensResult = {
-      displayTime: 1.5, // 1500 ms
+      display_time: 1.5, // 1500 ms
       time: [],
       face: {},
       vital_signs: {},
@@ -52,12 +52,12 @@ describe('BufferedResultsConsumer', () => {
     consumer.addResults([result]);
     consumer.start();
 
-    // Time is before displayTime, should not dispatch
+    // Time is before display_time, should not dispatch
     mockPerformanceNow.mockReturnValue(1499);
     jest.runOnlyPendingTimers(); // Simulates one requestAnimationFrame callback
     expect(dispatchMock).not.toHaveBeenCalled();
 
-    // Time is after displayTime, should dispatch
+    // Time is after display_time, should dispatch
     mockPerformanceNow.mockReturnValue(1501);
     jest.runOnlyPendingTimers(); // Simulates the next requestAnimationFrame callback
     expect(dispatchMock).toHaveBeenCalledWith(result);
@@ -67,14 +67,14 @@ describe('BufferedResultsConsumer', () => {
   it('should dispatch only the latest of multiple expired results', () => {
     const results: VitalLensResult[] = [
       {
-        displayTime: 2.1,
+        display_time: 2.1,
         time: [],
         face: {},
         vital_signs: {},
         message: 'result1',
       },
       {
-        displayTime: 2.2,
+        display_time: 2.2,
         time: [],
         face: {},
         vital_signs: {},
@@ -99,17 +99,17 @@ describe('BufferedResultsConsumer', () => {
     expect(dispatchMock).not.toHaveBeenCalled();
   });
 
-  it('should not dispatch results whose displayTime has not yet passed', () => {
+  it('should not dispatch results whose display_time has not yet passed', () => {
     const results: VitalLensResult[] = [
       {
-        displayTime: 3.1,
+        display_time: 3.1,
         time: [],
         face: {},
         vital_signs: {},
         message: 'future1',
       },
       {
-        displayTime: 3.2,
+        display_time: 3.2,
         time: [],
         face: {},
         vital_signs: {},

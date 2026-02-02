@@ -88,11 +88,18 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     let maxWindowSize = this.fpsTarget * AGG_WINDOW_SIZE;
 
     for (const meta of Object.values(VITAL_REGISTRY)) {
-      if (meta.sourceSignal === vitalName && meta.minTime) {
+      if (meta.derivation?.sourceSignal === vitalName) {
+        const win = meta.derivation.window;
         const requiredSamples =
-          this.fpsTarget * (meta.windowSize || meta.minTime);
+          this.fpsTarget * Math.max(win.size, win.required);
         if (requiredSamples > maxWindowSize) maxWindowSize = requiredSamples;
       }
+    }
+
+    const meta = VITAL_REGISTRY[vitalName];
+    if (meta?.processing?.minWindow) {
+      const requiredSamples = this.fpsTarget * meta.processing.minWindow;
+      if (requiredSamples > maxWindowSize) maxWindowSize = requiredSamples;
     }
 
     const updatedData = this.getUpdatedSumCount(
@@ -139,7 +146,6 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     const results: VitalLensResult[] = [];
 
     for (let i = overlap; i < newTimestamps.length; i++) {
-      // Create a new VitalLensResult container for this single frame
       const singleResult: VitalLensResult = {
         face: {
           coordinates: incrementalResult.face?.coordinates?.[i]
@@ -153,7 +159,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         vital_signs: {},
         time: [newTimestamps[i]],
         message: incrementalResult.message,
-        displayTime: newTimestamps[i] + (this.methodConfig.bufferOffset || 0),
+        display_time: newTimestamps[i] + (this.methodConfig.bufferOffset || 0),
       };
 
       // Dynamically copy frame-specific data for all available vitals in the API response
@@ -287,7 +293,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       message: this.message.get(sourceId) || '',
     };
 
-    // --- 1. Assemble Timestamps & Faces ---
+    // 1. Assemble timestamps & faces
     const storedTimestamps = this.timestamps.get(sourceId) || [];
     const storedFaces = this.faces.get(sourceId);
     const incrementSize =
@@ -340,7 +346,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
         'Face detection coordinates for this face, along with live confidence levels.';
     }
 
-    // --- 2. Assemble Vitals (Hybrid: Provided vs Derived) ---
+    // 2. Assemble vitals
     const sourceBuffers = this.buffers.get(sourceId);
     if (!sourceBuffers) return result;
 
@@ -368,7 +374,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
       const meta = VITAL_REGISTRY[vitalName];
       if (!meta) continue;
 
-      // === CASE A: PROVIDED SIGNALS (Waveforms) ===
+      // Case A: Provided vitals
       if (meta.type === 'provided') {
         const buffer = sourceBuffers.get(vitalName);
         if (buffer) {
@@ -410,46 +416,45 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
               break;
           }
 
-          // Apply postprocessing
+          // Postprocessing
           if (sliceData.length > 0) {
-            const isWaveform =
-              vitalName === 'ppg_waveform' ||
-              vitalName === 'respiratory_waveform';
-            if (isWaveform) {
-              let shouldProcess = false;
-              if (waveformMode !== 'incremental') {
-                const minSamples = (meta.minTime || 0) * currentFps;
-                if (sliceData.length >= minSamples) {
-                  shouldProcess = true;
-                }
-              }
-              if (shouldProcess) {
-                sliceData = this.postprocessFn(
-                  vitalName,
-                  sliceData,
-                  currentFps,
-                  light
-                );
+            const procConfig = meta.processing;
+            let shouldProcess = !!procConfig;
+
+            if (shouldProcess) {
+              const minSamples = (procConfig?.minWindow || 0) * currentFps;
+              if (
+                waveformMode === 'incremental' ||
+                sliceData.length < minSamples
+              ) {
+                shouldProcess = false;
               }
             }
 
-            // Assign to Result
-            const storedNote =
-              this.notes.get(sourceId)?.get(vitalName) || meta.displayName;
+            if (shouldProcess) {
+              sliceData = this.postprocessFn(
+                vitalName,
+                sliceData,
+                currentFps,
+                light
+              );
+            }
 
             (result.vital_signs as any)[vitalName] = {
               data: sliceData,
               confidence: sliceConf,
               unit: meta.unit,
-              note: storedNote,
+              note:
+                this.notes.get(sourceId)?.get(vitalName) || meta.displayName,
             };
           }
         }
       }
 
-      // === CASE B: DERIVED SIGNALS (Calculated locally) ===
-      else if (meta.type === 'derived' && meta.sourceSignal && meta.calcFunc) {
-        const sourceBuffer = sourceBuffers.get(meta.sourceSignal);
+      // Case B: Derived vitals (Calculated locally)
+      else if (meta.type === 'derived' && meta.derivation) {
+        const deriv = meta.derivation;
+        const sourceBuffer = sourceBuffers.get(deriv.sourceSignal);
 
         if (sourceBuffer) {
           const avgData = sourceBuffer.data.sum.map(
@@ -459,23 +464,21 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             (v, i) => v / sourceBuffer.conf.count[i]
           );
 
-          // Check if we have enough data
-          const minSamples = meta.minTime ? meta.minTime * currentFps : 0;
+          const minSamples = deriv.window.required * currentFps;
 
           if (avgData.length >= minSamples) {
-            // Slice for calculation window (e.g. last 10 seconds for HR)
             let calcData = avgData;
             let calcConf = avgConf;
 
-            if (meta.windowSize && waveformMode !== 'complete') {
-              const maxSamples = Math.floor(meta.windowSize * currentFps);
+            if (waveformMode !== 'complete') {
+              const maxSamples = Math.floor(deriv.window.size * currentFps);
               calcData = avgData.slice(-maxSamples);
               calcConf = avgConf.slice(-maxSamples);
             }
 
             // Preprocess source signal before calculation
             calcData = this.postprocessFn(
-              meta.sourceSignal!,
+              deriv.sourceSignal,
               calcData,
               currentFps,
               light
@@ -484,7 +487,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             // Context for calculation
             const estimatedHeartRate = result.vital_signs['heart_rate']?.value;
 
-            const value = meta.calcFunc(calcData, currentFps, {
+            const value = deriv.calcFunc(calcData, currentFps, {
               confidence: calcConf,
               timestamps: storedTimestamps.slice(-calcData.length),
               estimatedHeartRate:
@@ -495,8 +498,9 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
             if (value !== null) {
               // Aggregate confidence
+              // TODO
               const confVal =
-                meta.aggregation === 'min'
+                deriv.confidenceAggregation === 'min'
                   ? Math.min(...calcConf)
                   : calcConf.reduce((a, b) => a + b, 0) / calcConf.length;
 
@@ -513,9 +517,9 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     }
 
     if (currentFps) result.fps = currentFps;
-    if (estFps) result.estFps = estFps;
-    if (incrementalResult?.displayTime)
-      result.displayTime = incrementalResult.displayTime;
+    if (estFps) result.est_fps = estFps;
+    if (incrementalResult?.display_time)
+      result.display_time = incrementalResult.display_time;
 
     return result;
   }

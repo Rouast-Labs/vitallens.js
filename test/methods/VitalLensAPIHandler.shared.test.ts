@@ -33,6 +33,8 @@ const mockResponse: VitalLensAPIResponse = {
     face: { confidence: [0.9, 0.95, 0.85], coordinates: [], note: '' },
     state: { data: new Float32Array([1, 0, 0]), note: '' },
     time: [1000, 1001, 1002],
+    n: 3,
+    model_used: '',
     message: '',
   },
 };
@@ -125,6 +127,8 @@ describe('VitalLensAPIHandler', () => {
       vital_signs: mockResponse.body.vital_signs,
       state: mockResponse.body.state,
       time: mockFrame.getTimestamp(),
+      n: mockResponse.body.n,
+      model_used: mockResponse.body.model_used,
       message:
         'The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes.',
     });

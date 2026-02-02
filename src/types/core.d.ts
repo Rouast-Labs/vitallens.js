@@ -18,19 +18,16 @@ export type Vital =
   | 'respiratory_rate'
   | 'hrv_sdnn'
   | 'hrv_rmssd'
-  | 'hrv_lfhf';
+  | 'hrv_lfhf'
+  | 'sbp'
+  | 'dbp'
+  | 'spo2'
+  | (string & {});
 
 /**
  * Represents the rPPG methods.
  */
-export type Method =
-  | 'vitallens' // Dynamic model selection
-  | 'vitallens-1.0' // Force VitalLens 1.0
-  | 'vitallens-1.1' // Force VitalLens 1.1
-  | 'vitallens-2.0' // Force VitalLens 2.0
-  | 'pos'
-  | 'chrom'
-  | 'g';
+export type Method = 'vitallens' | 'pos' | 'chrom' | 'g' | (string & {});
 
 /**
  * Options for configuring the VitalLens library.
@@ -64,6 +61,17 @@ export interface MethodConfig {
 }
 
 /**
+ * Represents a single vital's data.
+ */
+export interface VitalData {
+  value?: number | null; // For scalar vitals (e.g., HR, SpO2) -- TODO: provided vitals may also be returned as 'data'
+  data?: number[]; // For waveforms (PPG)
+  unit: string;
+  confidence: number | number[]; // Scalar or array depending on waveform
+  note: string;
+}
+
+/**
  * Represents the result of a prediction or processing.
  */
 export interface VitalLensResult {
@@ -72,58 +80,16 @@ export interface VitalLensResult {
     confidence?: number[];
     note?: string;
   };
-  vital_signs: {
-    heart_rate?: {
-      value: number | null;
-      unit: string;
-      confidence: number;
-      note: string;
-    };
-    respiratory_rate?: {
-      value: number | null;
-      unit: string;
-      confidence: number;
-      note: string;
-    };
-    ppg_waveform?: {
-      data: number[];
-      unit: string;
-      confidence: number[];
-      note: string;
-    };
-    respiratory_waveform?: {
-      data: number[];
-      unit: string;
-      confidence: number[];
-      note: string;
-    };
-    hrv_sdnn?: {
-      value: number;
-      unit: string;
-      confidence: number | null;
-      note: string;
-    };
-    hrv_rmssd?: {
-      value: number;
-      unit: string;
-      confidence: number | null;
-      note: string;
-    };
-    hrv_lfhf?: {
-      value: number;
-      unit: string;
-      confidence: number | null;
-      note: string;
-    };
-  };
-  time: number[];
-  displayTime?: number;
+  vital_signs: Record<string, VitalData>;
+  n?: number;
+  time?: number[];
+  display_time?: number;
   state?: {
     data: Float32Array;
     note: string;
   };
   fps?: number;
-  estFps?: number;
+  est_fps?: number;
   model_used?: string;
   message: string;
 }
