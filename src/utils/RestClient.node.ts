@@ -1,3 +1,4 @@
+// FILE: src/utils/RestClient.node.ts
 import { RestClientBase } from './RestClient.base';
 import {
   COMPRESSION_MODE,
@@ -13,7 +14,7 @@ import { ResolveModelResponse } from '../types/IRestClient';
 
 export class RestClient extends RestClientBase {
   /**
-   * Get the REST endpoint.
+   * Get the REST endpoint (Direct API usage).
    * @returns The REST endpoint.
    */
   protected getRestEndpoint(mode: InferenceMode): string {
@@ -30,11 +31,17 @@ export class RestClient extends RestClientBase {
    * @returns The response
    */
   async resolveModel(requestedModel?: string): Promise<ResolveModelResponse> {
-    const baseUrl =
-      this.proxyUrl ??
-      (process.env.VITALLENS_RESOLVE_MODEL_ENDPOINT ||
-        VITALLENS_RESOLVE_MODEL_ENDPOINT);
-    const url = new URL(baseUrl);
+    let urlStr: string;
+    if (this.proxyUrl) {
+      const base = this.proxyUrl.replace(/\/$/, '');
+      urlStr = `${base}/resolve-model`;
+    } else {
+      urlStr =
+        process.env.VITALLENS_RESOLVE_MODEL_ENDPOINT ||
+        VITALLENS_RESOLVE_MODEL_ENDPOINT;
+    }
+
+    const url = new URL(urlStr);
     if (requestedModel) {
       url.searchParams.append('model', requestedModel);
     }
@@ -86,7 +93,14 @@ export class RestClient extends RestClientBase {
         ...(isBinary && isCompressed ? { 'X-Encoding': COMPRESSION_MODE } : {}),
       };
 
-      const url = this.proxyUrl ?? this.getRestEndpoint(mode);
+      let url: string;
+      if (this.proxyUrl) {
+        const base = this.proxyUrl.replace(/\/$/, '');
+        const path = mode === 'file' ? '/file' : '/stream';
+        url = `${base}${path}`;
+      } else {
+        url = this.getRestEndpoint(mode);
+      }
 
       const payload: BodyInit = isBinary
         ? Buffer.from(body as Uint8Array)
