@@ -20,25 +20,17 @@ import {
   movingAverageSizeForResponse,
   standardize,
 } from '../utils/arrayOps';
-import { CALC_HR_MAX, CALC_HR_MIN, CALC_RR_MAX } from '../config/constants';
+import { CALC_HR_MIN } from '../config/constants';
+import { VITAL_REGISTRY, getVitalKeyFromCode } from '../config/vitalRegistry';
 
 const STREAM_RESET_BUFFER_THRESHOLD = 100; // Frames
-const VITAL_CODES_TO_NAMES: Record<string, Vital> = {
-  hr: 'heart_rate',
-  rr: 'respiratory_rate',
-  ppg: 'ppg_waveform',
-  resp: 'respiratory_waveform',
-  hrv_sdnn: 'hrv_sdnn',
-  hrv_rmssd: 'hrv_rmssd',
-  hrv_lfhf: 'hrv_lfhf',
-};
 
 /**
  * Handler for processing frames using the VitalLens API via REST.
  */
 export class VitalLensAPIHandler extends MethodHandler {
   private client: IRestClient;
-  private options: VitalLensOptions; // TODO: Remove this?
+  private options: VitalLensOptions;
   private ready = false;
   private requestedModelName?: string;
   private resolvedModelName?: string;
@@ -49,9 +41,8 @@ export class VitalLensAPIHandler extends MethodHandler {
     this.options = options;
 
     if (
-      options.method === 'vitallens-1.0' ||
-      options.method === 'vitallens-1.1' ||
-      options.method === 'vitallens-2.0'
+      options.method.startsWith('vitallens') &&
+      options.method !== 'vitallens'
     ) {
       this.requestedModelName = options.method;
     }
@@ -88,7 +79,7 @@ export class VitalLensAPIHandler extends MethodHandler {
     const apiConfig = response.config;
 
     const supportedVitals = (apiConfig.supported_vitals || [])
-      .map((code) => VITAL_CODES_TO_NAMES[code])
+      .map((code) => getVitalKeyFromCode(code))
       .filter(Boolean) as Vital[];
 
     this.config = {
@@ -166,12 +157,10 @@ export class VitalLensAPIHandler extends MethodHandler {
 
     // Parse the successful response
     const parsedResponse = response.body;
-    if (
-      parsedResponse.vital_signs.ppg_waveform &&
-      parsedResponse.vital_signs.respiratory_waveform &&
-      parsedResponse.state
-    ) {
-      const n = parsedResponse.vital_signs.ppg_waveform.data.length;
+
+    // Ensure we have at least vitals and state
+    if (parsedResponse.vital_signs && parsedResponse.state) {
+      const n = parsedResponse.n ?? 0;
       const roi = framesChunk.getROI();
       const coords = roi.map((r) => [r.x0, r.y0, r.x1, r.y1]) as [
         number,
@@ -190,6 +179,7 @@ export class VitalLensAPIHandler extends MethodHandler {
         state: parsedResponse.state,
         model_used: parsedResponse.model_used,
         time: framesChunk.getTimestamp().slice(-n),
+        n: n,
         message:
           'The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes.',
       };
@@ -223,7 +213,6 @@ export class VitalLensAPIHandler extends MethodHandler {
       bufferSize &&
       bufferSize > STREAM_RESET_BUFFER_THRESHOLD
     ) {
-      // Buffer is too large, reset is necessary.
       throw new VitalLensAPIError(
         `Network instability detected. Frame buffer exceeded ${STREAM_RESET_BUFFER_THRESHOLD} frames. Resetting stream.`
       );
@@ -246,7 +235,6 @@ export class VitalLensAPIHandler extends MethodHandler {
       // Parse the successful response
       return this._parseAPIResponse(response, framesChunk);
     } catch (error) {
-      // Re-throw other specific errors
       if (
         error instanceof VitalLensAPIError ||
         error instanceof VitalLensAPIKeyError ||
@@ -254,7 +242,6 @@ export class VitalLensAPIHandler extends MethodHandler {
       ) {
         throw error;
       }
-      // Wrap unknown errors
       throw new VitalLensAPIError(
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -263,7 +250,7 @@ export class VitalLensAPIHandler extends MethodHandler {
 
   /**
    * Postprocess the estimated signal.
-   * @param signalType The signal type (e.g. 'ppg_waveform' or 'respiratory_waveform').
+   * @param signalType The signal type (e.g. 'ppg_waveform').
    * @param data The raw estimated signal.
    * @param fps The sampling frequency of the estimated signal.
    * @param light Whether to do only light processing.
@@ -275,21 +262,40 @@ export class VitalLensAPIHandler extends MethodHandler {
     fps: number,
     light: boolean
   ): number[] {
-    let windowSize: number;
-    let processed;
-    if (signalType === 'ppg_waveform') {
-      processed = light ? data : adaptiveDetrend(data, fps, CALC_HR_MIN / 60);
-      windowSize = movingAverageSizeForResponse(fps, CALC_HR_MAX / 60);
-    } else {
-      processed = data;
-      windowSize = movingAverageSizeForResponse(fps, CALC_RR_MAX / 60);
+    const meta = VITAL_REGISTRY[signalType];
+    const proc = meta?.processing;
+    const constraints = meta?.constraints;
+
+    if (!proc || proc.method === 'none') {
+      return data;
     }
 
-    // Apply the moving average filter.
-    processed = movingAverage(processed, windowSize);
+    let processed = data;
+    const minFreq = constraints?.min ? constraints.min / 60 : 0.5;
+    const maxFreq = constraints?.max ? constraints.max / 60 : 4.0;
 
-    // Standardize the filtered signal.
-    if (!light) processed = standardize(processed);
+    // Detrend
+    switch (proc.method) {
+      case 'detrend':
+        processed = light ? data : adaptiveDetrend(data, fps, minFreq);
+        break;
+      case 'smooth':
+        processed = data;
+        break;
+    }
+
+    // Smoothing
+    if (maxFreq) {
+      const windowSize = movingAverageSizeForResponse(fps, maxFreq);
+      if (windowSize > 1) {
+        processed = movingAverage(processed, windowSize);
+      }
+    }
+
+    // Standardization
+    if (!light && proc.standardize) {
+      processed = standardize(processed);
+    }
 
     return processed;
   }

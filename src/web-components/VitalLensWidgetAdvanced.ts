@@ -172,7 +172,7 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
 
   protected updateUI(result: VitalLensResult): void {
     this.clearBufferingTimeout();
-    const { face, vital_signs, fps, estFps } = result;
+    const { face, vital_signs, fps } = result;
     const faceConfidence = face?.confidence?.[face.confidence.length - 1] ?? 0;
 
     // If face confidence is too low, show a loader and reset the UI.
@@ -225,7 +225,7 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     this.updateNumericValue('hrv-sdnn', hrv_sdnn?.value, 1);
     this.updateNumericValue('hrv-rmssd', hrv_rmssd?.value, 1);
 
-    this.updateFpsValue(fps, estFps);
+    this.updateFpsValue(fps);
 
     if (this.mode === 'webcam') this.setBufferingTimeout();
   }
@@ -473,7 +473,7 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private updateFpsValue(fps: number | undefined, estFps: number | undefined) {
+  private updateFpsValue(fps: number | undefined) {
     this.fpsValueElement.textContent = fps ? fps.toFixed(1) : 'N/A';
   }
 

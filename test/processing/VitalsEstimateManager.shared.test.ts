@@ -244,7 +244,7 @@ describe('VitalsEstimateManager', () => {
       expect(processMock).toHaveBeenCalledWith(
         expect.objectContaining({
           time: [1002],
-          displayTime: 1002 + methodConfig.bufferOffset,
+          display_time: 1002 + methodConfig.bufferOffset,
           vital_signs: {
             ppg_waveform: { data: [2], confidence: [0.9], unit: '', note: '' },
           },
@@ -257,7 +257,7 @@ describe('VitalsEstimateManager', () => {
       expect(processMock).toHaveBeenCalledWith(
         expect.objectContaining({
           time: [1003],
-          displayTime: 1003 + methodConfig.bufferOffset,
+          display_time: 1003 + methodConfig.bufferOffset,
           vital_signs: {
             ppg_waveform: { data: [3], confidence: [0.9], unit: '', note: '' },
           },
@@ -547,7 +547,7 @@ describe('VitalsEstimateManager', () => {
 
       const incrementalResult: VitalLensResult = {
         time: [1004, 1005, 1006],
-        displayTime: 1007,
+        display_time: 1007,
         face: {
           coordinates: [
             [20, 20, 40, 40],
@@ -586,7 +586,7 @@ describe('VitalsEstimateManager', () => {
 
       const expectedResult: VitalLensResult = {
         time: [1006],
-        displayTime: 1007, // 1006 + 1
+        display_time: 1007, // 1006 + 1
         face: {
           coordinates: [[25, 25, 50, 50]],
           confidence: [0.93],
@@ -637,7 +637,7 @@ describe('VitalsEstimateManager', () => {
           },
         },
         fps: 1,
-        estFps: 1,
+        est_fps: 1,
         message: 'Test message',
       };
 

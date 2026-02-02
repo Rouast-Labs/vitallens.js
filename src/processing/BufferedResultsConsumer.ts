@@ -11,7 +11,7 @@ export class BufferedResultsConsumer {
 
   /**
    * Add new buffered results from the producer.
-   * @param results An array of VitalLensResult objects that contain a `displayTime`
+   * @param results An array of VitalLensResult objects that contain a `display_time`
    *                property. These results are added to the consumer's queue.
    */
   addResults(results: VitalLensResult[]) {
@@ -38,7 +38,7 @@ export class BufferedResultsConsumer {
   /**
    * The consumer loop that checks for expired results.
    * This method continuously checks the buffered results and dispatches the latest result
-   * whose displayTime is less than or equal to the current time.
+   * whose display_time is less than or equal to the current time.
    */
   private runLoop() {
     if (!this.isRunning) return;
@@ -51,8 +51,8 @@ export class BufferedResultsConsumer {
     let latestResult: VitalLensResult | null = null;
     while (
       this.resultQueue.length > 0 &&
-      this.resultQueue[0].displayTime &&
-      this.resultQueue[0].displayTime <= now
+      this.resultQueue[0].display_time &&
+      this.resultQueue[0].display_time <= now
     ) {
       // Always update to the latest expired result.
       latestResult = this.resultQueue.shift()!;
