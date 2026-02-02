@@ -64,8 +64,8 @@ export interface MethodConfig {
  * Represents a single vital's data.
  */
 export interface VitalData {
-  value?: number | null; // For scalar vitals (e.g., HR, SpO2) -- TODO: provided vitals may also be returned as 'data'
-  data?: number[]; // For waveforms (PPG)
+  value?: number | null;
+  data?: number[];
   unit: string;
   confidence: number | number[]; // Scalar or array depending on waveform
   note: string;
