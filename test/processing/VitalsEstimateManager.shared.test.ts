@@ -29,7 +29,7 @@ jest.mock('../../src/config/constants', () => ({
 jest.mock('../../src/utils/physio');
 
 const dummyPostprocessFn = (
-  signalType: 'ppg' | 'resp',
+  signalType: string,
   data: number[],
   fps: number,
   light: boolean
@@ -43,9 +43,7 @@ describe('VitalsEstimateManager', () => {
   let manager: VitalsEstimateManager;
 
   // Cast the imported physio functions to Jest mocks for type safety
-  const mockedEstimateHeartRate = physio.estimateHeartRate as jest.Mock;
-  const mockedEstimateRespiratoryRate =
-    physio.estimateRespiratoryRate as jest.Mock;
+  const mockedEstimateRateFromFFT = physio.estimateRateFromFFT as jest.Mock;
   const mockedEstimateHrv = physio.estimateHrv as jest.Mock;
 
   beforeEach(() => {
@@ -230,7 +228,7 @@ describe('VitalsEstimateManager', () => {
       const processMock = jest
         .spyOn(manager, 'processIncrementalResult')
         .mockImplementation(async (res, src, mode, light, ret) => {
-          return { ...res, message: `processed ${res.time[0]}` };
+          return { ...res, message: `processed ${res.time![0]}` };
         });
 
       const results = await manager.produceBufferedResults(
@@ -246,7 +244,12 @@ describe('VitalsEstimateManager', () => {
           time: [1002],
           display_time: 1002 + methodConfig.bufferOffset,
           vital_signs: {
-            ppg_waveform: { data: [2], confidence: [0.9], unit: '', note: '' },
+            ppg_waveform: {
+              data: [2],
+              confidence: [0.9],
+              unit: '',
+              note: '',
+            },
           },
         }),
         'source1',
@@ -259,7 +262,12 @@ describe('VitalsEstimateManager', () => {
           time: [1003],
           display_time: 1003 + methodConfig.bufferOffset,
           vital_signs: {
-            ppg_waveform: { data: [3], confidence: [0.9], unit: '', note: '' },
+            ppg_waveform: {
+              data: [3],
+              confidence: [0.9],
+              unit: '',
+              note: '',
+            },
           },
         }),
         'source1',
@@ -523,16 +531,21 @@ describe('VitalsEstimateManager', () => {
       });
       manager['message'].set('source1', 'Test message');
 
-      mockedEstimateHeartRate.mockReturnValue(75);
-      mockedEstimateRespiratoryRate.mockReturnValue(18);
+      mockedEstimateRateFromFFT.mockImplementation(
+        (sig, fs, minFreq, maxFreq) => {
+          if (maxFreq > 1.5) return 75; // HR
+          return 18; // RR
+        }
+      );
+
       mockedEstimateHrv.mockImplementation((sig, fs, metric) => {
         switch (metric) {
           case 'sdnn':
-            return 30;
+            return { value: 30, confidence: [0.5, 0.6, 0.7, 0.8, 0.9] };
           case 'rmssd':
-            return 25;
+            return { value: 25, confidence: [0.5, 0.6, 0.7, 0.8, 0.9] };
           case 'lfhf':
-            return 1.5;
+            return { value: 1.5, confidence: [0.5, 0.6, 0.7, 0.8, 0.9] };
           default:
             return null;
         }
@@ -795,7 +808,7 @@ describe('VitalsEstimateManager', () => {
       };
 
       expect(result).toEqual(expectedResult);
-      expect(mockedEstimateHeartRate).toHaveBeenCalled();
+      expect(mockedEstimateRateFromFFT).toHaveBeenCalled();
     });
   });
 

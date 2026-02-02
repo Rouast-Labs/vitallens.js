@@ -1,7 +1,5 @@
 import {
   estimateRateFromFFT,
-  estimateHeartRate,
-  estimateRespiratoryRate,
   estimateHrvFromDetectionSequences,
   estimateHrv,
   findPeaks,
@@ -410,53 +408,6 @@ describe('findPeaks', () => {
   });
 });
 
-describe('estimateHeartRate', () => {
-  it('should estimate the correct heart rate from a synthetic PPG signal', () => {
-    const fs = 30;
-    const hr = 77;
-    const ppgWaveform = generateSyntheticPPG({
-      duration: 10,
-      fs,
-      hr,
-      noiseLevel: 0.05,
-    });
-    const estimatedHr = estimateHeartRate(ppgWaveform, fs);
-    expect(estimatedHr).toBeCloseTo(hr, 0);
-  });
-
-  it('should accept an optional context argument without error', () => {
-    const fs = 30;
-    const ppgWaveform = generateSyntheticPPG({ duration: 5, fs, hr: 60 });
-    expect(() => {
-      estimateHeartRate(ppgWaveform, fs, { estimatedHeartRate: 60 });
-    }).not.toThrow();
-  });
-});
-
-describe('estimateRespiratoryRate', () => {
-  it('should estimate the correct respiratory rate from a synthetic signal', () => {
-    const fs = 50;
-    const rr = 15;
-    const duration = 30;
-    const numSamples = fs * duration;
-    const respWaveform = Array.from({ length: numSamples }, (_, i) =>
-      Math.sin((2 * Math.PI * (rr / 60) * i) / fs)
-    );
-    const estimatedRr = estimateRespiratoryRate(respWaveform, fs);
-    expect(estimatedRr).toBeCloseTo(rr, 0);
-  });
-
-  it('should accept an optional context argument without error', () => {
-    const fs = 50;
-    const respWaveform = Array.from({ length: 300 }, (_, i) =>
-      Math.sin(i * 0.1)
-    );
-    expect(() => {
-      estimateRespiratoryRate(respWaveform, fs, { confidence: [] });
-    }).not.toThrow();
-  });
-});
-
 describe('estimateHrv (High-Level Wrapper)', () => {
   const fs = 30;
 
@@ -468,7 +419,7 @@ describe('estimateHrv (High-Level Wrapper)', () => {
   it('should successfully compute a value for a valid signal', () => {
     const signal = generateSyntheticPPG({ duration: 10, fs, hr: 60 });
     const result = estimateHrv(signal, fs, 'sdnn');
-    expect(typeof result).toBe('number');
+    expect(typeof result?.value).toBe('number');
   });
 
   it('should utilize confidence context (returning null if confidence is 0)', () => {
@@ -482,13 +433,13 @@ describe('estimateHrv (High-Level Wrapper)', () => {
     const signal = generateSyntheticPPG({ duration: 10, fs, hr: 60 });
     const timestamps = signal.map((_, i) => i / fs);
     const result = estimateHrv(signal, fs, 'sdnn', { timestamps });
-    expect(typeof result).toBe('number');
+    expect(typeof result?.value).toBe('number');
   });
 
   it('should accept estimatedHeartRate in context without error', () => {
     const signal = generateSyntheticPPG({ duration: 10, fs, hr: 60 });
     const result = estimateHrv(signal, fs, 'sdnn', { estimatedHeartRate: 60 });
-    expect(typeof result).toBe('number');
+    expect(typeof result?.value).toBe('number');
   });
 });
 
@@ -510,7 +461,7 @@ describe('estimateHrvFromDetectionSequences', () => {
         'sdnn'
       );
       expect(result!.value).toBeCloseTo(0);
-      expect(result!.confidence).toBe(1.0);
+      expect(result!.confidence).toEqual(expect.arrayContaining([1.0]));
     });
 
     it('should calculate a low SDNN for a synthetic signal with low variability', () => {
@@ -530,7 +481,7 @@ describe('estimateHrvFromDetectionSequences', () => {
         'sdnn'
       );
       expect(result!.value).toBeCloseTo(7, 2);
-      expect(result!.confidence).toBe(1.0);
+      expect(result!.confidence[0]).toBe(1.0);
     });
 
     it('should pool intervals from multiple sequences', () => {
@@ -552,7 +503,7 @@ describe('estimateHrvFromDetectionSequences', () => {
       expect(peakSequences.length).toBeGreaterThan(1);
       expect(result!.value).toBeGreaterThan(0);
       expect(result!.value).toBeLessThan(25);
-      expect(result!.confidence).toBeCloseTo(0.95);
+      result!.confidence.forEach((c) => expect(c).toBeCloseTo(0.95));
     });
 
     it('should ignore outlier intervals caused by missed beats', () => {
@@ -661,7 +612,7 @@ describe('estimateHrvFromDetectionSequences', () => {
         'rmssd'
       );
       expect(result!.value).toBeCloseTo(0);
-      expect(result!.confidence).toBe(1.0);
+      expect(result!.confidence[0]).toBe(1.0);
     });
 
     it('should calculate a deterministic low RMSSD for a synthetic signal', () => {
@@ -681,7 +632,7 @@ describe('estimateHrvFromDetectionSequences', () => {
         'rmssd'
       );
       expect(result!.value).toBeCloseTo(11.3, 1);
-      expect(result!.confidence).toBe(1.0);
+      expect(result!.confidence[0]).toBe(1.0);
     });
   });
   describe('LF/HF metric', () => {
@@ -714,7 +665,7 @@ describe('estimateHrvFromDetectionSequences', () => {
 
       // With strong LF modulation and weak HF modulation, the ratio should be high.
       expect(result!.value).toBeGreaterThan(2);
-      expect(result!.confidence).toBe(1.0);
+      expect(result!.confidence[0]).toBe(1.0);
     });
     it('should return a low LF/HF ratio for a signal with strong HF modulation', () => {
       const fs = 100;
