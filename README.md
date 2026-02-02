@@ -209,7 +209,7 @@ export interface VitalLensResult {
   // The frames per second (fps) of the input video.
   fps: number;
   // The effective fps used for inference.
-  estFps: number;
+  est_fps: number;
   // A message providing additional information about the estimation.
   message: string;
 }
