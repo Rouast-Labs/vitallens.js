@@ -1,6 +1,5 @@
 import {
-  estimateHeartRate,
-  estimateRespiratoryRate,
+  estimateRateFromFFT,
   estimateHrv,
   VitalCalculationContext,
 } from '../utils/physio';
@@ -19,12 +18,12 @@ import {
   CALC_HRV_RMSSD_MAX_T,
   CALC_HRV_LFHF_MIN_T,
   CALC_HRV_LFHF_MAX_T,
-  CALC_SBP_MIN,
-  CALC_SBP_MAX,
-  CALC_DBP_MIN,
-  CALC_DBP_MAX,
-  CALC_SPO2_MIN,
-  CALC_SPO2_MAX,
+  CALC_HRV_SDNN_MIN,
+  CALC_HRV_SDNN_MAX,
+  CALC_HRV_RMSSD_MIN,
+  CALC_HRV_RMSSD_MAX,
+  CALC_HRV_LFHF_MIN,
+  CALC_HRV_LFHF_MAX,
 } from './constants';
 
 export interface VitalMeta {
@@ -32,17 +31,21 @@ export interface VitalMeta {
   unit: string;
   displayName: string;
   modelAliases?: string[];
-  constraints?: {
-    min?: number;
-    max?: number;
-  };
   processing?: {
     method: 'detrend' | 'smooth' | 'none';
     standardize?: boolean;
     minWindow?: number;
+    constraints?: {
+      fmin?: number;
+      fmax?: number;
+    };
   };
   derivation?: {
     sourceSignal: string;
+    constraints?: {
+      min?: number;
+      max?: number;
+    };
     window: {
       required: number;
       size: number;
@@ -52,7 +55,7 @@ export interface VitalMeta {
       signal: number[],
       fs: number,
       context: VitalCalculationContext
-    ) => number | null;
+    ) => number | { value: number; confidence: number[] } | null;
   };
 }
 
@@ -63,14 +66,14 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     unit: 'unitless',
     displayName: 'PPG Waveform',
     modelAliases: ['ppg'],
-    constraints: {
-      min: CALC_HR_MIN,
-      max: CALC_HR_MAX,
-    },
     processing: {
       method: 'detrend',
       standardize: true,
       minWindow: CALC_HR_MIN_WINDOW_SIZE,
+      constraints: {
+        fmin: CALC_HR_MIN / 60,
+        fmax: CALC_HR_MAX / 60,
+      },
     },
   },
   respiratory_waveform: {
@@ -78,14 +81,14 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     unit: 'unitless',
     displayName: 'Respiratory Waveform',
     modelAliases: ['resp'],
-    constraints: {
-      min: CALC_RR_MIN,
-      max: CALC_RR_MAX,
-    },
     processing: {
       method: 'smooth',
       standardize: true,
       minWindow: CALC_RR_MIN_WINDOW_SIZE,
+      constraints: {
+        fmin: CALC_RR_MIN / 60,
+        fmax: CALC_RR_MAX / 60,
+      },
     },
   },
   sbp: {
@@ -93,10 +96,6 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     unit: 'mmHg',
     displayName: 'Systolic Blood Pressure',
     modelAliases: ['sbp', 'bp_sys'],
-    constraints: {
-      min: CALC_SBP_MIN,
-      max: CALC_SBP_MAX,
-    },
     processing: {
       method: 'smooth',
       standardize: false,
@@ -108,10 +107,6 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     unit: 'mmHg',
     displayName: 'Diastolic Blood Pressure',
     modelAliases: ['dbp', 'bp_dia'],
-    constraints: {
-      min: CALC_DBP_MIN,
-      max: CALC_DBP_MAX,
-    },
     processing: {
       method: 'smooth',
       standardize: false,
@@ -123,10 +118,6 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     unit: '%',
     displayName: 'Blood Oxygen Saturation (SpO2)',
     modelAliases: ['spo2'],
-    constraints: {
-      min: CALC_SPO2_MIN,
-      max: CALC_SPO2_MAX,
-    },
     processing: {
       method: 'smooth',
       standardize: false,
@@ -139,18 +130,26 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     unit: 'bpm',
     displayName: 'Heart Rate',
     modelAliases: ['hr'],
-    constraints: {
-      min: CALC_HR_MIN,
-      max: CALC_HR_MAX,
-    },
     derivation: {
       sourceSignal: 'ppg_waveform',
       window: {
         required: CALC_HR_MIN_WINDOW_SIZE,
         size: CALC_HR_WINDOW_SIZE,
       },
+      constraints: {
+        min: CALC_HR_MIN,
+        max: CALC_HR_MAX,
+      },
       confidenceAggregation: 'mean',
-      calcFunc: estimateHeartRate,
+      calcFunc: (signal, fs, context) => {
+        return estimateRateFromFFT(
+          signal,
+          fs,
+          CALC_HR_MIN / 60,
+          CALC_HR_MAX / 60,
+          0.5 / 60
+        );
+      },
     },
   },
   respiratory_rate: {
@@ -158,18 +157,26 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
     unit: 'bpm',
     displayName: 'Respiratory Rate',
     modelAliases: ['rr'],
-    constraints: {
-      min: CALC_RR_MIN,
-      max: CALC_RR_MAX,
-    },
     derivation: {
       sourceSignal: 'respiratory_waveform',
       window: {
         required: CALC_RR_MIN_WINDOW_SIZE,
         size: CALC_RR_WINDOW_SIZE,
       },
+      constraints: {
+        min: CALC_RR_MIN,
+        max: CALC_RR_MAX,
+      },
       confidenceAggregation: 'mean',
-      calcFunc: estimateRespiratoryRate,
+      calcFunc: (signal, fs, context) => {
+        return estimateRateFromFFT(
+          signal,
+          fs,
+          CALC_RR_MIN / 60,
+          CALC_RR_MAX / 60,
+          0.25 / 60
+        );
+      },
     },
   },
   hrv_sdnn: {
@@ -183,7 +190,11 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
         required: CALC_HRV_SDNN_MIN_T,
         size: CALC_HRV_SDNN_MAX_T,
       },
-      confidenceAggregation: 'min', // TODO
+      constraints: {
+        min: CALC_HRV_SDNN_MIN,
+        max: CALC_HRV_SDNN_MAX,
+      },
+      confidenceAggregation: 'min',
       calcFunc: (sig, fs, ctx) => estimateHrv(sig, fs, 'sdnn', ctx),
     },
   },
@@ -198,7 +209,11 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
         required: CALC_HRV_RMSSD_MIN_T,
         size: CALC_HRV_RMSSD_MAX_T,
       },
-      confidenceAggregation: 'min', // TODO
+      constraints: {
+        min: CALC_HRV_RMSSD_MIN,
+        max: CALC_HRV_RMSSD_MAX,
+      },
+      confidenceAggregation: 'min',
       calcFunc: (sig, fs, ctx) => estimateHrv(sig, fs, 'rmssd', ctx),
     },
   },
@@ -213,7 +228,11 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
         required: CALC_HRV_LFHF_MIN_T,
         size: CALC_HRV_LFHF_MAX_T,
       },
-      confidenceAggregation: 'min', // TODO
+      constraints: {
+        min: CALC_HRV_LFHF_MIN,
+        max: CALC_HRV_LFHF_MAX,
+      },
+      confidenceAggregation: 'min',
       calcFunc: (sig, fs, ctx) => estimateHrv(sig, fs, 'lfhf', ctx),
     },
   },

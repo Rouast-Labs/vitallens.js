@@ -475,8 +475,12 @@ export function estimateHrvFromDetectionSequences(
     confidenceThreshold?: number;
   }
 ):
-  | (Omit<Required<VitalLensResult['vital_signs']>['hrv_sdnn'], 'value'> & {
+  | (Omit<
+      Required<VitalLensResult['vital_signs']>['hrv_sdnn'],
+      'value' | 'confidence'
+    > & {
       value: number;
+      confidence: number[];
     })
   | null {
   const timestamps = options?.timestamps;
@@ -531,13 +535,10 @@ export function estimateHrvFromDetectionSequences(
     validPeakIndices.add(d.idx2);
   });
 
-  // Calculate the minimum confidence among only the used peaks.
-  let minConfidence = 1.0;
+  // Collect all confidences into an array
+  const peakConfidences: number[] = [];
   validPeakIndices.forEach((idx) => {
-    const peakConf = ppgConfidence[idx] ?? 0;
-    if (peakConf < minConfidence) {
-      minConfidence = peakConf;
-    }
+    peakConfidences.push(ppgConfidence[idx] ?? 0);
   });
 
   // Get the specific HRV calculation function
@@ -547,7 +548,7 @@ export function estimateHrvFromDetectionSequences(
   return {
     value: hrvValue,
     unit: 'ms',
-    confidence: minConfidence,
+    confidence: peakConfidences,
     note: `Estimate of the heart rate variability (${metric.toUpperCase()}).`,
   };
 }
@@ -556,48 +557,7 @@ export interface VitalCalculationContext {
   confidence?: number[];
   timestamps?: number[];
   estimatedHeartRate?: number;
-}
-
-/**
- * Estimates heart rate from the PPG waveform using FFT.
- * @param ppgWaveform - The PPG waveform tensor.
- * @param fs - The sampling rate of the waveform tensor (cycles per second)
- * @param _context - Optional context for signature consistency.
- * @returns The estimated heart rate in beats per minute.
- */
-export function estimateHeartRate(
-  ppgWaveform: number[],
-  fs: number,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _context?: VitalCalculationContext
-): number | null {
-  return estimateRateFromFFT(
-    ppgWaveform,
-    fs,
-    CALC_HR_MIN / 60,
-    CALC_HR_MAX / 60
-  );
-}
-
-/**
- * Estimates respiratory rate from the respiratory waveform using FFT.
- * @param respiratoryWaveform - The respiratory waveform tensor.
- * @param fs - The sampling rate of the waveform tensor (cycles per second)
- * @param _context - Optional context for signature consistency.
- * @returns The estimated respiratory rate in breaths per minute.
- */
-export function estimateRespiratoryRate(
-  respiratoryWaveform: number[],
-  fs: number,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _context?: VitalCalculationContext
-): number | null {
-  return estimateRateFromFFT(
-    respiratoryWaveform,
-    fs,
-    CALC_RR_MIN / 60,
-    CALC_RR_MAX / 60
-  );
+  constraints?: { min: number; max: number };
 }
 
 /**
@@ -614,7 +574,7 @@ export const estimateHrv = (
   fs: number,
   metric: HRVMetric,
   context: VitalCalculationContext = {}
-): number | null => {
+): { value: number; confidence: number[] } | null => {
   // Detect peaks, adapting to Heart Rate if provided in context
   const sequences = findPeaks(ppgWaveform, fs, {
     hr: context.estimatedHeartRate,
@@ -634,5 +594,5 @@ export const estimateHrv = (
     }
   );
 
-  return result ? result.value : null;
+  return result ? { value: result.value, confidence: result.confidence } : null;
 };

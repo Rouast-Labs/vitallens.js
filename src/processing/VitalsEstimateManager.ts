@@ -487,7 +487,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             // Context for calculation
             const estimatedHeartRate = result.vital_signs['heart_rate']?.value;
 
-            const value = deriv.calcFunc(calcData, currentFps, {
+            const calcResult = deriv.calcFunc(calcData, currentFps, {
               confidence: calcConf,
               timestamps: storedTimestamps.slice(-calcData.length),
               estimatedHeartRate:
@@ -496,20 +496,49 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
                   : undefined,
             });
 
-            if (value !== null) {
-              // Aggregate confidence
-              // TODO
-              const confVal =
-                deriv.confidenceAggregation === 'min'
-                  ? Math.min(...calcConf)
-                  : calcConf.reduce((a, b) => a + b, 0) / calcConf.length;
+            if (calcResult !== null) {
+              let val: number;
+              let confSource: number[];
 
-              (result.vital_signs as any)[vitalName] = {
-                value: value,
-                unit: meta.unit,
-                confidence: confVal,
-                note: `Estimate of the ${meta.displayName}`,
-              };
+              // Unpack the result
+              if (typeof calcResult === 'object') {
+                val = calcResult.value;
+                confSource = calcResult.confidence;
+              } else {
+                val = calcResult;
+                confSource = calcConf;
+              }
+
+              // Aggregate confidence
+              let conf: number;
+              if (confSource.length === 0) {
+                conf = 0;
+              } else {
+                conf =
+                  deriv.confidenceAggregation === 'min'
+                    ? Math.min(...confSource)
+                    : calcConf.reduce((a, b) => a + b, 0) / calcConf.length;
+              }
+
+              // Apply constraints
+              const limits = deriv.constraints;
+              let isValid = true;
+              if (limits) {
+                if (limits.min !== undefined && val < limits.min)
+                  isValid = false;
+                if (limits.max !== undefined && val > limits.max)
+                  isValid = false;
+              }
+
+              // Assign Result
+              if (isValid) {
+                (result.vital_signs as any)[vitalName] = {
+                  value: val,
+                  unit: meta.unit,
+                  confidence: conf,
+                  note: `Estimate of the ${meta.displayName}`,
+                };
+              }
             }
           }
         }
