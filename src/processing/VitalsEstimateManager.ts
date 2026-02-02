@@ -440,9 +440,22 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
               );
             }
 
+            const isWaveform = vitalName.includes('waveform');
+            let representativeValue: number | undefined = undefined;
+            let scalarConfidence: number | undefined = undefined;
+
+            if (!isWaveform) {
+              representativeValue =
+                sliceData.reduce((a, b) => a + b, 0) / sliceData.length;
+
+              scalarConfidence =
+                sliceConf.reduce((a, b) => a + b, 0) / sliceConf.length;
+            }
+
             (result.vital_signs as any)[vitalName] = {
+              value: representativeValue,
               data: sliceData,
-              confidence: sliceConf,
+              confidence: isWaveform ? sliceConf : (scalarConfidence ?? 0),
               unit: meta.unit,
               note:
                 this.notes.get(sourceId)?.get(vitalName) || meta.displayName,
