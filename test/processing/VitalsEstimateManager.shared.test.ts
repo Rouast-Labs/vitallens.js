@@ -810,6 +810,28 @@ describe('VitalsEstimateManager', () => {
       expect(result).toEqual(expectedResult);
       expect(mockedEstimateRateFromFFT).toHaveBeenCalled();
     });
+
+    it('should calculate scalar value and confidence for provided non-waveform vitals (e.g. SpO2)', async () => {
+      methodConfig.supportedVitals?.push('spo2');
+      const sourceBuffers = manager['buffers'].get('source1')!;
+      sourceBuffers.set('spo2', {
+        data: { sum: [98, 99, 98, 99, 98], count: [1, 1, 1, 1, 1] },
+        conf: { sum: [0.9, 0.9, 0.9, 0.9, 0.9], count: [1, 1, 1, 1, 1] },
+      });
+      manager['notes'].get('source1')!.set('spo2', 'SpO2 Note');
+      const result = await (manager as any).assembleResult(
+        'source1',
+        'complete',
+        false
+      );
+      expect((result.vital_signs as any).spo2).toEqual({
+        value: 98.4,
+        data: [98, 99, 98, 99, 98],
+        confidence: 0.9,
+        unit: '%',
+        note: 'SpO2 Note',
+      });
+    });
   });
 
   describe('getCurrentFps', () => {
