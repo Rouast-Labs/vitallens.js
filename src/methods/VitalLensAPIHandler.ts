@@ -264,15 +264,15 @@ export class VitalLensAPIHandler extends MethodHandler {
   ): number[] {
     const meta = VITAL_REGISTRY[signalType];
     const proc = meta?.processing;
-    const constraints = meta?.constraints;
+    const constraints = proc?.constraints;
 
     if (!proc || proc.method === 'none') {
       return data;
     }
 
     let processed = data;
-    const minFreq = constraints?.min ? constraints.min / 60 : 0.5;
-    const maxFreq = constraints?.max ? constraints.max / 60 : 4.0;
+    const minFreq = constraints?.fmin ?? 0.5;
+    const maxFreq = constraints?.fmax ?? 4.0;
 
     // Detrend
     switch (proc.method) {

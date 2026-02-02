@@ -10,7 +10,7 @@ export const VITALLENS_RESOLVE_MODEL_ENDPOINT =
 // Vitals estimation constraints [1/min]
 export const CALC_HR_MIN = 40;
 export const CALC_HR_MAX = 240;
-export const CALC_RR_MIN = 1;
+export const CALC_RR_MIN = 4;
 export const CALC_RR_MAX = 60;
 export const CALC_HRV_SDNN_MIN = 1;
 export const CALC_HRV_SDNN_MAX = 200;
@@ -18,12 +18,6 @@ export const CALC_HRV_RMSSD_MIN = 1;
 export const CALC_HRV_RMSSD_MAX = 200;
 export const CALC_HRV_LFHF_MIN = 0;
 export const CALC_HRV_LFHF_MAX = 10;
-export const CALC_SBP_MIN = 40;
-export const CALC_SBP_MAX = 240;
-export const CALC_DBP_MIN = 20;
-export const CALC_DBP_MAX = 160;
-export const CALC_SPO2_MIN = 70;
-export const CALC_SPO2_MAX = 100;
 
 // Vitals estimation window sizes [s]
 export const AGG_WINDOW_SIZE = 10; // Must be smaller or equal to smallest CALC_WINDOW_SIZE
