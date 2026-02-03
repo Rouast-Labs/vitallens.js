@@ -59,7 +59,7 @@ export abstract class SimpleMethodHandler extends MethodHandler {
           data: ppg,
           unit: 'bpm',
           confidence: new Array(ppg.length).fill(1.0),
-          note: `Estimate of the ppg waveform using ${this.getMethodName()}. This method is not capable of providing a confidence estimate, hence returning 1.`,
+          note: `Estimate of the PPG Waveform using ${this.getMethodName()}. This method is not capable of providing a confidence estimate, hence returning 1.`,
         },
       },
       time: rgb.getTimestamp(),
