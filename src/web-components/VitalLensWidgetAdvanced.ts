@@ -474,7 +474,6 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private updateFpsValue(fps: number | undefined) {
     this.fpsValueElement.textContent = fps ? fps.toFixed(1) : 'N/A';
   }

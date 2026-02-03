@@ -656,7 +656,7 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     const pct = (val: number | null | undefined) =>
       ((val ?? 0) * 100).toFixed(0) + '%';
 
-    const getConf = (val?: number | number[]) => 
+    const getConf = (val?: number | number[]) =>
       Array.isArray(val) ? (val[val.length - 1] ?? 0) : (val ?? 0);
 
     this.els.valHr.textContent = fmt(vs.heart_rate?.value);
