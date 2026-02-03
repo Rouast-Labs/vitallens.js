@@ -141,7 +141,7 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
         max: CALC_HR_MAX,
       },
       confidenceAggregation: 'mean',
-      calcFunc: (signal, fs, context) => {
+      calcFunc: (signal, fs) => {
         return estimateRateFromFFT(
           signal,
           fs,
@@ -168,7 +168,7 @@ export const VITAL_REGISTRY: Record<string, VitalMeta> = {
         max: CALC_RR_MAX,
       },
       confidenceAggregation: 'mean',
-      calcFunc: (signal, fs, context) => {
+      calcFunc: (signal, fs) => {
         return estimateRateFromFFT(
           signal,
           fs,
