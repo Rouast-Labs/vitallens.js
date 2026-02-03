@@ -549,7 +549,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
                   value: val,
                   unit: meta.unit,
                   confidence: conf,
-                  note: `Estimate of the ${meta.displayName}`,
+                  note: `Global estimate of ${meta.displayName}`,
                 };
               }
             }

@@ -79,7 +79,7 @@ describe('SimpleMethodHandler', () => {
           data: [1, 2, 3],
           unit: 'bpm',
           confidence: [1.0, 1.0, 1.0],
-          note: 'Estimate of the ppg waveform using Mock. This method is not capable of providing a confidence estimate, hence returning 1.',
+          note: 'Estimate of the PPG Waveform using Mock. This method is not capable of providing a confidence estimate, hence returning 1.',
         },
       },
       time: [0, 1, 2],
