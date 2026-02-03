@@ -20,7 +20,6 @@ import {
   movingAverageSizeForResponse,
   standardize,
 } from '../utils/arrayOps';
-import { CALC_HR_MIN } from '../config/constants';
 import { VITAL_REGISTRY, getVitalKeyFromCode } from '../config/vitalRegistry';
 
 const STREAM_RESET_BUFFER_THRESHOLD = 100; // Frames

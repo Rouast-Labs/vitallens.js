@@ -1,4 +1,9 @@
-import { MethodConfig, VitalLensOptions, VitalLensResult } from '../types/core';
+import {
+  MethodConfig,
+  VitalLensOptions,
+  VitalLensResult,
+  VitalData,
+} from '../types/core';
 import { IVitalsEstimateManager } from '../types/IVitalsEstimateManager';
 import { VITAL_REGISTRY } from '../config/vitalRegistry';
 import { AGG_WINDOW_SIZE } from '../config/constants';
@@ -174,7 +179,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             Array.isArray(value.confidence) &&
             value.confidence[i] !== undefined
           ) {
-            (singleResult.vital_signs as any)[key] = {
+            (singleResult.vital_signs as Record<string, VitalData>)[key] = {
               data: [value.data[i]],
               confidence: [value.confidence[i] as number],
               unit: value.unit,
@@ -394,13 +399,18 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
             case 'incremental':
               if (
                 incrementalResult?.vital_signs &&
-                (incrementalResult.vital_signs as any)[vitalName]
-              ) {
-                const incVital = (incrementalResult.vital_signs as any)[
+                (incrementalResult.vital_signs as Record<string, VitalData>)[
                   vitalName
-                ];
-                sliceData = incVital.data.slice(-incrementSize);
-                sliceConf = incVital.confidence.slice(-incrementSize);
+                ]
+              ) {
+                const incVital = (
+                  incrementalResult.vital_signs as Record<string, VitalData>
+                )[vitalName];
+                sliceData = incVital.data?.slice(-incrementSize) ?? [];
+                const rawConf = incVital.confidence;
+                sliceConf = Array.isArray(rawConf)
+                  ? rawConf.slice(-incrementSize)
+                  : [];
               } else {
                 sliceData = avgData.slice(-incrementSize);
                 sliceConf = avgConf.slice(-incrementSize);
@@ -452,7 +462,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
                 sliceConf.reduce((a, b) => a + b, 0) / sliceConf.length;
             }
 
-            (result.vital_signs as any)[vitalName] = {
+            (result.vital_signs as Record<string, VitalData>)[vitalName] = {
               value: representativeValue,
               data: sliceData,
               confidence: isWaveform ? sliceConf : (scalarConfidence ?? 0),
@@ -545,7 +555,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
               // Assign Result
               if (isValid) {
-                (result.vital_signs as any)[vitalName] = {
+                (result.vital_signs as Record<string, VitalData>)[vitalName] = {
                   value: val,
                   unit: meta.unit,
                   confidence: conf,
@@ -657,7 +667,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     };
 
     // Helper to merge arrays
-    const merge = (current: any[], newVals: any[]) => {
+    const merge = <T>(current: T[], newVals: T[]) => {
       const nonOverlapping = newVals.slice(overlap);
       let updated = [...current, ...nonOverlapping];
       const maxBufferSize = this.fpsTarget * 90;

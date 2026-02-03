@@ -1,12 +1,5 @@
 import FFT from 'fft.js';
-import {
-  CALC_HR_MAX,
-  CALC_HR_MIN,
-  CALC_RR_MAX,
-  CALC_RR_MIN,
-  HRV_HF_BAND,
-  HRV_LF_BAND,
-} from '../config/constants';
+import { HRV_HF_BAND, HRV_LF_BAND } from '../config/constants';
 import { VitalLensResult } from '../types';
 
 /**
