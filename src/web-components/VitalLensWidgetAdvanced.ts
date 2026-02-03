@@ -207,16 +207,18 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     const maxDataPoints =
       this.mode === 'webcam' ? AGG_WINDOW_SIZE * this.ecoModeFps : undefined;
 
+    const ppgConf = ppg_waveform?.confidence;
     this.updateChart(
       this.charts.ppgChart,
       ppg_waveform?.data || [],
-      ppg_waveform?.confidence || [],
+      Array.isArray(ppgConf) ? ppgConf : [],
       maxDataPoints
     );
+    const respConf = respiratory_waveform?.confidence;
     this.updateChart(
       this.charts.respChart,
       respiratory_waveform?.data || [],
-      respiratory_waveform?.confidence || [],
+      Array.isArray(respConf) ? respConf : [],
       maxDataPoints
     );
 
@@ -262,7 +264,7 @@ export abstract class VitalLensWidgetAdvanced extends VitalLensWidgetBase {
     this.updateNumericValue('rr-value', undefined);
     this.updateNumericValue('hrv-sdnn', undefined);
     this.updateNumericValue('hrv-rmssd', undefined);
-    this.updateFpsValue(0, 0);
+    this.updateFpsValue(0);
   }
 
   protected async initVitalLensInstance(): Promise<void> {

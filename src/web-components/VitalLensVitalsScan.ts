@@ -286,8 +286,12 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     const now = Date.now() / 1000;
     const apiWindowSize = Math.round(this.targetFps * CONFIG.API_WINDOW_SEC);
 
-    const getLast = (arr?: number[]) =>
-      arr && arr.length ? arr[arr.length - 1] : 0;
+    const getLast = (val?: number | number[]) => {
+      if (Array.isArray(val)) {
+        return val.length ? val[val.length - 1] : 0;
+      }
+      return val ?? 0;
+    };
 
     const avgFace = this.updateBuffer(
       this.apiBuffers.face,
@@ -652,20 +656,25 @@ export class VitalLensVitalsScan extends VitalLensWidgetBase {
     const pct = (val: number | null | undefined) =>
       ((val ?? 0) * 100).toFixed(0) + '%';
 
+    const getConf = (val?: number | number[]) => 
+      Array.isArray(val) ? (val[val.length - 1] ?? 0) : (val ?? 0);
+
     this.els.valHr.textContent = fmt(vs.heart_rate?.value);
     this.els.valRr.textContent = fmt(vs.respiratory_rate?.value);
 
-    const hasHrv = (vs.hrv_sdnn?.confidence ?? 0) >= CONFIG.FINAL_THRESHOLD;
+    const sdnnConf = getConf(vs.hrv_sdnn?.confidence);
+    const hasHrv = sdnnConf >= CONFIG.FINAL_THRESHOLD;
+
     this.els.hrvContainer.classList.toggle('hidden', !hasHrv);
     if (hasHrv) {
       this.els.valSdnn.textContent = fmt(vs.hrv_sdnn?.value);
       this.els.valRmssd.textContent = fmt(vs.hrv_rmssd?.value);
     }
 
-    this.els.confHr.textContent = pct(vs.heart_rate?.confidence);
-    this.els.confRr.textContent = pct(vs.respiratory_rate?.confidence);
-    this.els.confSdnn.textContent = pct(vs.hrv_sdnn?.confidence);
-    this.els.confRmssd.textContent = pct(vs.hrv_rmssd?.confidence);
+    this.els.confHr.textContent = pct(getConf(vs.heart_rate?.confidence));
+    this.els.confRr.textContent = pct(getConf(vs.respiratory_rate?.confidence));
+    this.els.confSdnn.textContent = pct(getConf(vs.hrv_sdnn?.confidence));
+    this.els.confRmssd.textContent = pct(getConf(vs.hrv_rmssd?.confidence));
 
     const faceConfs = result.face?.confidence || [];
     this.els.valFaceConf.textContent = pct(this.getAverage(faceConfs));

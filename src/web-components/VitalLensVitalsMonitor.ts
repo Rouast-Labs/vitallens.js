@@ -125,9 +125,12 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
       return false;
     }
 
-    const confidence = vitalData.confidence ?? 0;
+    const rawConf = vitalData.confidence;
+    const confidence = Array.isArray(rawConf)
+      ? rawConf[rawConf.length - 1]
+      : (rawConf ?? 0);
 
-    if (confidence >= confThresh && vitalData.value !== null) {
+    if (confidence >= confThresh && vitalData.value != null) {
       valueEl.style.display = 'inline';
       spinnerEl.style.display = 'none';
       valueEl.textContent = vitalData.value.toFixed(toFixed);
