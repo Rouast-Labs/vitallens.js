@@ -549,7 +549,7 @@ export function estimateHrvFromDetectionSequences(
     value: hrvValue,
     unit: 'ms',
     confidence: peakConfidences,
-    note: `Estimate of the heart rate variability (${metric.toUpperCase()}).`,
+    note: `Global estimate of Heart Rate Variability (${metric.toUpperCase()}).`,
   };
 }
 
