@@ -131,7 +131,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     defaultWaveformMode: string
   ): Promise<Array<VitalLensResult> | null> {
     const currentTimestamps: number[] = this.timestamps.get(sourceId) ?? [];
-    const newTimestamps: number[] = incrementalResult.time;
+    const newTimestamps: number[] = incrementalResult.time ?? [];
     const waveformMode = this.options.waveformMode || defaultWaveformMode;
 
     // Determine overlap to find new frames
@@ -215,7 +215,7 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
     // Determine overlap
     const currentTimestamps: number[] = this.timestamps.get(sourceId) || [];
-    const newTimestamps: number[] = incrementalResult.time;
+    const newTimestamps: number[] = incrementalResult.time ?? [];
     const overlap = Math.min(
       currentTimestamps.length,
       Math.max(
