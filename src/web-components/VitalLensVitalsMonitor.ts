@@ -63,8 +63,10 @@ class VitalLensVitalsMonitor extends VitalLensWidgetBase {
   }
 
   protected async initVitalLensInstance(): Promise<void> {
+    const mode = this.getAttribute('default-mode') || 'eco';
+    const targetFps = mode === 'standard' ? 30 : 15;
     const options: Partial<VitalLensOptions> = {
-      overrideFpsTarget: 15,
+      overrideFpsTarget: targetFps,
     };
     await super.initVitalLensInstance(options);
   }
