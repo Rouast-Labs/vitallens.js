@@ -140,6 +140,10 @@
     "ts-jest": "^29.2.5",
     "typescript": "^5.8.3"
   },
+  "overrides": {
+    "tar": "^7.0.0",
+    "lodash": "^4.17.21"
+  },
   "engines": {
     "node": ">=18.0.0"
   }

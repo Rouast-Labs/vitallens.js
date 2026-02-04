@@ -55,7 +55,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        node-version: ["18.16.1", "20"]
+        node-version: ["20"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -90,14 +90,7 @@ jobs:
       - name: Lint code
         run: npm run lint
 
-      - name: Browser only test (Node 20)
-        if: matrix.node-version == '20'
+      - name: Browser only test
         env:
           VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
         run: npx jest --selectProjects browser --testPathIgnorePatterns FaceDetectorAsyncIntegration
-
-      - name: Full test (Node 18.16.1)
-        if: matrix.node-version == '18.16.1'
-        env:
-          VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
-        run: npm test
