@@ -153,17 +153,17 @@ export class VitalLensAPIHandler extends MethodHandler {
       } else if (response.statusCode >= 500) {
         throw new VitalLensAPIError(
           `Error ${response.statusCode} in the API: ${message}`
-        ); // Catches 500, 504 etc.
+        );
       }
       throw new VitalLensAPIError(`Error ${response.statusCode}: ${message}`);
     }
 
-    // Parse the successful response
     const parsedResponse = response.body;
 
-    // Ensure we have at least vitals and state
-    if (parsedResponse.vital_signs && parsedResponse.state) {
-      const n = parsedResponse.n ?? 0;
+    // CHANGED: Removed the strict requirement for parsedResponse.state
+    if (parsedResponse.vital_signs) {
+      // CHANGED: Fallback to the actual chunk size if the API doesn't provide 'n'
+      const n = parsedResponse.n ?? framesChunk.getTimestamp().length;
       const roi = framesChunk.getROI();
       const coords = roi.map((r) => [r.x0, r.y0, r.x1, r.y1]) as [
         number,
@@ -175,14 +175,14 @@ export class VitalLensAPIHandler extends MethodHandler {
       return {
         face: {
           coordinates: coords.slice(-n),
-          confidence: parsedResponse.face.confidence?.slice(-n),
+          confidence: parsedResponse.face?.confidence?.slice(-n),
           note: 'Face detection coordinates for this face, along with live confidence levels.',
         },
         vital_signs: parsedResponse.vital_signs,
         state: parsedResponse.state,
         model_used: parsedResponse.model_used,
         time: framesChunk.getTimestamp().slice(-n),
-        n: n,
+        n: parsedResponse.n,
         message:
           'The provided values are estimates and should be interpreted according to the provided confidence levels ranging from 0 to 1. The VitalLens API is not a medical device and its estimates are not intended for any medical purposes.',
       };

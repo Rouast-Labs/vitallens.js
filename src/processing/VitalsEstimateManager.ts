@@ -41,27 +41,27 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
 
   private mapWasmResultToVitalLensResult(wasmResult: any, incrementalResult?: VitalLensResult): VitalLensResult {
     const result: VitalLensResult = {
-      face: {},
-      vital_signs: {},
-      time: wasmResult.timestamp || [],
-      message: wasmResult.message || '',
-      fps: wasmResult.fps,
+      face: incrementalResult?.face ? { ...incrementalResult.face } : {},
+      vital_signs: incrementalResult?.vital_signs ? JSON.parse(JSON.stringify(incrementalResult.vital_signs)) : {},
+      time: wasmResult.timestamp && wasmResult.timestamp.length > 0 ? wasmResult.timestamp : (incrementalResult?.time || []),
+      message: wasmResult.message || incrementalResult?.message || '',
+      fps: wasmResult.fps || incrementalResult?.fps,
     };
 
-    if (wasmResult.face) {
-      result.face = {
-        coordinates: wasmResult.face.coordinates,
-        confidence: wasmResult.face.confidence,
-        note: wasmResult.face.note ?? undefined,
-      };
+    if (incrementalResult?.model_used) result.model_used = incrementalResult.model_used;
+    if (incrementalResult?.display_time) result.display_time = incrementalResult.display_time;
+
+    if (wasmResult.face && Object.keys(wasmResult.face).length > 0) {
+      result.face.coordinates = wasmResult.face.coordinates || result.face.coordinates;
+      result.face.confidence = wasmResult.face.confidence || result.face.confidence;
+      if (wasmResult.face.note) result.face.note = wasmResult.face.note;
     }
 
-    const vitalsOut: Record<string, VitalData> = {};
-    
     if (wasmResult.waveforms) {
       for (const [key, wf] of Object.entries(wasmResult.waveforms)) {
         const waveform = wf as any;
-        vitalsOut[key] = {
+        result.vital_signs[key] = {
+          ...result.vital_signs[key],
           data: waveform.data,
           confidence: waveform.confidence,
           unit: waveform.unit,
@@ -73,19 +73,14 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (wasmResult.vitals) {
       for (const [key, v] of Object.entries(wasmResult.vitals)) {
         const vital = v as any;
-        vitalsOut[key] = {
+        result.vital_signs[key] = {
+          ...result.vital_signs[key],
           value: vital.value,
           confidence: vital.confidence,
           unit: vital.unit,
           note: vital.note,
         };
       }
-    }
-
-    result.vital_signs = vitalsOut;
-
-    if (incrementalResult?.display_time) {
-      result.display_time = incrementalResult.display_time;
     }
 
     return result;

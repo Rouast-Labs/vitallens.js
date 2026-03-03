@@ -24,11 +24,11 @@
     "build": "tsc && rollup -c",
     "prepare": "npm run build",
     "build:integration": "rollup -c --environment BUILD_INTEGRATION",
-    "test": "jest --selectProjects node browser",
-    "test:browser": "jest --selectProjects browser",
-    "test:node": "jest --selectProjects node",
-    "test:browser-integration": "npm run build:integration && jest --selectProjects browser-integration",
-    "test:node-integration": "npm run build:integration && jest --selectProjects node-integration",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects node browser",
+    "test:browser": "NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects browser",
+    "test:node": "NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects node",
+    "test:browser-integration": "npm run build:integration && NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects browser-integration",
+    "test:node-integration": "npm run build:integration && NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects node-integration",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.{ts,js,json,css,md}\"",
     "start:browser": "EXAMPLE_TO_OPEN=browser/vitals_monitor node scripts/server.cjs",
@@ -136,14 +136,22 @@
     "jest-puppeteer": "^11.0.0",
     "prettier": "^3.5.3",
     "puppeteer": "^24.17.0",
-    "rollup": "^4.44.0",
+    "rollup": "^4.59.0",
     "rollup-plugin-string": "^3.0.0",
     "ts-jest": "^29.2.5",
     "typescript": "^5.8.3"
   },
   "overrides": {
-    "tar": "^7.0.0",
-    "lodash": "^4.17.21"
+    "tar": "^7.4.3",
+    "axios": "^1.7.9",
+    "basic-ftp": "^5.2.0",
+    "serialize-javascript": "^6.0.2",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^9.0.7"
+    },
+    "glob": {
+      "minimatch": "^9.0.7"
+    }
   },
   "engines": {
     "node": ">=18.0.0"

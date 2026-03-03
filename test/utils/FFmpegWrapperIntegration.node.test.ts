@@ -1,7 +1,11 @@
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import FFmpegWrapper from '../../src/utils/FFmpegWrapper.node';
 import { VideoProbeResult, VideoProcessingOptions } from '../../src/types';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe('FFmpegWrapper (Node)', () => {
   let wrapper: FFmpegWrapper;

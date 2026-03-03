@@ -6,8 +6,16 @@ module.exports = {
       testEnvironment: 'node',
       testMatch: ['**/*.node.test.ts', '**/*.shared.test.ts'],
       transform: {
-        '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: { allowJs: true } }],
+        '^.+\\.[tj]sx?$': [
+          'ts-jest',
+          {
+            useESM: true,
+            tsconfig: { allowJs: true }
+          },
+        ],
       },
+      extensionsToTreatAsEsm: ['.ts'],
+      transformIgnorePatterns: ['/node_modules/(?!vitallens-core)'],
       moduleNameMapper: {
         'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model\\.json$':
           '<rootDir>/__mocks__/modelJsonMock.js',
@@ -15,7 +23,6 @@ module.exports = {
           '<rootDir>/__mocks__/modelBinMock.js',
         '^tfjs-provider$': '<rootDir>/src/tfjs-provider.node.ts',
       },
-      transformIgnorePatterns: ['/node_modules/(?!vitallens-core)'],
       setupFilesAfterEnv: ['./jest.setup.ts'],
     },
     // jsdom tests (lightweight browser-like unit tests)
@@ -24,8 +31,16 @@ module.exports = {
       testEnvironment: 'jest-environment-jsdom',
       testMatch: ['**/*.browser.test.ts', '**/*.shared.test.ts'],
       transform: {
-        '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: { allowJs: true } }],
+        '^.+\\.[tj]sx?$': [
+          'ts-jest',
+          {
+            useESM: true,
+            tsconfig: { allowJs: true }
+          },
+        ],
       },
+      extensionsToTreatAsEsm: ['.ts'],
+      transformIgnorePatterns: ['/node_modules/(?!vitallens-core)'],
       moduleNameMapper: {
         '^@ffmpeg/ffmpeg$':
           '<rootDir>/node_modules/@ffmpeg/ffmpeg/dist/umd/ffmpeg.js',
@@ -35,7 +50,6 @@ module.exports = {
           '<rootDir>/__mocks__/modelBinMock.js',
         '^tfjs-provider$': '<rootDir>/src/tfjs-provider.browser.worker.ts',
       },
-      transformIgnorePatterns: ['/node_modules/(?!vitallens-core)'],
       setupFilesAfterEnv: ['./jest.setup.ts'],
     },
     // Browser integration/E2E tests with Pippeteer
@@ -44,8 +58,15 @@ module.exports = {
       preset: 'jest-puppeteer',
       testMatch: ['**/*.browser.integration.test.ts'],
       transform: {
-        '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: { allowJs: true } }],
+        '^.+\\.[tj]sx?$': [
+          'ts-jest',
+          {
+            useESM: true,
+            tsconfig: { allowJs: true }
+          },
+        ],
       },
+      extensionsToTreatAsEsm: ['.ts'],
       transformIgnorePatterns: ['/node_modules/(?!vitallens-core)'],
       setupFilesAfterEnv: ['./jest.setup.ts'],
     },
@@ -55,8 +76,16 @@ module.exports = {
       testEnvironment: 'node',
       testMatch: ['**/*.node.integration.test.ts'],
       transform: {
-        '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: { allowJs: true } }],
+        '^.+\\.[tj]sx?$': [
+          'ts-jest',
+          {
+            useESM: true,
+            tsconfig: { allowJs: true }
+          },
+        ],
       },
+      extensionsToTreatAsEsm: ['.ts'],
+      transformIgnorePatterns: ['/node_modules/(?!vitallens-core)'],
       moduleNameMapper: {
         'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model\\.json$':
           '<rootDir>/__mocks__/modelJsonMock.js',
@@ -65,8 +94,8 @@ module.exports = {
         'dist/faceDetection\\.worker\\.node\\.bundle\\.js$':
           '<rootDir>/__mocks__/faceDetection.worker.node.bundle.js',
         '^tfjs-provider$': '<rootDir>/src/tfjs-provider.node.ts',
+        'vitallens_core_bg\\.wasm$': '<rootDir>/__mocks__/wasmMock.js',
       },
-      transformIgnorePatterns: ['/node_modules/(?!vitallens-core)'],
       setupFilesAfterEnv: ['./jest.setup.ts'],
     },
   ],

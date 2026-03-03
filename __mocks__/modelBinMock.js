@@ -1,7 +1,9 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const fs = require('fs');
-const path = require('path');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const realModelBinPath = path.resolve(
   __dirname,
@@ -11,4 +13,4 @@ const rawBin = fs.readFileSync(realModelBinPath);
 const base64Bin = rawBin.toString('base64');
 const dataUrl = `data:application/octet-stream;base64,${base64Bin}`;
 
-module.exports = dataUrl;
+export default dataUrl;
