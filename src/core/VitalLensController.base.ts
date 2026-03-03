@@ -305,17 +305,19 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
             new Float32Array(incrementalResult.state.data)
           );
         }
+        // Feed the chunk into Wasm to accumulate in the buffer
         await this.vitalsEstimateManager.processIncrementalResult(
           incrementalResult,
           frameIterator.getId(),
-          'complete',
+          'incremental', 
           true,
-          false
+          false 
         );
       }
       chunkCounter++;
     }
 
+    // Trigger the final Global calculation on the accumulated buffer
     const result = await this.vitalsEstimateManager.getResult(
       frameIterator.getId()
     );

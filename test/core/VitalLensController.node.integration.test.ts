@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { VitalLensController } from '../../src/core/VitalLensController.node';
 import { VitalLensOptions, VitalLensResult } from '../../src/types/core';
 import {
@@ -11,6 +12,9 @@ import {
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function getTestDevApiKey(): string {
   const apiKey = process.env.VITALLENS_DEV_API_KEY;
