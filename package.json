@@ -96,9 +96,6 @@
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0"
   },
-  "optionalDependencies": {
-    "@tensorflow/tfjs-node": "^4.22.0"
-  },
   "devDependencies": {
     "@babel/preset-env": "^7.26.7",
     "@babel/preset-typescript": "^7.26.0",
@@ -115,7 +112,6 @@
     "@rollup/plugin-url": "^8.0.2",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
-    "@tensorflow/tfjs-node": "^4.22.0",
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
@@ -130,23 +126,12 @@
     "express": "^5.1.0",
     "globals": "^16.2.0",
     "jsdom": "^28.1.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.5.3",
     "rollup": "^4.59.0",
     "rollup-plugin-string": "^3.0.0",
     "typescript": "^5.8.3",
     "vitest": "^4.0.18"
-  },
-  "overrides": {
-    "tar": "^7.4.3",
-    "axios": "^1.7.9",
-    "basic-ftp": "^5.2.0",
-    "serialize-javascript": "^6.0.2",
-    "@typescript-eslint/typescript-estree": {
-      "minimatch": "^9.0.7"
-    },
-    "glob": {
-      "minimatch": "^9.0.7"
-    }
   },
   "engines": {
     "node": ">=18.0.0"
