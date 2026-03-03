@@ -42,25 +42,4 @@ describe('POSHandler', () => {
       expect(result).toEqual([]);
     });
   });
-
-  describe('postprocess', () => {
-    it('should detrend and standardize the signal', () => {
-      // Create a simple linearly increasing signal.
-      const rawSignal = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-      const fps = 30;
-      const processed = posHandler.postprocess('ppg', rawSignal, fps, false);
-      // Check same length.
-      expect(processed.length).toBe(rawSignal.length);
-
-      // Compute mean and std.
-      const mean = processed.reduce((sum, v) => sum + v, 0) / processed.length;
-      const stdDev = Math.sqrt(
-        processed.reduce((sum, v) => sum + (v - mean) ** 2, 0) /
-          processed.length
-      );
-      // Expect near zero mean and near unit standard deviation.
-      expect(mean).toBeCloseTo(0, 2);
-      expect(stdDev).toBeCloseTo(1, 2);
-    });
-  });
 });

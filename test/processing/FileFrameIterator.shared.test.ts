@@ -13,6 +13,23 @@ import {
 import { IFFmpegWrapper } from '../../src/types/IFFmpegWrapper';
 import { IFaceDetectionWorker } from '../../src/types/IFaceDetectionWorker';
 
+jest.mock('../../src/core/wasmProvider', () => {
+  return {
+    getCore: jest.fn().mockResolvedValue({
+      calculateRoi: jest.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
+      computeBufferConfig: jest.fn().mockReturnValue({}),
+      BufferPlanner: jest.fn().mockImplementation(() => ({
+        evaluateTarget: jest.fn(),
+        poll: jest.fn(),
+      })),
+      Session: jest.fn().mockImplementation(() => ({
+        processJs: jest.fn(),
+        reset: jest.fn(),
+      })),
+    })
+  };
+});
+
 // Dummy FFmpeg wrapper that simulates behavior for testing.
 class DummyFFmpegWrapper implements IFFmpegWrapper {
   init = jest.fn(async () => Promise.resolve());

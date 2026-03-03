@@ -7,6 +7,22 @@ import FFmpegWrapper from '../../src/utils/FFmpegWrapper.browser';
 import { StreamProcessor } from '../../src/processing/StreamProcessor.browser';
 import { FaceDetectionWorker } from '../../src/ssd/FaceDetectionWorker.browser';
 
+jest.mock('../../src/core/wasmProvider', () => {
+  return {
+    getCore: jest.fn().mockResolvedValue({
+      calculateRoi: jest.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
+      computeBufferConfig: jest.fn().mockReturnValue({}),
+      BufferPlanner: jest.fn().mockImplementation(() => ({
+        evaluateTarget: jest.fn(),
+        poll: jest.fn(),
+      })),
+      Session: jest.fn().mockImplementation(() => ({
+        processJs: jest.fn(),
+        reset: jest.fn(),
+      })),
+    })
+  };
+});
 jest.mock('../../src/utils/RestClient.browser');
 jest.mock('../../src/utils/FFmpegWrapper.browser');
 jest.mock('../../src/processing/StreamProcessor.browser');

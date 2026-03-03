@@ -19,6 +19,22 @@ import { IStreamProcessor } from '../../src/types/IStreamProcessor';
 import { FrameIteratorFactory } from '../../src/processing/FrameIteratorFactory';
 import { BufferedResultsConsumer } from '../../src/processing/BufferedResultsConsumer';
 
+jest.mock('../../src/core/wasmProvider', () => {
+  return {
+    getCore: jest.fn().mockResolvedValue({
+      calculateRoi: jest.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
+      computeBufferConfig: jest.fn().mockReturnValue({}),
+      BufferPlanner: jest.fn().mockImplementation(() => ({
+        evaluateTarget: jest.fn(),
+        poll: jest.fn(),
+      })),
+      Session: jest.fn().mockImplementation(() => ({
+        processJs: jest.fn(),
+        reset: jest.fn(),
+      })),
+    })
+  };
+});
 jest.mock('../../src/processing/BufferManager');
 jest.mock('../../src/processing/FrameIteratorFactory');
 jest.mock('../../src/methods/MethodHandler');
@@ -63,6 +79,7 @@ class TestVitalLensController extends VitalLensControllerBase {
     bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>,
+    onStreamReset: () => Promise<void>,
     onFaceDetected?: (face: any) => void
   ): IStreamProcessor {
     return {
@@ -92,7 +109,6 @@ describe('VitalLensControllerBase', () => {
       cleanup: jest.fn(),
       getReady: jest.fn().mockReturnValue(true),
       process: jest.fn(),
-      postprocess: jest.fn(),
     });
     // Instantiate a new controller
     controller = new TestVitalLensController(mockOptions);
@@ -106,8 +122,7 @@ describe('VitalLensControllerBase', () => {
       expect(FrameIteratorFactory).toHaveBeenCalled();
       expect(VitalsEstimateManager).toHaveBeenCalledWith(
         expect.any(Function),
-        mockOptions,
-        expect.any(Function)
+        mockOptions
       );
       expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
         mockOptions,

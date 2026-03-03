@@ -31,6 +31,7 @@ class TestStreamProcessor extends StreamProcessorBase {
           rotation: 0,
           issues: false,
         },
+        timestamp: currentTime,
       },
     });
     this.handleFaceDetectionResult(fakeEvent);
@@ -54,15 +55,18 @@ class TestStreamProcessor extends StreamProcessorBase {
       });
     }
     if (data && data.detections && data.detections.length > 0) {
-      // Update ROI to the first detection.
+      // Simulate the exact logic in StreamProcessor.browser.ts
       const detection = data.detections[0];
-      this.roi = detection;
-      // Simulate adding a new buffer for the updated ROI.
-      this.bufferManager.addBuffer(detection, this.methodConfig, 1);
+      const activeRoi = this.bufferManager.processTarget(detection, data.timestamp, this.methodConfig);
+      if (activeRoi) {
+        this.pendingRoi = activeRoi;
+      }
     } else {
       // If no detections, trigger onNoFace and clean up.
-      this.onNoFace();
+      this.roi = null;
+      this.pendingRoi = null;
       this.bufferManager.cleanup();
+      this.onNoFace();
     }
   }
 }
@@ -107,18 +111,17 @@ describe('StreamProcessor', () => {
   let onStreamResetMock: jest.Mock;
 
   beforeEach(() => {
-    // Create a mock BufferManager with the necessary methods.
+    // Create a mock BufferManager matching the new API
     mockBufferManager = {
-      addBuffer: jest.fn(),
+      processTarget: jest.fn(() => mockROI),
+      poll: jest.fn(() => ({ buffer_id: 'fake-id', take_count: 5, keep_count: 2 })),
+      consumeCommand: jest.fn(async () => mockFrame4D),
       add: jest.fn(),
-      isReady: jest.fn(() => true),
-      consume: jest.fn(async () => mockFrame4D),
       getState: jest.fn(() => new Float32Array([1.0, 2.0, 3.0])),
       setState: jest.fn(),
       resetState: jest.fn(),
       cleanup: jest.fn(),
       isEmpty: jest.fn(() => false),
-      size: jest.fn(() => 5),
     } as unknown as jest.Mocked<BufferManager>;
 
     // Create a mock MethodHandler that returns a fake state.
@@ -163,7 +166,7 @@ describe('StreamProcessor', () => {
     onFaceDetectedMock = jest.fn();
   });
 
-  test('should initialize with the correct ROI and buffer', () => {
+  test('should initialize with the correct global ROI', () => {
     const processor = new TestStreamProcessor(
       options,
       () => methodConfig,
@@ -180,15 +183,11 @@ describe('StreamProcessor', () => {
 
     processor.init();
 
-    // When a global ROI is provided and face detector is not used, the ROI should be set and a buffer added.
-    expect(mockBufferManager.addBuffer).toHaveBeenCalledWith(
-      options.globalRoi,
-      methodConfig,
-      1
-    );
+    // When a global ROI is provided and face detector is not used, the ROI should be set to global ROI.
+    expect((processor as any).roi).toEqual(options.globalRoi);
   });
 
-  test('should start processing frames and trigger prediction', async () => {
+  test('should start processing frames and trigger prediction via poll', async () => {
     const processor = new TestStreamProcessor(
       options,
       () => methodConfig,
@@ -210,9 +209,24 @@ describe('StreamProcessor', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(mockFrameIterator.start).toHaveBeenCalled();
+    
+    // In the loop, since options.globalRoi is set, it will call processTarget to keep it alive
+    expect(mockBufferManager.processTarget).toHaveBeenCalledWith(
+      options.globalRoi,
+      expect.any(Number),
+      methodConfig
+    );
+
     // Expect that for each yielded frame the BufferManager.add method was invoked.
     expect(mockBufferManager.add).toHaveBeenCalled();
-    // Expect that when buffers are ready and the method handler is ready, process() is invoked.
+    
+    // It should have polled for a command and consumed it
+    expect(mockBufferManager.poll).toHaveBeenCalledWith(expect.any(Number), 'Stream');
+    expect(mockBufferManager.consumeCommand).toHaveBeenCalledWith(
+      expect.objectContaining({ buffer_id: 'fake-id' })
+    );
+
+    // Expect that method handler process() is invoked.
     expect(mockMethodHandler.process).toHaveBeenCalled();
     // Expect buffered results consumer to have been started
     expect(mockBufferedResultsConsumer.start).toHaveBeenCalled();
@@ -247,7 +261,7 @@ describe('StreamProcessor', () => {
     expect(onNoFaceMock).not.toHaveBeenCalled(); // Ensure the wrong callback wasn't called
   });
 
-  test('should update ROI on face detection', async () => {
+  test('should update ROI on face detection using processTarget', async () => {
     const processor = new TestStreamProcessor(
       options,
       () => methodConfig,
@@ -262,14 +276,14 @@ describe('StreamProcessor', () => {
       onFaceDetectedMock
     );
 
-    // Call triggerFaceDetection with a frame.
-    processor.triggerFaceDetection(mockFrame3D, 0);
+    // Call triggerFaceDetection with a frame and mock timestamp
+    processor.triggerFaceDetection(mockFrame3D, 12345);
 
-    // Expect that BufferManager.addBuffer is called with the detected ROI.
-    expect(mockBufferManager.addBuffer).toHaveBeenCalledWith(
+    // Expect that BufferManager.processTarget is called with the detected ROI.
+    expect(mockBufferManager.processTarget).toHaveBeenCalledWith(
       { x0: 10, y0: 10, x1: 50, y1: 50 },
-      methodConfig,
-      1
+      12345,
+      methodConfig
     );
   });
 
@@ -290,7 +304,7 @@ describe('StreamProcessor', () => {
 
     // Simulate a face detection event with no detections.
     const fakeEvent = new MessageEvent('message', {
-      data: { detections: [] },
+      data: { detections: [], timestamp: 12345 },
     });
     processor.handleFaceDetectionResult(fakeEvent);
 
@@ -339,9 +353,7 @@ describe('StreamProcessor', () => {
     const fakeEvent = new MessageEvent('message', {
       data: {
         detections: [{ x0: 10, y0: 10, x1: 50, y1: 50, confidence: 0.95 }],
-        probeInfo: {
-          /*...*/
-        },
+        timestamp: 12345,
       },
     });
 

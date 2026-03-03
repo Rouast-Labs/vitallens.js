@@ -14,13 +14,6 @@ import {
   VitalLensAPIQuotaExceededError,
 } from '../utils/errors';
 import { IRestClient, ResolveModelResponse } from '../types/IRestClient';
-import {
-  adaptiveDetrend,
-  movingAverage,
-  movingAverageSizeForResponse,
-  standardize,
-} from '../utils/arrayOps';
-import { VITAL_REGISTRY, getVitalKeyFromCode } from '../config/vitalRegistry';
 
 const STREAM_RESET_BUFFER_THRESHOLD = 100; // Frames
 
@@ -77,8 +70,19 @@ export class VitalLensAPIHandler extends MethodHandler {
   private _parseAndSetConfig(response: ResolveModelResponse): void {
     const apiConfig = response.config;
 
+    // TODO: Get this from vitallens-core
+    const aliases: Record<string, string> = {
+      'ppg': 'ppg_waveform',
+      'resp': 'respiratory_waveform',
+      'hr': 'heart_rate',
+      'rr': 'respiratory_rate',
+      'sdnn': 'hrv_sdnn',
+      'rmssd': 'hrv_rmssd',
+      'lfhf': 'hrv_lfhf'
+    };
+
     const supportedVitals = (apiConfig.supported_vitals || [])
-      .map((code) => getVitalKeyFromCode(code))
+      .map((code) => aliases[code] || code)
       .filter(Boolean) as Vital[];
 
     this.config = {
@@ -245,57 +249,5 @@ export class VitalLensAPIHandler extends MethodHandler {
         error instanceof Error ? error.message : 'Unknown error'
       );
     }
-  }
-
-  /**
-   * Postprocess the estimated signal.
-   * @param signalType The signal type (e.g. 'ppg_waveform').
-   * @param data The raw estimated signal.
-   * @param fps The sampling frequency of the estimated signal.
-   * @param light Whether to do only light processing.
-   * @returns The filtered signal.
-   */
-  postprocess(
-    signalType: string,
-    data: number[],
-    fps: number,
-    light: boolean
-  ): number[] {
-    const meta = VITAL_REGISTRY[signalType];
-    const proc = meta?.processing;
-    const constraints = proc?.constraints;
-
-    if (!proc || proc.method === 'none') {
-      return data;
-    }
-
-    let processed = data;
-    const minFreq = constraints?.fmin ?? 0.5;
-    const maxFreq = constraints?.fmax ?? 4.0;
-
-    // Detrend
-    switch (proc.method) {
-      case 'detrend':
-        processed = light ? data : adaptiveDetrend(data, fps, minFreq);
-        break;
-      case 'smooth':
-        processed = data;
-        break;
-    }
-
-    // Smoothing
-    if (maxFreq) {
-      const windowSize = movingAverageSizeForResponse(fps, maxFreq);
-      if (windowSize > 1) {
-        processed = movingAverage(processed, windowSize);
-      }
-    }
-
-    // Standardization
-    if (!light && proc.standardize) {
-      processed = standardize(processed);
-    }
-
-    return processed;
   }
 }

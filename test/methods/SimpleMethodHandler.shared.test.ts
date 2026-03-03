@@ -15,16 +15,6 @@ describe('SimpleMethodHandler', () => {
     protected algorithm(rgb: Frame): number[] {
       return [1, 2, 3];
     }
-
-    // New: implement the postprocess method.
-    public postprocess(
-      signalType: 'ppg' | 'resp',
-      data: number[],
-      fps: number
-    ): number[] {
-      // For testing we simply return the data unchanged.
-      return data;
-    }
   }
 
   const mockOptions: VitalLensOptions = {

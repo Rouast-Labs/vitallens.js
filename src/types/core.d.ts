@@ -50,7 +50,7 @@ export interface VitalLensOptions {
 export interface MethodConfig {
   method: Method;
   fpsTarget: number;
-  roiMethod: 'face' | 'upper_body_cropped' | 'forehead';
+  roiMethod: 'face' | 'upper_body' | 'upper_body_cropped' | 'forehead';
   inputSize?: number;
   minWindowLength: number;
   minWindowLengthState?: number;

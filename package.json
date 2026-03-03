@@ -89,6 +89,7 @@
     "mathjs": "^15.1.0",
     "semver": "^7.7.1",
     "uuid": "^11.0.5",
+    "vitallens-core": "^0.1.0",
     "ws": "^8.18.2"
   },
   "peerDependencies": {
