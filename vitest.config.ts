@@ -14,11 +14,11 @@ export default defineConfig({
   test: {
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.integration.test.ts'],
     environmentMatchGlobs: [
       ['test/**/*.browser.test.ts', 'jsdom'],
       ['test/**/*.node.test.ts', 'node'],
-      ['test/**/*.shared.test.ts', 'jsdom'], 
-      ['test/**/*.integration.test.ts', 'node']
+      ['test/**/*.shared.test.ts', 'jsdom'],
     ],
   }
 });

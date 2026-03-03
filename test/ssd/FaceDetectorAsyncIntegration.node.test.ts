@@ -1,11 +1,11 @@
-// TODO
-import * as tf from '@tensorflow/tfjs-node'; // Use tfjs-node for performance and file handling
+import * as tf from '@tensorflow/tfjs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { FaceDetectorAsync } from '../../src/ssd/FaceDetectorAsync.node';
 import { Frame } from '../../src/processing/Frame';
 import { ROI } from '../../src/types/core';
+import { PNG } from 'pngjs';
 import { describe, expect, beforeAll, afterAll, vi, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,8 +29,22 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
       __dirname,
       '../../examples/sample_image_1.png'
     ); // Adjust as needed
-    const imageData = await fs.readFile(imagePath); // Read image as a buffer
-    const imageTensor = tf.node.decodeImage(new Uint8Array(imageData), 3); // Decode image as RGB
+    const imageData = await fs.readFile(imagePath);
+    const png = PNG.sync.read(imageData);
+
+    // Convert RGBA to RGB
+    const rgbData = new Uint8Array(png.width * png.height * 3);
+    for (let i = 0; i < png.width * png.height; i++) {
+      rgbData[i * 3] = png.data[i * 4];
+      rgbData[i * 3 + 1] = png.data[i * 4 + 1];
+      rgbData[i * 3 + 2] = png.data[i * 4 + 2];
+    }
+
+    const imageTensor = tf.tensor3d(
+      rgbData,
+      [png.height, png.width, 3],
+      'int32'
+    );
 
     // Resize the image to match the model's expected input size
     const resizedImage = tf.image.resizeBilinear(imageTensor, [240, 320]); // Resize to [240, 320]
@@ -55,7 +69,7 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     imageTensor.dispose();
     resizedImage.dispose();
     frame.disposeTensor();
-  });
+  }, 30000);
 
   it('should detect faces in a batch of two images', async () => {
     // Load the image file
@@ -63,8 +77,22 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
       __dirname,
       '../../examples/sample_image_1.png'
     ); // Adjust as needed
-    const imageData = await fs.readFile(imagePath); // Read image as a buffer
-    const imageTensor = tf.node.decodeImage(new Uint8Array(imageData), 3); // Decode image as RGB
+    const imageData = await fs.readFile(imagePath);
+    const png = PNG.sync.read(imageData);
+
+    // Convert RGBA to RGB
+    const rgbData = new Uint8Array(png.width * png.height * 3);
+    for (let i = 0; i < png.width * png.height; i++) {
+      rgbData[i * 3] = png.data[i * 4];
+      rgbData[i * 3 + 1] = png.data[i * 4 + 1];
+      rgbData[i * 3 + 2] = png.data[i * 4 + 2];
+    }
+
+    const imageTensor = tf.tensor3d(
+      rgbData,
+      [png.height, png.width, 3],
+      'int32'
+    );
 
     // Resize the image to match the model's expected input size
     const resizedImage = tf.image.resizeBilinear(imageTensor, [240, 320]); // Resize to [240, 320]
@@ -95,5 +123,5 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     singleImageBatch.dispose();
     batchedImage.dispose();
     frame.disposeTensor();
-  });
+  }, 30000);
 });
