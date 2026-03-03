@@ -8,13 +8,13 @@
   "exports": {
     ".": {
       "browser": {
-        "import": "./dist/vitallens.browser.js",
-        "types": "./dist/types/index.browser.d.ts"
+        "types": "./dist/types/index.browser.d.ts",
+        "import": "./dist/vitallens.browser.js"
       },
       "node": {
+        "types": "./dist/types/index.node.d.ts",
         "import": "./dist/vitallens.esm.js",
-        "require": "./dist/vitallens.cjs.js",
-        "types": "./dist/types/index.node.d.ts"
+        "require": "./dist/vitallens.cjs.js"
       }
     }
   },
@@ -24,11 +24,11 @@
     "build": "tsc && rollup -c",
     "prepare": "npm run build",
     "build:integration": "rollup -c --environment BUILD_INTEGRATION",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects node browser",
-    "test:browser": "NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects browser",
-    "test:node": "NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects node",
-    "test:browser-integration": "npm run build:integration && NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects browser-integration",
-    "test:node-integration": "npm run build:integration && NODE_OPTIONS='--experimental-vm-modules' jest --selectProjects node-integration",
+    "test": "vitest run",
+    "test:browser": "vitest run test/**/*.browser.test.ts test/**/*.shared.test.ts",
+    "test:node": "vitest run test/**/*.node.test.ts",
+    "test:browser-integration": "npm run build:integration && vitest run test/**/*.browser.integration.test.ts",
+    "test:node-integration": "npm run build:integration && cross-env NODE_OPTIONS='--experimental-wasm-modules' vitest run test/**/*.node.integration.test.ts",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.{ts,js,json,css,md}\"",
     "start:browser": "EXAMPLE_TO_OPEN=browser/vitals_monitor node scripts/server.cjs",
@@ -117,11 +117,10 @@
     "@tensorflow/tfjs-core": "^4.22.0",
     "@tensorflow/tfjs-node": "^4.22.0",
     "@types/fluent-ffmpeg": "^2.1.27",
-    "@types/jest": "^30.0.0",
-    "@types/puppeteer": "^7.0.4",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.34.1",
+    "@vitest/browser": "^4.0.18",
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
@@ -130,16 +129,12 @@
     "eslint-plugin-prettier": "^5.5.4",
     "express": "^5.1.0",
     "globals": "^16.2.0",
-    "jest": "^30.2.0",
-    "jest-dev-server": "^11.0.0",
-    "jest-environment-jsdom": "^30.2.0",
-    "jest-puppeteer": "^11.0.0",
+    "jsdom": "^28.1.0",
     "prettier": "^3.5.3",
-    "puppeteer": "^24.17.0",
     "rollup": "^4.59.0",
     "rollup-plugin-string": "^3.0.0",
-    "ts-jest": "^29.2.5",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.0.18"
   },
   "overrides": {
     "tar": "^7.4.3",

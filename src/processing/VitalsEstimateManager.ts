@@ -73,13 +73,15 @@ export class VitalsEstimateManager implements IVitalsEstimateManager {
     if (wasmResult.vitals) {
       for (const [key, v] of Object.entries(wasmResult.vitals)) {
         const vital = v as any;
-        result.vital_signs[key] = {
-          ...result.vital_signs[key],
-          value: vital.value,
-          confidence: vital.confidence,
-          unit: vital.unit,
-          note: vital.note,
-        };
+        if (vital.value !== undefined && vital.value !== null) {
+          result.vital_signs[key] = {
+            ...result.vital_signs[key],
+            value: vital.value,
+            confidence: vital.confidence,
+            unit: vital.unit,
+            note: vital.note,
+          };
+        }
       }
     }
 

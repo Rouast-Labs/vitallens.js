@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { VitalLensController } from '../../src/core/VitalLensController.browser';
@@ -6,70 +7,67 @@ import { RestClient } from '../../src/utils/RestClient.browser';
 import FFmpegWrapper from '../../src/utils/FFmpegWrapper.browser';
 import { StreamProcessor } from '../../src/processing/StreamProcessor.browser';
 import { FaceDetectionWorker } from '../../src/ssd/FaceDetectionWorker.browser';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 
-jest.mock('../../src/core/wasmProvider', () => {
+vi.mock('../../src/core/wasmProvider', () => {
   return {
-    getCore: jest.fn().mockResolvedValue({
-      calculateRoi: jest.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
-      computeBufferConfig: jest.fn().mockReturnValue({}),
-      BufferPlanner: jest.fn().mockImplementation(() => ({
-        evaluateTarget: jest.fn(),
-        poll: jest.fn(),
+    getCore: vi.fn().mockResolvedValue({
+      calculateRoi: vi
+        .fn()
+        .mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
+      computeBufferConfig: vi.fn().mockReturnValue({}),
+      BufferPlanner: vi.fn().mockImplementation(() => ({
+        evaluateTarget: vi.fn(),
+        poll: vi.fn(),
       })),
-      Session: jest.fn().mockImplementation(() => ({
-        processJs: jest.fn(),
-        reset: jest.fn(),
+      Session: vi.fn().mockImplementation(() => ({
+        processJs: vi.fn(),
+        reset: vi.fn(),
       })),
-    })
+    }),
   };
 });
-jest.mock('../../src/utils/RestClient.browser');
-jest.mock('../../src/utils/FFmpegWrapper.browser');
-jest.mock('../../src/processing/StreamProcessor.browser');
-jest.mock('../../src/ssd/FaceDetectionWorker.browser');
-jest.mock('@ffmpeg/ffmpeg', () => ({
-  FFmpeg: jest.fn(() => ({
-    load: jest.fn(),
-    FS: jest.fn(),
-    run: jest.fn(),
+vi.mock('../../src/utils/RestClient.browser');
+vi.mock('../../src/utils/FFmpegWrapper.browser');
+vi.mock('../../src/processing/StreamProcessor.browser');
+vi.mock('../../src/ssd/FaceDetectionWorker.browser');
+vi.mock('@ffmpeg/ffmpeg', () => ({
+  FFmpeg: vi.fn(() => ({
+    load: vi.fn(),
+    FS: vi.fn(),
+    run: vi.fn(),
   })),
 }));
-jest.mock(
-  '../../dist/faceDetection.worker.browser.bundle.js',
-  () => 'data:application/javascript;base64,ZmFrZSBjb2Rl'
-);
-global.URL.createObjectURL = jest.fn(
+vi.mock('../../dist/faceDetection.worker.browser.bundle.js', () => ({
+  default: 'data:application/javascript;base64,ZmFrZSBjb2Rl',
+}));
+global.URL.createObjectURL = vi.fn(
   () => 'data:application/javascript;base64,ZmFrZSBjb2Rl'
 );
 
-// Define a FakeWorker that implements the Worker interface.
 class FakeWorker extends EventTarget implements Worker {
   onerror: ((this: AbstractWorker, ev: ErrorEvent) => any) | null = null;
   onmessage: ((this: AbstractWorker, ev: MessageEvent) => any) | null = null;
-  onmessageerror: ((this: AbstractWorker, ev: MessageEvent) => any) | null =
-    null;
+  onmessageerror: ((this: AbstractWorker, ev: MessageEvent) => any) | null = null;
 
-  addEventListener: Worker['addEventListener'] = jest.fn();
-  removeEventListener: Worker['removeEventListener'] = jest.fn();
-  postMessage: Worker['postMessage'] = jest.fn();
-  terminate: Worker['terminate'] = jest.fn();
-  dispatchEvent: Worker['dispatchEvent'] = jest.fn();
+  addEventListener: Worker['addEventListener'] = vi.fn();
+  removeEventListener: Worker['removeEventListener'] = vi.fn();
+  postMessage: Worker['postMessage'] = vi.fn();
+  terminate: Worker['terminate'] = vi.fn();
+  dispatchEvent: Worker['dispatchEvent'] = vi.fn();
 
-  constructor(
-    public scriptURL: string | URL,
-    public options?: WorkerOptions
-  ) {
+  constructor(public scriptURL: string | URL, public options?: WorkerOptions) {
     super();
   }
 }
 
-// Wrap FakeWorker in a jest mock constructor so we can inspect its calls.
-const FakeWorkerMock = jest
-  .fn()
-  .mockImplementation((scriptURL: string | URL, options?: WorkerOptions) => {
-    return new FakeWorker(scriptURL, options);
-  });
-// Assign our mock to the global Worker.
+const FakeWorkerMock = vi.fn().mockImplementation(function (
+  scriptURL: string | URL,
+  options?: WorkerOptions
+) {
+  return new FakeWorker(scriptURL, options);
+});
+
 global.Worker = FakeWorkerMock as unknown as typeof Worker;
 
 describe('VitalLensController (Browser)', () => {
@@ -82,8 +80,7 @@ describe('VitalLensController (Browser)', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    // Instantiate a new controller for each test.
+    vi.clearAllMocks();
     controller = new VitalLensController(mockOptions);
   });
 
@@ -93,7 +90,6 @@ describe('VitalLensController (Browser)', () => {
         mockOptions.apiKey
       );
       expect(RestClient).toHaveBeenCalledWith(mockOptions.apiKey, undefined);
-      // Since RestClient is a mock constructor, we can also check that the returned value is an instance.
       expect(restClient).toBeInstanceOf(RestClient);
     });
 
@@ -103,7 +99,6 @@ describe('VitalLensController (Browser)', () => {
         mockOptions.proxyUrl
       );
       expect(RestClient).toHaveBeenCalledWith('', mockOptions.proxyUrl);
-      // Since RestClient is a mock constructor, we can also check that the returned value is an instance.
       expect(restClient).toBeInstanceOf(RestClient);
     });
   });
@@ -118,14 +113,11 @@ describe('VitalLensController (Browser)', () => {
 
   describe('createFaceDetectionWorker', () => {
     test('should create a FaceDetectionWorker using an inline worker', () => {
-      // Clear any previous calls.
       FakeWorkerMock.mockClear();
-      (FaceDetectionWorker as jest.Mock).mockClear();
+      (FaceDetectionWorker as vi.Mock).mockClear();
 
-      // Call the method.
       (controller as any).createFaceDetectionWorker();
 
-      // Verify that our FakeWorkerMock was called with the inline worker bundle.
       expect(FakeWorkerMock).toHaveBeenCalledTimes(1);
       const callArgs = FakeWorkerMock.mock.calls[0];
       expect(callArgs[0]).toBe(
@@ -133,9 +125,7 @@ describe('VitalLensController (Browser)', () => {
       );
       expect(callArgs.length).toBe(2);
 
-      // Get the worker instance created by FakeWorkerMock.
       const workerInstance = FakeWorkerMock.mock.results[0].value;
-      // Verify that FaceDetectionWorker was constructed with that worker instance.
       expect(FaceDetectionWorker).toHaveBeenCalledTimes(1);
       expect(FaceDetectionWorker).toHaveBeenCalledWith(workerInstance);
     });
@@ -143,7 +133,6 @@ describe('VitalLensController (Browser)', () => {
 
   describe('createStreamProcessor', () => {
     test('should throw an error if setVideoStream is called without initializing frameIteratorFactory', async () => {
-      // If frameIteratorFactory is missing, setVideoStream should throw.
       controller['frameIteratorFactory'] = null;
       await expect(controller.setVideoStream()).rejects.toThrow(
         'FrameIteratorFactory is not initialized.'
@@ -154,13 +143,13 @@ describe('VitalLensController (Browser)', () => {
       const mockStream = {} as MediaStream;
       const mockVideoElement = document.createElement('video');
       const mockFrameIterator = {
-        start: jest.fn(),
-        stop: jest.fn(),
-        [Symbol.asyncIterator]: jest.fn().mockReturnValue({
-          next: jest.fn().mockResolvedValue({ value: null, done: true }),
+        start: vi.fn(),
+        stop: vi.fn(),
+        [Symbol.asyncIterator]: vi.fn().mockReturnValue({
+          next: vi.fn().mockResolvedValue({ value: null, done: true }),
         }),
       };
-      controller['frameIteratorFactory']!.createStreamFrameIterator = jest
+      controller['frameIteratorFactory']!.createStreamFrameIterator = vi
         .fn()
         .mockReturnValue(mockFrameIterator);
       await controller.setVideoStream(mockStream, mockVideoElement);
@@ -177,8 +166,8 @@ describe('VitalLensController (Browser)', () => {
         expect.any(Object), // bufferedResultsConsumer
         expect.any(Function), // onPredict
         expect.any(Function), // onNoFace
-        expect.any(Function), // onStreamReset (NEW)
-        expect.any(Function) // onFaceDetected (NEW)
+        expect.any(Function), // onStreamReset
+        expect.any(Function) // onFaceDetected
       );
     });
   });

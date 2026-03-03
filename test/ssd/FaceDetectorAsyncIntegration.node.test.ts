@@ -1,3 +1,4 @@
+// TODO
 import * as tf from '@tensorflow/tfjs-node'; // Use tfjs-node for performance and file handling
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -5,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { FaceDetectorAsync } from '../../src/ssd/FaceDetectorAsync.node';
 import { Frame } from '../../src/processing/Frame';
 import { ROI } from '../../src/types/core';
+import { describe, expect, beforeAll, afterAll, vi, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,7 +20,7 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
   });
 
   afterAll(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('should detect faces in a single image', async () => {

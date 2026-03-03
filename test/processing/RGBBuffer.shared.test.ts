@@ -4,6 +4,7 @@
 import { RGBBuffer } from '../../src/processing/RGBBuffer';
 import { ROI } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
+import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 
 describe('RGBBuffer', () => {
   let buffer: RGBBuffer;
@@ -26,7 +27,7 @@ describe('RGBBuffer', () => {
 
   afterEach(() => {
     buffer.clear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('preprocess', () => {
@@ -155,7 +156,7 @@ describe('RGBBuffer', () => {
           dtype: 'float32',
           timestamp: [1000 + i],
         });
-        jest.spyOn(frame, 'release').mockImplementation(() => {});
+        vi.spyOn(frame, 'release').mockImplementation(() => {});
         await buffer.add(frame);
       }
 

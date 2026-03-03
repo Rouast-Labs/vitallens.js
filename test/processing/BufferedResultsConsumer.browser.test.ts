@@ -1,25 +1,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// @vitest-environment jsdom
 
 import { BufferedResultsConsumer } from '../../src/processing/BufferedResultsConsumer';
 import { VitalLensResult } from '../../src/types';
+import { describe, expect, beforeEach, vi, afterEach, it } from 'vitest';
 
 describe('BufferedResultsConsumer', () => {
   let consumer: BufferedResultsConsumer;
-  let dispatchMock: jest.Mock;
-  let mockPerformanceNow: jest.SpyInstance;
+  let dispatchMock: vi.Mock;
+  let mockPerformanceNow: vi.SpyInstance;
 
   beforeEach(() => {
     // Use fake timers to control requestAnimationFrame and setTimeout
-    jest.useFakeTimers();
-    mockPerformanceNow = jest.spyOn(performance, 'now');
+    vi.useFakeTimers();
+    mockPerformanceNow = vi.spyOn(performance, 'now');
 
-    dispatchMock = jest.fn();
+    dispatchMock = vi.fn();
     consumer = new BufferedResultsConsumer(dispatchMock);
   });
 
   afterEach(() => {
     // Restore real timers and mocks after each test
-    jest.useRealTimers();
+    vi.useRealTimers();
     mockPerformanceNow.mockRestore();
   });
 
@@ -54,12 +56,12 @@ describe('BufferedResultsConsumer', () => {
 
     // Time is before display_time, should not dispatch
     mockPerformanceNow.mockReturnValue(1499);
-    jest.runOnlyPendingTimers(); // Simulates one requestAnimationFrame callback
+    vi.runOnlyPendingTimers(); // Simulates one requestAnimationFrame callback
     expect(dispatchMock).not.toHaveBeenCalled();
 
     // Time is after display_time, should dispatch
     mockPerformanceNow.mockReturnValue(1501);
-    jest.runOnlyPendingTimers(); // Simulates the next requestAnimationFrame callback
+    vi.runOnlyPendingTimers(); // Simulates the next requestAnimationFrame callback
     expect(dispatchMock).toHaveBeenCalledWith(result);
     expect((consumer as any).resultQueue).toHaveLength(0);
   });
@@ -85,7 +87,7 @@ describe('BufferedResultsConsumer', () => {
     consumer.start();
 
     mockPerformanceNow.mockReturnValue(2300); // Current time is 2.3s
-    jest.runOnlyPendingTimers(); // Simulates one requestAnimationFrame callback
+    vi.runOnlyPendingTimers(); // Simulates one requestAnimationFrame callback
 
     expect(dispatchMock).toHaveBeenCalledTimes(1);
     expect(dispatchMock).toHaveBeenCalledWith(results[1]);
@@ -95,7 +97,7 @@ describe('BufferedResultsConsumer', () => {
   it('should not dispatch anything if the queue is empty', () => {
     consumer.start();
     mockPerformanceNow.mockReturnValue(1000);
-    jest.runOnlyPendingTimers(); // Simulates one requestAnimationFrame callback
+    vi.runOnlyPendingTimers(); // Simulates one requestAnimationFrame callback
     expect(dispatchMock).not.toHaveBeenCalled();
   });
 
@@ -120,7 +122,7 @@ describe('BufferedResultsConsumer', () => {
     consumer.start();
 
     mockPerformanceNow.mockReturnValue(3000); // Current time is 3.0s
-    jest.runOnlyPendingTimers(); // Simulates one requestAnimationFrame callback
+    vi.runOnlyPendingTimers(); // Simulates one requestAnimationFrame callback
 
     expect(dispatchMock).not.toHaveBeenCalled();
     expect((consumer as any).resultQueue).toHaveLength(2);

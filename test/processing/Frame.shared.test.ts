@@ -8,6 +8,7 @@ import {
   getRawDataFromTensor,
 } from '../../src/processing/Frame';
 import { ROI } from '../../src/types';
+import { describe, expect, it, test } from 'vitest';
 
 describe('Frame Class', () => {
   const mockROI: ROI[] = [

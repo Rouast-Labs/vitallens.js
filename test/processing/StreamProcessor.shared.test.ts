@@ -14,6 +14,7 @@ import {
 import { Frame } from '../../src/processing/Frame';
 import * as tf from '@tensorflow/tfjs-core';
 import { BufferedResultsConsumer } from '../../src/processing/BufferedResultsConsumer';
+import { describe, test, expect, beforeEach, vi, it } from 'vitest';
 
 class TestStreamProcessor extends StreamProcessorBase {
   triggerFaceDetection(frame: Frame, currentTime: number): void {
@@ -57,7 +58,11 @@ class TestStreamProcessor extends StreamProcessorBase {
     if (data && data.detections && data.detections.length > 0) {
       // Simulate the exact logic in StreamProcessor.browser.ts
       const detection = data.detections[0];
-      const activeRoi = this.bufferManager.processTarget(detection, data.timestamp, this.methodConfig);
+      const activeRoi = this.bufferManager.processTarget(
+        detection,
+        data.timestamp,
+        this.methodConfig
+      );
       if (activeRoi) {
         this.pendingRoi = activeRoi;
       }
@@ -99,54 +104,58 @@ const methodConfig: MethodConfig = {
   bufferOffset: 1,
   supportedVitals: ['heart_rate', 'ppg_waveform'],
 };
-let onFaceDetectedMock: jest.Mock;
+let onFaceDetectedMock: vi.Mock;
 
 describe('StreamProcessor', () => {
-  let mockBufferManager: jest.Mocked<BufferManager>;
-  let mockMethodHandler: jest.Mocked<MethodHandler>;
-  let mockFrameIterator: jest.Mocked<IFrameIterator>;
-  let mockBufferedResultsConsumer: jest.Mocked<BufferedResultsConsumer>;
-  let onPredictMock: jest.Mock;
-  let onNoFaceMock: jest.Mock;
-  let onStreamResetMock: jest.Mock;
+  let mockBufferManager: vi.Mocked<BufferManager>;
+  let mockMethodHandler: vi.Mocked<MethodHandler>;
+  let mockFrameIterator: vi.Mocked<IFrameIterator>;
+  let mockBufferedResultsConsumer: vi.Mocked<BufferedResultsConsumer>;
+  let onPredictMock: vi.Mock;
+  let onNoFaceMock: vi.Mock;
+  let onStreamResetMock: vi.Mock;
 
   beforeEach(() => {
     // Create a mock BufferManager matching the new API
     mockBufferManager = {
-      processTarget: jest.fn(() => mockROI),
-      poll: jest.fn(() => ({ buffer_id: 'fake-id', take_count: 5, keep_count: 2 })),
-      consumeCommand: jest.fn(async () => mockFrame4D),
-      add: jest.fn(),
-      getState: jest.fn(() => new Float32Array([1.0, 2.0, 3.0])),
-      setState: jest.fn(),
-      resetState: jest.fn(),
-      cleanup: jest.fn(),
-      isEmpty: jest.fn(() => false),
-    } as unknown as jest.Mocked<BufferManager>;
+      processTarget: vi.fn(() => mockROI),
+      poll: vi.fn(() => ({
+        buffer_id: 'fake-id',
+        take_count: 5,
+        keep_count: 2,
+      })),
+      consumeCommand: vi.fn(async () => mockFrame4D),
+      add: vi.fn(),
+      getState: vi.fn(() => new Float32Array([1.0, 2.0, 3.0])),
+      setState: vi.fn(),
+      resetState: vi.fn(),
+      cleanup: vi.fn(),
+      isEmpty: vi.fn(() => false),
+    } as unknown as vi.Mocked<BufferManager>;
 
     // Create a mock MethodHandler that returns a fake state.
     mockMethodHandler = {
-      process: jest.fn(async () => ({
+      process: vi.fn(async () => ({
         state: { data: new Float32Array([1, 2, 3]) },
       })),
-      getReady: jest.fn(() => true),
-      init: jest.fn(),
-      cleanup: jest.fn(),
-    } as unknown as jest.Mocked<MethodHandler>;
+      getReady: vi.fn(() => true),
+      init: vi.fn(),
+      cleanup: vi.fn(),
+    } as unknown as vi.Mocked<MethodHandler>;
 
     // Create a mock BufferedResultsConsumer
     mockBufferedResultsConsumer = {
-      addResults: jest.fn(),
-      start: jest.fn(),
-      stop: jest.fn(),
-    } as unknown as jest.Mocked<BufferedResultsConsumer>;
+      addResults: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    } as unknown as vi.Mocked<BufferedResultsConsumer>;
 
     // Create a mock FrameIterator that yields frames indefinitely.
     mockFrameIterator = {
-      [Symbol.asyncIterator]: jest.fn(() => {
+      [Symbol.asyncIterator]: vi.fn(() => {
         let count = 0;
         return {
-          next: jest.fn(() => {
+          next: vi.fn(() => {
             count++;
             // After a couple of frames, stop the iteration.
             if (count > 2) {
@@ -156,14 +165,14 @@ describe('StreamProcessor', () => {
           }),
         };
       }),
-      start: jest.fn(),
-      stop: jest.fn(),
-    } as unknown as jest.Mocked<IFrameIterator>;
+      start: vi.fn(),
+      stop: vi.fn(),
+    } as unknown as vi.Mocked<IFrameIterator>;
 
-    onPredictMock = jest.fn(async (result: VitalLensResult) => {});
-    onNoFaceMock = jest.fn(async () => {});
-    onStreamResetMock = jest.fn(async () => {});
-    onFaceDetectedMock = jest.fn();
+    onPredictMock = vi.fn(async (result: VitalLensResult) => {});
+    onNoFaceMock = vi.fn(async () => {});
+    onStreamResetMock = vi.fn(async () => {});
+    onFaceDetectedMock = vi.fn();
   });
 
   test('should initialize with the correct global ROI', () => {
@@ -209,7 +218,7 @@ describe('StreamProcessor', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(mockFrameIterator.start).toHaveBeenCalled();
-    
+
     // In the loop, since options.globalRoi is set, it will call processTarget to keep it alive
     expect(mockBufferManager.processTarget).toHaveBeenCalledWith(
       options.globalRoi,
@@ -219,9 +228,12 @@ describe('StreamProcessor', () => {
 
     // Expect that for each yielded frame the BufferManager.add method was invoked.
     expect(mockBufferManager.add).toHaveBeenCalled();
-    
+
     // It should have polled for a command and consumed it
-    expect(mockBufferManager.poll).toHaveBeenCalledWith(expect.any(Number), 'Stream');
+    expect(mockBufferManager.poll).toHaveBeenCalledWith(
+      expect.any(Number),
+      'Stream'
+    );
     expect(mockBufferManager.consumeCommand).toHaveBeenCalledWith(
       expect.objectContaining({ buffer_id: 'fake-id' })
     );

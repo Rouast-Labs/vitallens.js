@@ -1,21 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// @vitest-environment jsdom
 
 import { StreamFrameIterator } from '../../src/processing/StreamFrameIterator';
+import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 
-jest.mock('tfjs-provider', () => {
-  const actual = jest.requireActual('@tensorflow/tfjs-core');
+vi.mock('tfjs-provider', async () => {
+  const actual: any = await vi.importActual('@tensorflow/tfjs-core');
   return {
     ...actual,
     tidy: (fn: () => any) => fn(),
     browser: {
       ...actual.browser,
-      fromPixels: jest.fn(() => {
+      fromPixels: vi.fn(() => {
         return {
-          dataSync: jest.fn(() => new Uint8Array([1, 2, 3])),
+          dataSync: vi.fn(() => new Uint8Array([1, 2, 3])),
           shape: [1, 3],
           dtype: 'uint8',
-          dispose: jest.fn(),
+          dispose: vi.fn(),
         };
       }),
     },
@@ -24,12 +26,12 @@ jest.mock('tfjs-provider', () => {
       tidy: (fn: () => any) => fn(),
       browser: {
         ...actual.browser,
-        fromPixels: jest.fn(() => {
+        fromPixels: vi.fn(() => {
           return {
-            dataSync: jest.fn(() => new Uint8Array([1, 2, 3])),
+            dataSync: vi.fn(() => new Uint8Array([1, 2, 3])),
             shape: [1, 3],
             dtype: 'uint8',
-            dispose: jest.fn(),
+            dispose: vi.fn(),
           };
         }),
       },
@@ -55,7 +57,7 @@ describe('StreamFrameIterator', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('constructor', () => {
@@ -84,7 +86,7 @@ describe('StreamFrameIterator', () => {
     test('initializes and plays video element', async () => {
       const iterator = new StreamFrameIterator(mockStream);
 
-      jest.spyOn(mockVideoElement, 'play').mockResolvedValue();
+      vi.spyOn(mockVideoElement, 'play').mockResolvedValue();
 
       await iterator.start();
 
@@ -146,7 +148,7 @@ describe('StreamFrameIterator', () => {
 
       await iterator.start();
 
-      jest.spyOn(mockVideoElement, 'pause');
+      vi.spyOn(mockVideoElement, 'pause');
 
       iterator.stop();
 

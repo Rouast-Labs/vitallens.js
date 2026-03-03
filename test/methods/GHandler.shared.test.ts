@@ -2,6 +2,7 @@ import * as tf from '@tensorflow/tfjs-core';
 import { Frame } from '../../src/processing/Frame';
 import { GHandler } from '../../src/methods/GHandler';
 import { VitalLensOptions } from '../../src/types';
+import { describe, expect, beforeEach, it } from 'vitest';
 
 describe('GHandler', () => {
   let gHandler: GHandler;

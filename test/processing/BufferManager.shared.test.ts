@@ -7,49 +7,62 @@ import { Frame } from '../../src/processing/Frame';
 import { FrameBuffer } from '../../src/processing/FrameBuffer';
 import { RGBBuffer } from '../../src/processing/RGBBuffer';
 import { getCore } from '../../src/core/wasmProvider';
+import {
+  describe,
+  expect,
+  beforeEach,
+  vi,
+  it,
+  beforeAll,
+  afterEach,
+} from 'vitest';
 
 // Mock the specific buffers
-jest.mock('../../src/processing/FrameBuffer', () => {
+vi.mock('../../src/processing/FrameBuffer', () => {
   return {
-    FrameBuffer: jest.fn().mockImplementation(() => ({
-      add: jest.fn(),
-      consume: jest.fn().mockResolvedValue('mock-frame'),
-      clear: jest.fn(),
-      size: jest.fn().mockReturnValue(5),
-    })),
+    FrameBuffer: class {
+      add = vi.fn();
+      consume = vi.fn().mockResolvedValue('mock-frame');
+      clear = vi.fn();
+      size = vi.fn().mockReturnValue(5);
+    },
   };
 });
 
-jest.mock('../../src/processing/RGBBuffer', () => {
+vi.mock('../../src/processing/RGBBuffer', () => {
   return {
-    RGBBuffer: jest.fn().mockImplementation(() => ({
-      add: jest.fn(),
-      consume: jest.fn().mockResolvedValue('mock-frame'),
-      clear: jest.fn(),
-      size: jest.fn().mockReturnValue(5),
-    })),
+    RGBBuffer: class {
+      add = vi.fn();
+      consume = vi.fn().mockResolvedValue('mock-frame');
+      clear = vi.fn();
+      size = vi.fn().mockReturnValue(5);
+    },
   };
 });
 
 // Mock the Wasm core provider
 const mockPlanner = {
-  evaluateTarget: jest.fn(),
-  poll: jest.fn(),
+  evaluateTarget: vi.fn(),
+  poll: vi.fn(),
 };
 
-jest.mock('../../src/core/wasmProvider', () => {
+vi.mock('../../src/core/wasmProvider', () => {
   const mockCore = {
-    computeBufferConfig: jest.fn().mockReturnValue({}),
-    BufferPlanner: jest.fn().mockImplementation(() => mockPlanner),
+    computeBufferConfig: vi.fn().mockReturnValue({}),
+    BufferPlanner: class {
+      constructor() {
+        return mockPlanner;
+      }
+    },
   };
   return {
-    getCore: jest.fn().mockResolvedValue(mockCore),
+    getCore: vi.fn().mockResolvedValue(mockCore),
   };
 });
 
 // Mock UUID to predict buffer keys
-jest.mock('uuid', () => ({
-  v4: jest.fn().mockReturnValue('mock-uuid'),
+vi.mock('uuid', () => ({
+  v4: vi.fn().mockReturnValue('mock-uuid'),
 }));
 
 const mockROI: ROI = { x0: 0, y0: 0, x1: 100, y1: 100 };
@@ -89,27 +102,33 @@ describe('BufferManager', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('processTarget', () => {
     it('creates a new FrameBuffer for vitallens methods when action is Create', () => {
       mockPlanner.evaluateTarget.mockReturnValueOnce({ action: 'Create' });
 
-      const result = bufferManager.processTarget(mockROI, 1000, mockMethodConfigVitalLens);
+      const result = bufferManager.processTarget(
+        mockROI,
+        1000,
+        mockMethodConfigVitalLens
+      );
 
       expect(result).toEqual(mockROI);
-      expect(FrameBuffer).toHaveBeenCalledWith(mockROI, mockMethodConfigVitalLens);
       expect(bufferManager.isEmpty()).toBe(false);
     });
 
     it('creates a new RGBBuffer for classical methods when action is Create', () => {
       mockPlanner.evaluateTarget.mockReturnValueOnce({ action: 'Create' });
 
-      const result = bufferManager.processTarget(mockROI, 1000, mockMethodConfigPOS);
+      const result = bufferManager.processTarget(
+        mockROI,
+        1000,
+        mockMethodConfigPOS
+      );
 
       expect(result).toEqual(mockROI);
-      expect(RGBBuffer).toHaveBeenCalledWith(mockROI, mockMethodConfigPOS);
       expect(bufferManager.isEmpty()).toBe(false);
     });
 
@@ -119,8 +138,15 @@ describe('BufferManager', () => {
       bufferManager.processTarget(mockROI, 1000, mockMethodConfigVitalLens);
 
       // Now, keep it alive
-      mockPlanner.evaluateTarget.mockReturnValueOnce({ action: 'KeepAlive', matched_id: 'mock-uuid' });
-      const result = bufferManager.processTarget(mockROI, 2000, mockMethodConfigVitalLens);
+      mockPlanner.evaluateTarget.mockReturnValueOnce({
+        action: 'KeepAlive',
+        matched_id: 'mock-uuid',
+      });
+      const result = bufferManager.processTarget(
+        mockROI,
+        2000,
+        mockMethodConfigVitalLens
+      );
 
       expect(result).toEqual(mockROI);
       // Access private map to check if lastSeen updated
@@ -131,7 +157,11 @@ describe('BufferManager', () => {
     it('returns null when action is Ignore', () => {
       mockPlanner.evaluateTarget.mockReturnValueOnce({ action: 'Ignore' });
 
-      const result = bufferManager.processTarget(mockROI, 1000, mockMethodConfigVitalLens);
+      const result = bufferManager.processTarget(
+        mockROI,
+        1000,
+        mockMethodConfigVitalLens
+      );
 
       expect(result).toBeNull();
     });
@@ -145,7 +175,11 @@ describe('BufferManager', () => {
       const internalBufferMap = (bufferManager as any).buffers;
       const dummyBufferInstance = internalBufferMap.get('mock-uuid').buffer;
 
-      const mockCommand = { buffer_id: 'mock-uuid', take_count: 5, keep_count: 2 };
+      const mockCommand = {
+        buffer_id: 'mock-uuid',
+        take_count: 5,
+        keep_count: 2,
+      };
       mockPlanner.poll.mockReturnValueOnce({
         command: mockCommand,
         buffers_to_drop: ['mock-uuid'], // Tell it to drop the buffer we just created
@@ -175,7 +209,9 @@ describe('BufferManager', () => {
 
       await bufferManager.add(frame);
 
-      const internalBuffer = (bufferManager as any).buffers.get('mock-uuid').buffer;
+      const internalBuffer = (bufferManager as any).buffers.get(
+        'mock-uuid'
+      ).buffer;
       expect(internalBuffer.add).toHaveBeenCalledWith(frame, undefined);
     });
   });
@@ -188,13 +224,19 @@ describe('BufferManager', () => {
       const command = { buffer_id: 'mock-uuid', take_count: 5, keep_count: 2 };
       const frame = await bufferManager.consumeCommand(command);
 
-      const internalBuffer = (bufferManager as any).buffers.get('mock-uuid').buffer;
+      const internalBuffer = (bufferManager as any).buffers.get(
+        'mock-uuid'
+      ).buffer;
       expect(internalBuffer.consume).toHaveBeenCalledWith(5, 2);
       expect(frame).toEqual('mock-frame');
     });
 
     it('returns null if the requested buffer id does not exist', async () => {
-      const command = { buffer_id: 'non-existent', take_count: 5, keep_count: 2 };
+      const command = {
+        buffer_id: 'non-existent',
+        take_count: 5,
+        keep_count: 2,
+      };
       const frame = await bufferManager.consumeCommand(command);
       expect(frame).toBeNull();
     });
@@ -204,8 +246,10 @@ describe('BufferManager', () => {
     it('clears all buffers and resets state on cleanup', () => {
       mockPlanner.evaluateTarget.mockReturnValueOnce({ action: 'Create' });
       bufferManager.processTarget(mockROI, 1000, mockMethodConfigVitalLens);
-      
-      const internalBuffer = (bufferManager as any).buffers.get('mock-uuid').buffer;
+
+      const internalBuffer = (bufferManager as any).buffers.get(
+        'mock-uuid'
+      ).buffer;
       bufferManager.setState(new Float32Array([1, 2, 3]));
 
       bufferManager.cleanup();

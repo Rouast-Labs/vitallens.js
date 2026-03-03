@@ -2,6 +2,7 @@ import * as tf from '@tensorflow/tfjs-core';
 import { POSHandler } from '../../src/methods/POSHandler';
 import { Frame } from '../../src/processing/Frame';
 import { VitalLensOptions } from '../../src/types';
+import { describe, expect, beforeEach, it } from 'vitest';
 
 describe('POSHandler', () => {
   let posHandler: POSHandler;

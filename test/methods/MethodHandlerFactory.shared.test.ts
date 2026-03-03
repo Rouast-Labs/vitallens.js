@@ -8,10 +8,11 @@ import { GHandler } from '../../src/methods/GHandler';
 import { CHROMHandler } from '../../src/methods/CHROMHandler';
 import { IRestClient } from '../../src/types/IRestClient';
 import { VitalLensOptions } from '../../src/types/core';
+import { describe, expect, vi, it } from 'vitest';
 
 describe('MethodHandlerFactory', () => {
   const mockRestClient: Partial<IRestClient> = {
-    sendFrames: jest.fn(),
+    sendFrames: vi.fn(),
   };
 
   const mockOptionsAPI: VitalLensOptions = {

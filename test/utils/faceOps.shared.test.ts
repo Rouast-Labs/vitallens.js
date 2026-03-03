@@ -7,17 +7,18 @@ import {
 } from '../../src/utils/faceOps';
 import { MethodConfig, ROI } from '../../src/types/core';
 import { getCore } from '../../src/core/wasmProvider';
+import { describe, expect, beforeAll, vi, it } from 'vitest';
 
-jest.mock('../../src/core/wasmProvider', () => {
+vi.mock('../../src/core/wasmProvider', () => {
   const mockCore = {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    calculateRoi: jest.fn((rect, method, detector, w, h, forceEven) => {
+    calculateRoi: vi.fn((rect, method, detector, w, h, forceEven) => {
       // Return a dummy rect that mimics what the Rust core would output
       return { x: 116, y: 112, width: 48, height: 96 };
     }),
   };
   return {
-    getCore: jest.fn().mockResolvedValue(mockCore),
+    getCore: vi.fn().mockResolvedValue(mockCore),
   };
 });
 

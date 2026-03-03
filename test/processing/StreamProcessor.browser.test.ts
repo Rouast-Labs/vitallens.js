@@ -3,17 +3,15 @@
 
 import { StreamProcessor } from '../../src/processing/StreamProcessor.browser';
 import { Frame } from '../../src/processing/Frame';
-import {
-  checkROIValid,
-  getROIForMethod,
-} from '../../src/utils/faceOps';
+import { checkROIValid, getROIForMethod } from '../../src/utils/faceOps';
 import { VitalLensOptions, MethodConfig } from '../../src/types';
 import { BufferManager } from '../../src/processing/BufferManager';
 import { IFaceDetectionWorker } from '../../src/types/IFaceDetectionWorker';
+import { describe, expect, beforeEach, vi, it } from 'vitest';
 
-jest.mock('../../src/utils/faceOps', () => ({
-  getROIForMethod: jest.fn(),
-  checkROIValid: jest.fn(),
+vi.mock('../../src/utils/faceOps', async () => ({
+  getROIForMethod: vi.fn(),
+  checkROIValid: vi.fn(),
 }));
 
 describe('StreamProcessor (Browser)', () => {
@@ -38,31 +36,31 @@ describe('StreamProcessor (Browser)', () => {
   const dummyFrameIterator = {} as any;
   const dummyMethodHandler = {} as any;
   const dummyBufferedResultsConsumer = {} as any;
-  const dummyOnPredict = jest.fn(async (result) => {});
-  const dummyOnNoFace = jest.fn(async () => {});
-  const dummyOnStreamReset = jest.fn();
-  const dummyOnFaceDetected = jest.fn();
+  const dummyOnPredict = vi.fn(async (result) => {});
+  const dummyOnNoFace = vi.fn(async () => {});
+  const dummyOnStreamReset = vi.fn();
+  const dummyOnFaceDetected = vi.fn();
 
   // Minimal BufferManager mock aligned with new processTarget API.
   const fakeBufferManager = {
-    processTarget: jest.fn(),
-    poll: jest.fn(),
-    consumeCommand: jest.fn(),
-    add: jest.fn(),
-    cleanup: jest.fn(),
-    isEmpty: jest.fn(() => true),
-    setState: jest.fn(),
-    resetState: jest.fn(),
-    getState: jest.fn(() => new Float32Array([])),
-  } as unknown as jest.Mocked<BufferManager>;
+    processTarget: vi.fn(),
+    poll: vi.fn(),
+    consumeCommand: vi.fn(),
+    add: vi.fn(),
+    cleanup: vi.fn(),
+    isEmpty: vi.fn(() => true),
+    setState: vi.fn(),
+    resetState: vi.fn(),
+    getState: vi.fn(() => new Float32Array([])),
+  } as unknown as vi.Mocked<BufferManager>;
 
   // Minimal face detection worker mock.
-  const mockFaceDetectionWorker: jest.Mocked<IFaceDetectionWorker> = {
-    postMessage: jest.fn(),
-    terminate: jest.fn(),
+  const mockFaceDetectionWorker: vi.Mocked<IFaceDetectionWorker> = {
+    postMessage: vi.fn(),
+    terminate: vi.fn(),
     onmessage: null,
     onmessageerror: null,
-    detectFaces: jest.fn(async () => ({
+    detectFaces: vi.fn(async () => ({
       detections: [],
       probeInfo: {
         totalFrames: 0,
@@ -86,8 +84,8 @@ describe('StreamProcessor (Browser)', () => {
     roi: [{ x0: 0, y0: 0, x1: 1, y1: 1 }],
   };
   const mockFrame = {
-    toTransferable: jest.fn(() => dummyTransferable),
-    release: jest.fn(),
+    toTransferable: vi.fn(() => dummyTransferable),
+    release: vi.fn(),
   };
 
   // The processor instance under test.
@@ -159,12 +157,12 @@ describe('StreamProcessor (Browser)', () => {
     });
 
     it('should increment the request id on subsequent calls', () => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
       (processor as any).triggerFaceDetection(mockFrame as unknown as Frame, 1);
       (processor as any).triggerFaceDetection(mockFrame as unknown as Frame, 2);
-      const firstCall = (mockFaceDetectionWorker.postMessage as jest.Mock).mock
+      const firstCall = (mockFaceDetectionWorker.postMessage as vi.Mock).mock
         .calls[0][0];
-      const secondCall = (mockFaceDetectionWorker.postMessage as jest.Mock).mock
+      const secondCall = (mockFaceDetectionWorker.postMessage as vi.Mock).mock
         .calls[1][0];
       expect(firstCall.id).toBe(0);
       expect(secondCall.id).toBe(1);
@@ -173,11 +171,11 @@ describe('StreamProcessor (Browser)', () => {
 
   describe('handleFaceDetectionResult', () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     it('should log an error if event.data.error is present', () => {
-      const consoleErrorSpy = jest
+      const consoleErrorSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
       const errorEvent = new MessageEvent('message', {
@@ -217,10 +215,12 @@ describe('StreamProcessor (Browser)', () => {
     it('should set pendingRoi when processTarget returns an active ROI', () => {
       const mockDetection = { x0: 10, y0: 20, x1: 50, y1: 60 };
       const calculatedROI = { x0: 12, y0: 22, x1: 48, y1: 58 };
-      
-      (checkROIValid as jest.Mock).mockReturnValue(true);
-      (getROIForMethod as jest.Mock).mockReturnValue(calculatedROI);
-      (fakeBufferManager.processTarget as jest.Mock).mockReturnValue(calculatedROI);
+
+      (checkROIValid as vi.Mock).mockReturnValue(true);
+      (getROIForMethod as vi.Mock).mockReturnValue(calculatedROI);
+      (fakeBufferManager.processTarget as vi.Mock).mockReturnValue(
+        calculatedROI
+      );
 
       const probeInfo = { width: 640, height: 480 };
       const eventWithDetections = new MessageEvent('message', {
@@ -231,7 +231,7 @@ describe('StreamProcessor (Browser)', () => {
           timestamp: 2.5,
         },
       });
-      
+
       (processor as any).handleFaceDetectionResult(eventWithDetections);
 
       // Expect getROIForMethod to be called with the detection and image dimensions.
@@ -255,11 +255,11 @@ describe('StreamProcessor (Browser)', () => {
       const mockDetection = { x0: 10, y0: 20, x1: 50, y1: 60 };
       const calculatedROI = { x0: 12, y0: 22, x1: 48, y1: 58 };
 
-      (checkROIValid as jest.Mock).mockReturnValue(true);
-      (getROIForMethod as jest.Mock).mockReturnValue(calculatedROI);
-      
+      (checkROIValid as vi.Mock).mockReturnValue(true);
+      (getROIForMethod as vi.Mock).mockReturnValue(calculatedROI);
+
       // Simulate Planner returning null (e.g. "Ignore" action)
-      (fakeBufferManager.processTarget as jest.Mock).mockReturnValue(null);
+      (fakeBufferManager.processTarget as vi.Mock).mockReturnValue(null);
 
       // Reset pendingRoi to ensure it stays null
       (processor as any).pendingRoi = null;

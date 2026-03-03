@@ -4,9 +4,10 @@
 import { FrameIteratorBase } from '../../src/processing/FrameIterator.base';
 import { Frame } from '../../src/processing/Frame';
 import { v4 as uuidv4 } from 'uuid';
+import { describe, expect, beforeEach, vi, test } from 'vitest';
 
-jest.mock('uuid', () => ({
-  v4: jest.fn(() => 'mock-unique-id'),
+vi.mock('uuid', () => ({
+  v4: vi.fn(() => 'mock-unique-id'),
 }));
 
 describe('FrameIteratorBase', () => {

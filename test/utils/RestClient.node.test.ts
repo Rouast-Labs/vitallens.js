@@ -2,8 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { RestClient } from '../../src/utils/RestClient.node';
+import { describe, expect, beforeEach, vi, it } from 'vitest';
 
-const mockedFetch = jest.fn();
+const mockedFetch = vi.fn();
 global.fetch = mockedFetch;
 const { Response } = globalThis;
 
@@ -11,7 +12,7 @@ describe('RestClient (Node)', () => {
   let client: RestClient;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     client = new RestClient('test-api-key');
   });
 
@@ -47,7 +48,7 @@ describe('RestClient (Node)', () => {
   });
 
   it('should throw an error for network failure', async () => {
-    const mockedFetch = fetch as jest.MockedFunction<typeof fetch>;
+    const mockedFetch = fetch as vi.MockedFunction<typeof fetch>;
 
     // Mock a network failure
     mockedFetch.mockRejectedValueOnce(new Error('Network Error'));
