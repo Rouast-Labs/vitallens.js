@@ -16,6 +16,14 @@ class MockBuffer extends Buffer {
   }
 }
 
+// Mock mergeFrames since we aren't testing arrayOps here
+jest.mock('../../src/utils/arrayOps', () => ({
+  mergeFrames: jest.fn().mockResolvedValue({
+    getShape: () => [4, 1, 3], // Mocked return shape
+    release: jest.fn(),
+  }),
+}));
+
 describe('Buffer', () => {
   let buffer: MockBuffer;
   let roi: ROI;
@@ -39,6 +47,7 @@ describe('Buffer', () => {
 
   afterEach(() => {
     buffer.clear();
+    jest.clearAllMocks();
   });
 
   test('adds frames to the buffer and retains them on add()', async () => {
@@ -51,7 +60,6 @@ describe('Buffer', () => {
       timestamp: [1000],
     });
     await buffer.add(frame);
-    expect(buffer.isReady()).toBe(false);
     expect((buffer as any).buffer.size).toBe(1);
   });
 
@@ -65,24 +73,7 @@ describe('Buffer', () => {
       timestamp: [1000],
     });
     await buffer.add(frame, roi);
-    expect(buffer.isReady()).toBe(false);
     expect((buffer as any).buffer.size).toBe(1);
-  });
-
-  test('buffer isReady() when minimum frames are added', async () => {
-    for (let i = 0; i < methodConfig.minWindowLength; i++) {
-      const rawData = new Int32Array([i, i + 1, i + 2]).buffer;
-      const frame = new Frame({
-        rawData,
-        keepTensor: false,
-        shape: [1, 1, 3],
-        dtype: 'int32',
-        timestamp: [i * 1000],
-      });
-      await buffer.add(frame);
-    }
-
-    expect(buffer.isReady()).toBe(true);
   });
 
   test('maintains buffer size within maxWindowLength', async () => {
@@ -101,7 +92,8 @@ describe('Buffer', () => {
     expect((buffer as any).buffer.size).toBe(methodConfig.maxWindowLength);
   });
 
-  test('returns and clears frames beyond minWindowLength on consume()', async () => {
+  test('returns requested frames and retains overlap on consume()', async () => {
+    // Add 5 frames
     for (let i = 0; i < 5; i++) {
       const rawData = new Int32Array([i, i + 1, i + 2]).buffer;
       const frame = new Frame({
@@ -109,14 +101,24 @@ describe('Buffer', () => {
         keepTensor: false,
         shape: [1, 1, 3],
         dtype: 'int32',
-        timestamp: [i * 1000],
+        timestamp: [i * 1000], // timestamps: 0, 1000, 2000, 3000, 4000
       });
+      // Mock release so it doesn't throw when deleted
+      jest.spyOn(frame, 'release').mockImplementation(() => {});
       await buffer.add(frame);
     }
 
-    const consumedFrames = await buffer.consume();
-    expect(consumedFrames!.getShape()[0]).toBe(methodConfig.maxWindowLength);
-    expect((buffer as any).buffer.size).toBe(methodConfig.minWindowLength - 1);
+    // Consume 4 frames, keep 2 (overlap)
+    const consumedFrame = await buffer.consume(4, 2);
+
+    expect(consumedFrame).toBeDefined();
+    // The buffer originally had 5 items. We consumed 4 and kept 2 of those 4.
+    // That means 2 items were discarded, and 3 items remain (the 2 kept + the 1 not consumed).
+    expect((buffer as any).buffer.size).toBe(3);
+
+    // Ensure the remaining keys are the expected ones (timestamps 2000, 3000, 4000)
+    const keys = Array.from((buffer as any).buffer.keys()).sort();
+    expect(keys).toEqual([2000, 3000, 4000]);
   });
 
   test('empties the buffer on clear()', async () => {
@@ -149,24 +151,5 @@ describe('Buffer', () => {
     await buffer.add(frame);
     expect(preprocessSpy).toHaveBeenCalled();
     preprocessSpy.mockRestore();
-  });
-
-  test('isReadyState() returns true when buffer size meets minWindowLengthState', async () => {
-    methodConfig.minWindowLengthState = 2;
-    buffer = new MockBuffer(roi, methodConfig);
-    for (let i = 0; i < 2; i++) {
-      // minWindowLengthState is 2
-      const rawData = new Int32Array([i, i + 1, i + 2]).buffer;
-      const frame = new Frame({
-        rawData,
-        keepTensor: false,
-        shape: [1, 1, 3],
-        dtype: 'int32',
-        timestamp: [i * 1000],
-      });
-      await buffer.add(frame);
-    }
-
-    expect(buffer.isReadyState()).toBe(true);
   });
 });

@@ -43,3 +43,8 @@ declare module 'tfjs-provider' {
   export * from '@tensorflow/tfjs';
   export default tf;
 }
+
+declare module '*.wasm' {
+  const value: string;
+  export default value;
+}

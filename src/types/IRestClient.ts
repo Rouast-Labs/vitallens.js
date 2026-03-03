@@ -6,7 +6,7 @@ export interface ResolveModelResponse {
     n_inputs: number;
     input_size: number;
     fps_target: number;
-    roi_method: 'face' | 'upper_body_cropped' | 'forehead';
+    roi_method: 'face' | 'upper_body' | 'upper_body_cropped' | 'forehead';
     supported_vitals: string[];
   };
 }

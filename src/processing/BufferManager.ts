@@ -3,162 +3,169 @@ import { Frame } from './Frame';
 import { Buffer } from './Buffer';
 import { FrameBuffer } from './FrameBuffer';
 import { RGBBuffer } from './RGBBuffer';
+import { getCore } from '../core/wasmProvider';
+import { v4 as uuidv4 } from 'uuid';
 
-/**
- * Manages multiple FrameBuffers for handling different ROIs and method configurations.
- */
+let core: any = null;
+getCore().then((c) => (core = c));
+
 export class BufferManager {
-  private buffers: Map<string, { buffer: Buffer; createdAt: number }>;
+  private buffers: Map<
+    string,
+    { buffer: Buffer; createdAt: number; lastSeen: number; roi: ROI }
+  >;
   private state: Float32Array | null = null;
+  private planner: any = null;
 
   constructor() {
     this.buffers = new Map();
   }
 
-  /**
-   * Get the size of the most relevant buffer.
-   * @returns The size of the most relevant buffer.
-   */
-  size(): number {
-    const readyBuffer = this.getReadyBuffer();
-    return readyBuffer ? readyBuffer.size() : 0;
+  private ensurePlanner(methodConfig: MethodConfig) {
+    if (!this.planner && core) {
+      const sessionConfig = {
+        model_name: methodConfig.method,
+        supported_vitals: methodConfig.supportedVitals,
+        fps_target: methodConfig.fpsTarget,
+        input_size: methodConfig.inputSize || 40,
+        n_inputs: methodConfig.minWindowLengthState || 16,
+        roi_method: methodConfig.roiMethod,
+      };
+      const bufferConfig = core.computeBufferConfig(sessionConfig);
+      this.planner = new core.BufferPlanner(bufferConfig);
+    }
   }
 
-  /**
-   * Generates a unique buffer ID based on ROI.
-   * @param roi - The ROI associated with the buffer.
-   * @returns A unique buffer ID string.
-   */
-  private generateBufferId(roi: ROI): string {
-    return `${roi.x0},${roi.y0},${roi.x1},${roi.y1}`;
-  }
+  processTarget(
+    targetRoi: ROI,
+    timestamp: number,
+    methodConfig: MethodConfig
+  ): ROI | null {
+    this.ensurePlanner(methodConfig);
+    if (!this.planner) return null;
 
-  /**
-   * Adds a new buffer for a given ROI and method configuration.
-   * @param roi - The ROI for the new buffer.
-   * @param methodConfig - The method config.
-   * @param timestamp - The current timestamp.
-   */
-  addBuffer(roi: ROI, methodConfig: MethodConfig, timestamp: number): void {
-    const id = this.generateBufferId(roi);
-    if (!this.buffers.has(id)) {
+    const activeBuffers = Array.from(this.buffers.entries()).map(
+      ([id, data]) => ({
+        id,
+        roi: {
+          x: data.roi.x0,
+          y: data.roi.y0,
+          width: data.roi.x1 - data.roi.x0,
+          height: data.roi.y1 - data.roi.y0,
+        },
+        count: data.buffer.size(),
+        created_at: data.createdAt,
+        last_seen: data.lastSeen,
+      })
+    );
+
+    const rect = {
+      x: targetRoi.x0,
+      y: targetRoi.y0,
+      width: targetRoi.x1 - targetRoi.x0,
+      height: targetRoi.y1 - targetRoi.y0,
+    };
+
+    const action = this.planner.evaluateTarget(rect, timestamp, activeBuffers);
+
+    if (action.action === 'Create') {
+      const newId = uuidv4();
       let newBuffer: Buffer;
       if (methodConfig.method.startsWith('vitallens')) {
-        newBuffer = new FrameBuffer(roi, methodConfig);
+        newBuffer = new FrameBuffer(targetRoi, methodConfig);
       } else {
-        newBuffer = new RGBBuffer(roi, methodConfig);
+        newBuffer = new RGBBuffer(targetRoi, methodConfig);
       }
-      this.buffers.set(id, { buffer: newBuffer, createdAt: timestamp });
+      this.buffers.set(newId, {
+        buffer: newBuffer,
+        createdAt: timestamp,
+        lastSeen: timestamp,
+        roi: targetRoi,
+      });
+      return targetRoi;
+    } else if (action.action === 'KeepAlive') {
+      const matchedId = action.matched_id;
+      if (matchedId && this.buffers.has(matchedId)) {
+        this.buffers.get(matchedId)!.lastSeen = timestamp;
+        return this.buffers.get(matchedId)!.roi;
+      }
     }
+    return null;
   }
 
-  /**
-   * Checks if there is a managed buffer which is ready for processing.
-   * @returns True if the buffer has enough frames, false otherwise.
-   */
-  isReady(): boolean {
-    return this.getReadyBuffer() != null;
-  }
+  poll(
+    currentTime: number,
+    mode: 'Stream' | 'File',
+    flush: boolean = false
+  ): any {
+    if (!this.planner) return null;
 
-  /**
-   * Retrieves the most recent buffer that is ready for processing.
-   * @returns The ready buffer or null if none are ready.
-   */
-  private getReadyBuffer(): Buffer | null {
-    let readyBuffer: Buffer | null = null;
-    let timestamp = 0;
+    const activeBuffers = Array.from(this.buffers.entries()).map(
+      ([id, data]) => ({
+        id,
+        roi: {
+          x: data.roi.x0,
+          y: data.roi.y0,
+          width: data.roi.x1 - data.roi.x0,
+          height: data.roi.y1 - data.roi.y0,
+        },
+        count: data.buffer.size(),
+        created_at: data.createdAt,
+        last_seen: data.lastSeen,
+      })
+    );
+
     const hasState = this.state !== null;
+    const plan = this.planner.poll(
+      activeBuffers,
+      currentTime,
+      mode,
+      hasState,
+      flush
+    );
 
-    for (const { buffer, createdAt } of this.buffers.values()) {
-      if (hasState) {
-        if (buffer.isReadyState() && createdAt > timestamp) {
-          readyBuffer = buffer;
-          timestamp = createdAt;
-        }
-      } else {
-        if (buffer.isReady() && createdAt > timestamp) {
-          readyBuffer = buffer;
-          timestamp = createdAt;
-        }
+    if (plan.buffers_to_drop) {
+      for (const dropId of plan.buffers_to_drop) {
+        this.buffers.get(dropId)?.buffer.clear();
+        this.buffers.delete(dropId);
       }
     }
 
-    this.cleanupBuffers(timestamp);
-
-    return readyBuffer;
+    return plan.command;
   }
 
-  /**
-   * Adds a frame to the active buffers.
-   * @param frame - The frame to add.
-   * @param overrideRoi - Use this ROI instead of buffer ROI (optional).
-   */
   async add(frame: Frame, overrideRoi?: ROI): Promise<void> {
     for (const { buffer } of this.buffers.values()) {
-      buffer.add(frame, overrideRoi);
+      await buffer.add(frame, overrideRoi);
     }
   }
 
-  /**
-   * Consumes frames from the newest ready buffer.
-   * @returns The merged Frame or null if no buffer is ready.
-   */
-  async consume(): Promise<Frame | null> {
-    const readyBuffer = this.getReadyBuffer();
-    return readyBuffer ? readyBuffer.consume() : Promise.resolve(null);
+  async consumeCommand(command: any): Promise<Frame | null> {
+    const target = this.buffers.get(command.buffer_id);
+    if (!target) return null;
+    return target.buffer.consume(command.take_count, command.keep_count);
   }
 
-  /**
-   * Cleans up buffers that are older than the given timestamp.
-   * @param timestamp - The current timestamp.
-   */
-  private cleanupBuffers(timestamp: number): void {
-    this.buffers.forEach(({ createdAt, buffer }, id) => {
-      if (createdAt < timestamp) {
-        buffer.clear();
-        this.buffers.delete(id);
-      }
-    });
-  }
-
-  /**
-   * Check if this manager has no buffers.
-   * @returns True if this manager has no buffers.
-   */
   isEmpty(): boolean {
     return this.buffers.size === 0;
   }
 
-  /**
-   * Clears all buffers, resets the manager and state.
-   */
   cleanup(): void {
     for (const { buffer } of this.buffers.values()) {
-      buffer.clear(); // Clear and release all frames in the buffer
+      buffer.clear();
     }
     this.buffers.clear();
     this.state = null;
   }
 
-  /**
-   * Sets the recurrent state.
-   * @param state - The new state to set.
-   */
   setState(state: Float32Array): void {
     this.state = state;
   }
 
-  /**
-   * Reset the recurrent state to null.
-   */
   resetState(): void {
     this.state = null;
   }
 
-  /**
-   * Gets the current recurrent state.
-   * @returns The current state.
-   */
   getState(): Float32Array | null {
     return this.state;
   }

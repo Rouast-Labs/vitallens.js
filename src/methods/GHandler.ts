@@ -1,13 +1,6 @@
 import { Frame } from '../processing/Frame';
 import { SimpleMethodHandler } from './SimpleMethodHandler';
 import tf from 'tfjs-provider';
-import {
-  standardize,
-  movingAverage,
-  movingAverageSizeForHRResponse,
-  adaptiveDetrend,
-} from '../../src/utils/arrayOps';
-import { CALC_HR_MIN } from '../config/constants';
 
 /**
  * Handler for processing frames using the G algorithm.
@@ -35,30 +28,5 @@ export class GHandler extends SimpleMethodHandler {
     });
 
     return result;
-  }
-
-  /**
-   * Postprocess the estimated signal.
-   * Applies detrending and standardization.
-   * @param signalType The signal type (irrelevant here - always ppg_waveform).
-   * @param data The raw estimated signal.
-   * @param fps The sampling frequency.
-   * @param light Whether to do only light processing.
-   * @returns The filtered pulse signal.
-   */
-  postprocess(
-    signalType: string,
-    data: number[],
-    fps: number,
-    light: boolean
-  ): number[] {
-    let processed = light ? data : adaptiveDetrend(data, fps, CALC_HR_MIN / 60);
-    // Determine the moving average window size.
-    const windowSize = movingAverageSizeForHRResponse(fps);
-    // Apply the moving average filter.
-    processed = movingAverage(processed, windowSize);
-    // Standardize the filtered signal.
-    if (!light) processed = standardize(processed);
-    return processed;
   }
 }

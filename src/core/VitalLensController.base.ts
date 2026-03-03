@@ -1,3 +1,4 @@
+import { getCore } from './wasmProvider';
 import { BufferManager } from '../processing/BufferManager';
 import { MethodHandler } from '../methods/MethodHandler';
 import { MethodHandlerFactory } from '../methods/MethodHandlerFactory';
@@ -46,8 +47,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     );
     this.vitalsEstimateManager = new VitalsEstimateManager(
       () => this.methodHandler.getConfig(),
-      this.options,
-      this.methodHandler.postprocess.bind(this.methodHandler)
+      this.options
     );
     if (options.globalRoi === undefined) {
       this.faceDetectionWorker = this.createFaceDetectionWorker();
@@ -129,6 +129,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     stream?: MediaStream,
     videoElement?: HTMLVideoElement
   ): Promise<void> {
+    await getCore();
     if (!isBrowser) {
       throw new Error(
         'setVideoStream is not supported yet in the Node environment.'
@@ -255,6 +256,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @returns The results after processing the video.
    */
   async processVideoFile(videoInput: VideoInput): Promise<VitalLensResult> {
+    await getCore();
     if (!this.frameIteratorFactory) {
       throw new Error('FrameIteratorFactory is not initialized.');
     }

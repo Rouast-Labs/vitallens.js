@@ -1,119 +1,8 @@
 import { MethodConfig, ROI } from '../types/core';
+import { getCore } from '../core/wasmProvider';
 
-/**
- * Utility function to clip a value to specified dimensions.
- * @param value - The value to clip.
- * @param minDim - The minimum allowable value.
- * @param maxDim - The maximum allowable value.
- * @returns The clipped value.
- */
-function clipValue(value: number, minDim: number, maxDim: number): number {
-  return Math.min(Math.max(value, minDim), maxDim);
-}
-
-/**
- * Convert face detection into an ROI by applying relative changes.
- * @param det - The face detection {x0, y0, x1, y1}.
- * @param relChange - Relative change to apply as [left, top, right, bottom].
- * @param clipDims - Optional constraints {frameWidth, frameHeight}.
- * @param forceEvenDims - Whether to force even dimensions for the ROI.
- * @returns The computed ROI in absolute vals [0, H/W] and format {x0, y0, x1, y1}.
- */
-export function getROIFromDetection(
-  det: ROI,
-  relChange: [number, number, number, number],
-  clipDims?: { width: number; height: number },
-  forceEvenDims: boolean = false
-): ROI {
-  const { x0, y0, x1, y1 } = det;
-  const [relChLeft, relChTop, relChRight, relChBottom] = relChange;
-  const width = x1 - x0;
-  const height = y1 - y0;
-
-  const absChLeft = Math.round(relChLeft * width);
-  const absChTop = Math.round(relChTop * height);
-  const absChRight = Math.round(relChRight * width);
-  const absChBottom = Math.round(relChBottom * height);
-
-  let roiX0 = x0 - absChLeft;
-  let roiY0 = y0 - absChTop;
-  let roiX1 = x1 + absChRight;
-  let roiY1 = y1 + absChBottom;
-
-  if (clipDims) {
-    roiX0 = clipValue(roiX0, 0, clipDims.width);
-    roiY0 = clipValue(roiY0, 0, clipDims.height);
-    roiX1 = clipValue(roiX1, 0, clipDims.width);
-    roiY1 = clipValue(roiY1, 0, clipDims.height);
-  }
-
-  if (forceEvenDims) {
-    roiX1 = (roiX1 - roiX0) % 2 != 0 ? roiX1 - 1 : roiX1;
-    roiY1 = (roiY1 - roiY0) % 2 != 0 ? roiY1 - 1 : roiY1;
-  }
-
-  return { x0: roiX0, y0: roiY0, x1: roiX1, y1: roiY1 };
-}
-
-/**
- * Convert face detection into face ROI (reduces width to 60% and height to 80%).
- * @param det - The face detection {x, y, width, height}.
- * @param clipDims - Optional constraints {frameWidth, frameHeight}.
- * @param forceEvenDims - Whether to force even dimensions for the ROI.
- * @returns The face ROI.
- */
-export function getFaceROI(
-  det: ROI,
-  clipDims: { width: number; height: number },
-  forceEvenDims: boolean = false
-): ROI {
-  return getROIFromDetection(
-    det,
-    [-0.2, -0.1, -0.2, -0.1],
-    clipDims,
-    forceEvenDims
-  );
-}
-
-/**
- * Convert face detection into forehead ROI.
- * @param det - The face detection {x, y, width, height}.
- * @param clipDims - Optional constraints {frameWidth, frameHeight}.
- * @param forceEvenDims - Whether to force even dimensions for the ROI.
- * @returns The forehead ROI.
- */
-export function getForeheadROI(
-  det: ROI,
-  clipDims: { width: number; height: number },
-  forceEvenDims: boolean = false
-): ROI {
-  return getROIFromDetection(
-    det,
-    [-0.35, -0.15, -0.35, -0.75],
-    clipDims,
-    forceEvenDims
-  );
-}
-
-/**
- * Convert face detection into upper body ROI and clip to frame constraints.
- * @param det - The face detection {x0, y0, x1, y1}.
- * @param clipDims - Constraints {frameWidth, frameHeight}.
- * @param cropped - Whether to create a cropped variant of the ROI.
- * @param forceEvenDims - Whether to force even dimensions for the ROI.
- * @returns The upper body ROI.
- */
-export function getUpperBodyROI(
-  det: ROI,
-  clipDims: { width: number; height: number },
-  cropped: boolean = true,
-  forceEvenDims: boolean = false
-): ROI {
-  const relChange: [number, number, number, number] = cropped
-    ? [0.19, 0.1455, 0.19, 0.2769]
-    : [0.25, 0.2, 0.25, 0.4];
-  return getROIFromDetection(det, relChange, clipDims, forceEvenDims);
-}
+let core: any = null;
+getCore().then(c => core = c);
 
 /**
  * Determines the ROI based on the specified roiMethod.
@@ -129,21 +18,36 @@ export function getROIForMethod(
   clipDims: { width: number; height: number },
   forceEvenDims: boolean = false
 ): ROI {
-  switch (methodConfig.roiMethod) {
-    case 'face':
-      return getFaceROI(det, clipDims, forceEvenDims);
-    case 'forehead':
-      return getForeheadROI(det, clipDims, forceEvenDims);
-    case 'upper_body_cropped':
-      if (!clipDims) {
-        throw new Error(
-          "clipDims must be provided for 'upper_body_cropped' ROI method."
-        );
-      }
-      return getUpperBodyROI(det, clipDims, true, forceEvenDims);
-    default:
-      throw new Error(`Unsupported roiMethod: ${methodConfig.roiMethod}`);
-  }
+  if (!core) throw new Error("Wasm core not initialized");
+
+  const rect = {
+    x: det.x0,
+    y: det.y0,
+    width: det.x1 - det.x0,
+    height: det.y1 - det.y0,
+  };
+
+  let roiMethod = 'Face';
+  if (methodConfig.roiMethod === 'forehead') roiMethod = 'Forehead';
+  else if (methodConfig.roiMethod === 'upper_body') roiMethod = 'UpperBody';
+  else if (methodConfig.roiMethod === 'upper_body_cropped') roiMethod = 'UpperBodyCropped';
+
+  const resultRect = core.calculateRoi(
+    rect,
+    roiMethod,
+    'Default',
+    clipDims.width,
+    clipDims.height,
+    forceEvenDims
+  );
+
+  return {
+    x0: resultRect.x,
+    y0: resultRect.y,
+    x1: resultRect.x + resultRect.width,
+    y1: resultRect.y + resultRect.height,
+    confidence: det.confidence
+  };
 }
 
 /**

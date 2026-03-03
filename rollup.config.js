@@ -73,7 +73,7 @@ const faceDetectionWorkerNodeConfig = {
       ],
     }),
     url({
-      include: ['models/**/*'],
+      include: ['models/**/*', '**/*.wasm'],
       limit: Infinity,
       emitFiles: false,
     }),
@@ -115,7 +115,7 @@ const faceDetectionWorkerBrowserConfig = {
       ],
     }),
     url({
-      include: ['models/**/*', '**/ffmpeg.worker.bundle.js'],
+      include: ['models/**/*', '**/ffmpeg.worker.bundle.js', '**/*.wasm'],
       limit: Infinity,
       emitFiles: false,
     }),
@@ -148,7 +148,7 @@ const nodeEsmConfig = {
       ],
     }),
     url({
-      include: ['**/faceDetection.worker.node.bundle.js'],
+      include: ['**/faceDetection.worker.node.bundle.js', '**/*.wasm'],
       limit: Infinity,
       emitFiles: false,
     }),
@@ -183,7 +183,7 @@ const nodeCjsConfig = {
       ],
     }),
     url({
-      include: ['**/faceDetection.worker.node.bundle.js'],
+      include: ['**/faceDetection.worker.node.bundle.js', '**/*.wasm'],
       limit: Infinity,
       emitFiles: false,
     }),
@@ -224,6 +224,7 @@ const browserConfig = {
       include: [
         '**/ffmpeg.worker.bundle.js',
         '**/faceDetection.worker.browser.bundle.js',
+        '**/*.wasm',
       ],
       limit: Infinity,
       emitFiles: false,
@@ -288,6 +289,7 @@ const browserSelfContainedConfig = {
       include: [
         '**/ffmpeg.worker.bundle.js',
         '**/faceDetection.worker.browser.bundle.js',
+        '**/*.wasm',
         '**/*.svg',
       ],
       limit: Infinity,
@@ -316,7 +318,7 @@ const ffmpegWrapperBrowserConfig = {
   onwarn,
   plugins: [
     url({
-      include: ['**/ffmpeg.worker.bundle.js'],
+      include: ['**/ffmpeg.worker.bundle.js', '**/*.wasm'],
       limit: Infinity,
       emitFiles: false,
     }),

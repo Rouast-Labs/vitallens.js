@@ -1,8 +1,4 @@
 import {
-  getROIFromDetection,
-  getFaceROI,
-  getForeheadROI,
-  getUpperBodyROI,
   getROIForMethod,
   getRepresentativeROI,
   getUnionROI,
@@ -10,72 +6,29 @@ import {
   checkROIInFace,
 } from '../../src/utils/faceOps';
 import { MethodConfig, ROI } from '../../src/types/core';
+import { getCore } from '../../src/core/wasmProvider';
 
-describe('getROIFromDetection', () => {
-  it('applies relative changes and computes ROI correctly', () => {
-    const det = { x0: 50, y0: 50, x1: 150, y1: 150 };
-    const relChange: [number, number, number, number] = [
-      -0.2, -0.1, -0.2, -0.1,
-    ];
-    const result = getROIFromDetection(det, relChange);
-    expect(result).toEqual({ x0: 70, y0: 60, x1: 130, y1: 140 });
-  });
-
-  it('clips ROI to dimensions when clipDims are provided', () => {
-    const det = { x0: 50, y0: 50, x1: 150, y1: 150 };
-    const relChange: [number, number, number, number] = [
-      -0.2, -0.1, -0.2, -0.1,
-    ];
-    const clipDims = { width: 120, height: 100 };
-    const result = getROIFromDetection(det, relChange, clipDims);
-    expect(result).toEqual({ x0: 70, y0: 60, x1: 120, y1: 100 });
-  });
-
-  it('ensures even dimensions when forceEvenDims is true', () => {
-    const det = { x0: 50, y0: 50, x1: 101, y1: 103 };
-    const relChange: [number, number, number, number] = [0, 0, 0, 0];
-    const result = getROIFromDetection(det, relChange, undefined, true);
-    expect(result).toEqual({ x0: 50, y0: 50, x1: 100, y1: 102 });
-  });
-});
-
-describe('getFaceROI', () => {
-  it('works for an example', () => {
-    const det = { x0: 100, y0: 100, x1: 180, y1: 220 };
-    const clipDims = { width: 220, height: 300 };
-    const result = getFaceROI(det, clipDims);
-    expect(result).toEqual({ x0: 116, y0: 112, x1: 164, y1: 208 });
-  });
-});
-
-describe('getForeheadROI', () => {
-  it('works for an example', () => {
-    const det = { x0: 100, y0: 100, x1: 180, y1: 220 };
-    const clipDims = { width: 220, height: 300 };
-    const result = getForeheadROI(det, clipDims);
-    expect(result).toEqual({ x0: 128, y0: 118, x1: 152, y1: 130 });
-  });
-});
-
-describe('getUpperBodyROI', () => {
-  it('computes the upper body ROI correctly for non-cropped mode', () => {
-    const det = { x0: 100, y0: 100, x1: 180, y1: 220 };
-    const clipDims = { width: 220, height: 300 };
-    const result = getUpperBodyROI(det, clipDims, false);
-    expect(result).toEqual({ x0: 80, y0: 76, x1: 200, y1: 268 });
-  });
-
-  it('computes the upper body ROI correctly for cropped mode', () => {
-    const det = { x0: 100, y0: 100, x1: 180, y1: 220 };
-    const clipDims = { width: 220, height: 300 };
-    const result = getUpperBodyROI(det, clipDims, true);
-    expect(result).toEqual({ x0: 85, y0: 83, x1: 195, y1: 253 });
-  });
+jest.mock('../../src/core/wasmProvider', () => {
+  const mockCore = {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    calculateRoi: jest.fn((rect, method, detector, w, h, forceEven) => {
+      // Return a dummy rect that mimics what the Rust core would output
+      return { x: 116, y: 112, width: 48, height: 96 };
+    }),
+  };
+  return {
+    getCore: jest.fn().mockResolvedValue(mockCore),
+  };
 });
 
 describe('getROIForMethod', () => {
-  it("returns face ROI when roiMethod is 'face'", () => {
-    const det = { x0: 50, y0: 50, x1: 150, y1: 150 };
+  beforeAll(async () => {
+    await getCore();
+  });
+
+  it('calls Wasm core calculateRoi and formats the output correctly', async () => {
+    const core = await getCore();
+    const det = { x0: 100, y0: 100, x1: 180, y1: 220, confidence: 0.95 };
     const methodConfig: MethodConfig = {
       roiMethod: 'face',
       method: 'vitallens',
@@ -84,26 +37,28 @@ describe('getROIForMethod', () => {
       maxWindowLength: 10,
       requiresState: false,
       bufferOffset: 1,
+      supportedVitals: [],
     };
-    const clipDims = { width: 200, height: 200 };
-    const result = getROIForMethod(det, methodConfig, clipDims);
-    expect(result).toEqual(getFaceROI(det, clipDims));
-  });
+    const clipDims = { width: 220, height: 300 };
 
-  it("returns upper body ROI when roiMethod is 'upper_body_cropped'", () => {
-    const det = { x0: 50, y0: 50, x1: 150, y1: 150 };
-    const methodConfig: MethodConfig = {
-      roiMethod: 'upper_body_cropped',
-      method: 'vitallens',
-      fpsTarget: 1,
-      minWindowLength: 0,
-      maxWindowLength: 10,
-      requiresState: false,
-      bufferOffset: 1,
-    };
-    const clipDims = { width: 200, height: 200 };
     const result = getROIForMethod(det, methodConfig, clipDims);
-    expect(result).toEqual(getUpperBodyROI(det, clipDims));
+
+    expect(result).toEqual({
+      x0: 116,
+      y0: 112,
+      x1: 164,
+      y1: 208,
+      confidence: 0.95,
+    });
+
+    expect(core.calculateRoi).toHaveBeenCalledWith(
+      { x: 100, y: 100, width: 80, height: 120 },
+      'Face',
+      'Default',
+      220,
+      300,
+      false
+    );
   });
 });
 

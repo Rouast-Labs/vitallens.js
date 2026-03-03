@@ -41,66 +41,28 @@ export abstract class Buffer {
   }
 
   /**
-   * Checks if the buffer is ready for processing.
-   * @returns True if the buffer has enough frames, false otherwise.
+   * Consumes a specific number of frames from the buffer and retains a specific overlap count.
    */
-  isReady(): boolean {
-    return this.buffer.size >= this.methodConfig.minWindowLength;
-  }
-
-  /**
-   * Checks if the buffer is ready for processing given state.
-   * @returns True if the buffer has enough frames given state, false otherwise.
-   */
-  isReadyState(): boolean {
-    if (this.methodConfig.minWindowLengthState) {
-      return this.buffer.size >= this.methodConfig.minWindowLengthState;
-    } else {
-      return this.isReady();
-    }
-  }
-
-  /**
-   * Consumes frames from the buffer but retains the last `minFrames`, returning a single merged Frame.
-   * @returns A single merged Frame or null if no frames are available.
-   */
-  async consume(): Promise<Frame | null> {
+  async consume(takeCount: number, keepCount: number): Promise<Frame | null> {
     const keys = Array.from(this.buffer.keys()).sort((a, b) => a - b);
-    if (keys.length === 0) {
-      return null;
-    }
+    if (keys.length === 0) return null;
 
-    const minWindowLength = this.methodConfig.minWindowLengthState
-      ? Math.min(
-          this.methodConfig.minWindowLengthState,
-          this.methodConfig.minWindowLength
-        )
-      : this.methodConfig.minWindowLength;
-    const retainCount = Math.min(minWindowLength - 1, this.buffer.size);
-    const retainKeys = keys.slice(-retainCount);
+    const consumedKeys = keys.slice(0, takeCount);
+    const retainKeys = consumedKeys.slice(-keepCount);
 
-    // Extract frames to be consumed
-    const consumedFrames = keys.map((key) => this.buffer.get(key)!);
+    const consumedFrames = consumedKeys.map(key => this.buffer.get(key)!);
 
-    // Merge frames asynchronously
     return mergeFrames(
       consumedFrames,
       !this.methodConfig.method.startsWith('vitallens')
     ).then((mergedFrame) => {
-      // Release tensors of frames that are not retained
-      for (const key of keys) {
+      for (const key of consumedKeys) {
         if (!retainKeys.includes(key)) {
           const frame = this.buffer.get(key);
           frame?.release();
           this.buffer.delete(key);
         }
       }
-
-      // Keep only the retained frames
-      this.buffer = new Map(
-        retainKeys.map((key) => [key, this.buffer.get(key)!])
-      );
-
       return mergedFrame;
     });
   }

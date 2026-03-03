@@ -2,6 +2,23 @@ import { FrameIteratorFactory } from '../../src/processing/FrameIteratorFactory'
 import { StreamFrameIterator } from '../../src/processing/StreamFrameIterator';
 import { MethodConfig } from '../../src/types';
 
+jest.mock('../../src/core/wasmProvider', () => {
+  return {
+    getCore: jest.fn().mockResolvedValue({
+      calculateRoi: jest.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
+      computeBufferConfig: jest.fn().mockReturnValue({}),
+      BufferPlanner: jest.fn().mockImplementation(() => ({
+        evaluateTarget: jest.fn(),
+        poll: jest.fn(),
+      })),
+      Session: jest.fn().mockImplementation(() => ({
+        processJs: jest.fn(),
+        reset: jest.fn(),
+      })),
+    })
+  };
+});
+
 global.MediaStream = class MediaStream {
   active = true;
   id = 'mock-stream-id';

@@ -114,18 +114,18 @@ describe('RGBBuffer', () => {
       });
       await buffer.add(frame);
       expect((buffer as any).buffer.size).toBe(1);
-      expect(buffer.isReady()).toBe(false);
+
       for (let i = 1; i < 3; i++) {
-        const frame = new Frame({
+        const loopFrame = new Frame({
           rawData,
           keepTensor: false,
           shape: [2, 2, 3],
           dtype: 'float32',
           timestamp: [1000 + i],
         });
-        await buffer.add(frame);
+        await buffer.add(loopFrame);
       }
-      expect(buffer.isReady()).toBe(true);
+      expect((buffer as any).buffer.size).toBe(3);
     });
 
     test('maintains buffer size within maxWindowLength', async () => {
@@ -144,7 +144,7 @@ describe('RGBBuffer', () => {
       expect((buffer as any).buffer.size).toBe(5);
     });
 
-    test('returns and clears frames beyond minWindowLength on consume()', async () => {
+    test('returns and retains overlap on consume()', async () => {
       const rawData = new Float32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
         .buffer;
       for (let i = 0; i < 5; i++) {
@@ -155,12 +155,13 @@ describe('RGBBuffer', () => {
           dtype: 'float32',
           timestamp: [1000 + i],
         });
+        jest.spyOn(frame, 'release').mockImplementation(() => {});
         await buffer.add(frame);
       }
-      const consumedFrames = await buffer.consume();
 
-      expect(consumedFrames!.getShape()[0]).toBe(5);
-      expect((buffer as any).buffer.size).toBe(2);
+      const consumedFrames = await buffer.consume(4, 2);
+      expect(consumedFrames!.getShape()[0]).toBe(4);
+      expect((buffer as any).buffer.size).toBe(3);
     });
 
     test('clears all frames on clear()', async () => {

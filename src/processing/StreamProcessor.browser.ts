@@ -1,10 +1,6 @@
 import { StreamProcessorBase } from './StreamProcessor.base';
 import { Frame } from './Frame';
-import {
-  checkFaceInROI,
-  checkROIValid,
-  getROIForMethod,
-} from '../utils/faceOps';
+import { checkROIValid, getROIForMethod } from '../utils/faceOps';
 
 export class StreamProcessor extends StreamProcessorBase {
   private faceDetectionRequestId: number = 0;
@@ -82,27 +78,42 @@ export class StreamProcessor extends StreamProcessorBase {
       });
     }
 
-    const shouldUpdateROI =
-      checkROIValid(det) &&
-      (this.roi === null ||
-        (this.options.method.startsWith('vitallens') &&
-          !checkFaceInROI(det, this.roi, [0.6, 1.0])) ||
-        !this.options.method.startsWith('vitallens'));
-
-    if (shouldUpdateROI) {
+    if (checkROIValid(det)) {
       const newRoi = getROIForMethod(
         det,
         this.methodConfig,
         { height: probeInfo.height, width: probeInfo.width },
         true
       );
-      this.pendingRoi = newRoi;
-      if (
-        this.bufferManager.isEmpty() ||
-        this.options.method.startsWith('vitallens')
-      ) {
-        this.bufferManager.addBuffer(newRoi, this.methodConfig, timestamp);
+
+      const activeRoi = this.bufferManager.processTarget(newRoi, timestamp, this.methodConfig);
+      if (activeRoi) {
+        this.pendingRoi = activeRoi;
       }
     }
   }
+
+  //   const shouldUpdateROI =
+  //     checkROIValid(det) &&
+  //     (this.roi === null ||
+  //       (this.options.method.startsWith('vitallens') &&
+  //         !checkFaceInROI(det, this.roi, [0.6, 1.0])) ||
+  //       !this.options.method.startsWith('vitallens'));
+
+  //   if (shouldUpdateROI) {
+  //     const newRoi = getROIForMethod(
+  //       det,
+  //       this.methodConfig,
+  //       { height: probeInfo.height, width: probeInfo.width },
+  //       true
+  //     );
+  //     this.pendingRoi = newRoi;
+  //     if (
+  //       this.bufferManager.isEmpty() ||
+  //       this.options.method.startsWith('vitallens')
+  //     ) {
+  //       this.bufferManager.addBuffer(newRoi, this.methodConfig, timestamp);
+  //     }
+  //   }
+  // }
 }

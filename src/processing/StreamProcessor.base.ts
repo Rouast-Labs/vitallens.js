@@ -80,11 +80,6 @@ export abstract class StreamProcessorBase {
   init() {
     if (!this.faceDetectionWorker && this.options.globalRoi) {
       this.roi = this.options.globalRoi;
-      this.bufferManager.addBuffer(
-        this.options.globalRoi,
-        this.methodConfig,
-        1
-      );
     }
   }
 
@@ -106,12 +101,24 @@ export abstract class StreamProcessorBase {
 
     const processFrames = async () => {
       while (!this.isPaused) {
+        const currentTime = performance.now() / 1000; // In seconds
+
+        // Keep global ROI active
+        if (this.options.globalRoi) {
+          const activeRoi = this.bufferManager.processTarget(
+            this.options.globalRoi,
+            currentTime,
+            this.methodConfig
+          );
+          if (activeRoi) {
+            this.pendingRoi = activeRoi;
+          }
+        }
+
         if (this.pendingRoi) {
           this.roi = this.pendingRoi;
           this.pendingRoi = null;
         }
-
-        const currentTime = performance.now() / 1000; // In seconds
 
         // Throttle to target FPS
         if (currentTime - this.lastProcessedTime < 1 / this.targetFps) {
@@ -148,51 +155,53 @@ export abstract class StreamProcessorBase {
           // If inference enabled and buffers + method are ready, run a prediction
           if (
             this.inferenceEnabled &&
-            this.bufferManager.isReady() &&
             this.methodHandler.getReady() &&
             !this.isPredicting
           ) {
-            this.isPredicting = true;
-            const bufferSize = this.bufferManager.size();
-            this.bufferManager.consume().then((mergedFrame) => {
-              if (!mergedFrame) {
-                this.isPredicting = false;
-                return;
-              }
-              const currentState = this.bufferManager.getState();
-              this.methodHandler
-                .process(
-                  mergedFrame,
-                  'stream',
-                  currentState as Float32Array,
-                  bufferSize
-                )
-                .then((incrementalResult) => {
-                  if (incrementalResult) {
-                    if (incrementalResult.state) {
-                      this.bufferManager.setState(
-                        new Float32Array(incrementalResult.state.data)
-                      );
-                    } else {
-                      this.bufferManager.resetState();
-                    }
-                    this.onPredict(incrementalResult);
-                  }
-                })
-                .catch((error) => {
-                  console.error('Error during prediction:', error);
-                  if (error.message.includes('Resetting stream')) {
-                    this.stop();
-                    this.onStreamReset();
-                  }
-                })
-                .finally(() => {
+            const command = this.bufferManager.poll(currentTime, 'Stream');
+            if (command) {
+              this.isPredicting = true;
+              this.bufferManager.consumeCommand(command).then((mergedFrame) => {
+                if (!mergedFrame) {
                   this.isPredicting = false;
-                  if (!this.methodConfig.method.startsWith('vitallens')) {
-                    mergedFrame.release();
-                  }
-                });
-            });
+                  return;
+                }
+                const currentState = this.bufferManager.getState();
+                const bufferSize = command.take_count;
+                this.methodHandler
+                  .process(
+                    mergedFrame,
+                    'stream',
+                    currentState as Float32Array,
+                    bufferSize
+                  )
+                  .then((incrementalResult) => {
+                    if (incrementalResult) {
+                      if (incrementalResult.state) {
+                        this.bufferManager.setState(
+                          new Float32Array(incrementalResult.state.data)
+                        );
+                      } else {
+                        this.bufferManager.resetState();
+                      }
+                      this.onPredict(incrementalResult);
+                    }
+                  })
+                  .catch((error) => {
+                    console.error('Error during prediction:', error);
+                    if (error.message.includes('Resetting stream')) {
+                      this.stop();
+                      this.onStreamReset();
+                    }
+                  })
+                  .finally(() => {
+                    this.isPredicting = false;
+                    if (!this.methodConfig.method.startsWith('vitallens')) {
+                      mergedFrame.release();
+                    }
+                  });
+              });
+            }
           }
 
           if (

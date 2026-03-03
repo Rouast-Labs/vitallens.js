@@ -4,16 +4,14 @@
 import { StreamProcessor } from '../../src/processing/StreamProcessor.browser';
 import { Frame } from '../../src/processing/Frame';
 import {
-  checkFaceInROI,
   checkROIValid,
   getROIForMethod,
 } from '../../src/utils/faceOps';
-import { VitalLensOptions, MethodConfig, VideoInput } from '../../src/types';
+import { VitalLensOptions, MethodConfig } from '../../src/types';
 import { BufferManager } from '../../src/processing/BufferManager';
 import { IFaceDetectionWorker } from '../../src/types/IFaceDetectionWorker';
 
 jest.mock('../../src/utils/faceOps', () => ({
-  checkFaceInROI: jest.fn(),
   getROIForMethod: jest.fn(),
   checkROIValid: jest.fn(),
 }));
@@ -45,18 +43,18 @@ describe('StreamProcessor (Browser)', () => {
   const dummyOnStreamReset = jest.fn();
   const dummyOnFaceDetected = jest.fn();
 
-  // Minimal BufferManager mock.
-  const fakeBufferManager: BufferManager = {
-    addBuffer: jest.fn(),
-    isReady: jest.fn(() => true),
+  // Minimal BufferManager mock aligned with new processTarget API.
+  const fakeBufferManager = {
+    processTarget: jest.fn(),
+    poll: jest.fn(),
+    consumeCommand: jest.fn(),
     add: jest.fn(),
-    consume: jest.fn(async () => null),
     cleanup: jest.fn(),
     isEmpty: jest.fn(() => true),
     setState: jest.fn(),
     resetState: jest.fn(),
     getState: jest.fn(() => new Float32Array([])),
-  } as unknown as BufferManager;
+  } as unknown as jest.Mocked<BufferManager>;
 
   // Minimal face detection worker mock.
   const mockFaceDetectionWorker: jest.Mocked<IFaceDetectionWorker> = {
@@ -64,7 +62,7 @@ describe('StreamProcessor (Browser)', () => {
     terminate: jest.fn(),
     onmessage: null,
     onmessageerror: null,
-    detectFaces: jest.fn(async (videoInput, type, number) => ({
+    detectFaces: jest.fn(async () => ({
       detections: [],
       probeInfo: {
         totalFrames: 0,
@@ -194,7 +192,7 @@ describe('StreamProcessor (Browser)', () => {
     });
 
     it('should clean up and trigger onNoFace when no detections are present', () => {
-      (fakeBufferManager.cleanup as jest.Mock).mockClear();
+      fakeBufferManager.cleanup.mockClear();
       dummyOnNoFace.mockClear();
 
       const eventNoDetections = new MessageEvent('message', {
@@ -216,17 +214,13 @@ describe('StreamProcessor (Browser)', () => {
       expect(dummyOnNoFace).toHaveBeenCalled();
     });
 
-    it('should update ROI when detections are present and update is needed', () => {
-      // Ensure the processor is in a state that requires ROI update.
-      (processor as any).options.method = 'vitallens';
-      (processor as any).roi = null;
+    it('should set pendingRoi when processTarget returns an active ROI', () => {
       const mockDetection = { x0: 10, y0: 20, x1: 50, y1: 60 };
-      const updatedROI = { x0: 12, y0: 22, x1: 48, y1: 58 };
-      // Configure the mocked functions.
-      (checkFaceInROI as jest.Mock).mockReturnValue(false);
+      const calculatedROI = { x0: 12, y0: 22, x1: 48, y1: 58 };
+      
       (checkROIValid as jest.Mock).mockReturnValue(true);
-      (getROIForMethod as jest.Mock).mockReturnValue(updatedROI);
-      (fakeBufferManager.isEmpty as jest.Mock).mockReturnValue(true);
+      (getROIForMethod as jest.Mock).mockReturnValue(calculatedROI);
+      (fakeBufferManager.processTarget as jest.Mock).mockReturnValue(calculatedROI);
 
       const probeInfo = { width: 640, height: 480 };
       const eventWithDetections = new MessageEvent('message', {
@@ -237,6 +231,7 @@ describe('StreamProcessor (Browser)', () => {
           timestamp: 2.5,
         },
       });
+      
       (processor as any).handleFaceDetectionResult(eventWithDetections);
 
       // Expect getROIForMethod to be called with the detection and image dimensions.
@@ -246,40 +241,41 @@ describe('StreamProcessor (Browser)', () => {
         probeInfo,
         true
       );
-      // The processor's ROI should be updated.
-      expect((processor as any).pendingRoi).toEqual(updatedROI);
-      // Because fakeBufferManager.isEmpty() returns true (or for vitallens), a new buffer is added.
-      expect(fakeBufferManager.addBuffer).toHaveBeenCalledWith(
-        updatedROI,
-        methodConfig,
-        2.5
+      // Expect processTarget to be called
+      expect(fakeBufferManager.processTarget).toHaveBeenCalledWith(
+        calculatedROI,
+        2.5,
+        methodConfig
       );
+      // The processor's pending ROI should be updated.
+      expect((processor as any).pendingRoi).toEqual(calculatedROI);
     });
 
-    it('should not update ROI if checkFaceInROI indicates the face is already within the ROI', () => {
-      const currentROI = { x0: 10, y0: 20, x1: 50, y1: 60 };
-      (processor as any).options.method = 'vitallens';
-      (processor as any).roi = currentROI;
-      // Simulate that the detected face is already inside the current ROI.
-      (checkFaceInROI as jest.Mock).mockReturnValue(true);
+    it('should not update pendingRoi when processTarget returns null', () => {
+      const mockDetection = { x0: 10, y0: 20, x1: 50, y1: 60 };
+      const calculatedROI = { x0: 12, y0: 22, x1: 48, y1: 58 };
+
       (checkROIValid as jest.Mock).mockReturnValue(true);
-      (fakeBufferManager.addBuffer as jest.Mock).mockClear();
+      (getROIForMethod as jest.Mock).mockReturnValue(calculatedROI);
+      
+      // Simulate Planner returning null (e.g. "Ignore" action)
+      (fakeBufferManager.processTarget as jest.Mock).mockReturnValue(null);
+
+      // Reset pendingRoi to ensure it stays null
+      (processor as any).pendingRoi = null;
 
       const eventWithDetections = new MessageEvent('message', {
         data: {
           id: 3,
-          detections: [{ x0: 11, y0: 21, x1: 49, y1: 59 }],
-          width: 640,
-          height: 480,
+          detections: [mockDetection],
+          probeInfo: { width: 640, height: 480 },
           timestamp: 3.0,
         },
       });
       (processor as any).handleFaceDetectionResult(eventWithDetections);
 
-      // The ROI should remain unchanged.
-      expect((processor as any).roi).toEqual(currentROI);
-      // No new buffer should be added.
-      expect(fakeBufferManager.addBuffer).not.toHaveBeenCalled();
+      expect(fakeBufferManager.processTarget).toHaveBeenCalled();
+      expect((processor as any).pendingRoi).toBeNull();
     });
   });
 
