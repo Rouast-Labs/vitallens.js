@@ -2,7 +2,8 @@ import * as tf from '@tensorflow/tfjs';
 import { FaceDetectorAsync } from '../../src/ssd/FaceDetectorAsync.browser';
 import { Frame } from '../../src/processing/Frame';
 import { ROI } from '../../src/types/core';
-import { getTestImageFrame } from './jest.setup.image';
+import { getTestImageFrame } from './vi.setup.image';
+import { describe, expect, beforeAll, it } from 'vitest';
 
 describe('FaceDetectorAsync (Browser) Integration Test', () => {
   let faceDetector: FaceDetectorAsync;

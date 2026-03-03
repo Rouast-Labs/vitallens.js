@@ -1,33 +1,38 @@
+// @vitest-environment jsdom
+
 import { FrameIteratorFactory } from '../../src/processing/FrameIteratorFactory';
 import { StreamFrameIterator } from '../../src/processing/StreamFrameIterator';
 import { MethodConfig } from '../../src/types';
+import { describe, expect, vi, it } from 'vitest';
 
-jest.mock('../../src/core/wasmProvider', () => {
+vi.mock('../../src/core/wasmProvider', () => {
   return {
-    getCore: jest.fn().mockResolvedValue({
-      calculateRoi: jest.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
-      computeBufferConfig: jest.fn().mockReturnValue({}),
-      BufferPlanner: jest.fn().mockImplementation(() => ({
-        evaluateTarget: jest.fn(),
-        poll: jest.fn(),
+    getCore: vi.fn().mockResolvedValue({
+      calculateRoi: vi
+        .fn()
+        .mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
+      computeBufferConfig: vi.fn().mockReturnValue({}),
+      BufferPlanner: vi.fn().mockImplementation(() => ({
+        evaluateTarget: vi.fn(),
+        poll: vi.fn(),
       })),
-      Session: jest.fn().mockImplementation(() => ({
-        processJs: jest.fn(),
-        reset: jest.fn(),
+      Session: vi.fn().mockImplementation(() => ({
+        processJs: vi.fn(),
+        reset: vi.fn(),
       })),
-    })
+    }),
   };
 });
 
 global.MediaStream = class MediaStream {
   active = true;
   id = 'mock-stream-id';
-  getTracks = jest.fn();
-  getAudioTracks = jest.fn();
-  getVideoTracks = jest.fn();
-  addTrack = jest.fn();
-  removeTrack = jest.fn();
-  clone = jest.fn();
+  getTracks = vi.fn();
+  getAudioTracks = vi.fn();
+  getVideoTracks = vi.fn();
+  addTrack = vi.fn();
+  removeTrack = vi.fn();
+  clone = vi.fn();
   onaddtrack = null;
   onremovetrack = null;
 } as unknown as typeof MediaStream;

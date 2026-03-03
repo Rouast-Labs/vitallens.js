@@ -4,23 +4,21 @@
 import { Buffer } from '../../src/processing/Buffer';
 import { Frame } from '../../src/processing/Frame';
 import { MethodConfig, ROI } from '../../src/types/core';
+import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 
-// Mock Buffer class since it's abstract
 class MockBuffer extends Buffer {
   protected async preprocess(
     frame: Frame,
     keepTensor: boolean
   ): Promise<Frame> {
-    // Mock preprocessing: return the frame as-is
     return frame;
   }
 }
 
-// Mock mergeFrames since we aren't testing arrayOps here
-jest.mock('../../src/utils/arrayOps', () => ({
-  mergeFrames: jest.fn().mockResolvedValue({
-    getShape: () => [4, 1, 3], // Mocked return shape
-    release: jest.fn(),
+vi.mock('../../src/utils/arrayOps', () => ({
+  mergeFrames: vi.fn().mockResolvedValue({
+    getShape: () => [4, 1, 3],
+    release: vi.fn(),
   }),
 }));
 
@@ -47,7 +45,7 @@ describe('Buffer', () => {
 
   afterEach(() => {
     buffer.clear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('adds frames to the buffer and retains them on add()', async () => {
@@ -104,7 +102,7 @@ describe('Buffer', () => {
         timestamp: [i * 1000], // timestamps: 0, 1000, 2000, 3000, 4000
       });
       // Mock release so it doesn't throw when deleted
-      jest.spyOn(frame, 'release').mockImplementation(() => {});
+      vi.spyOn(frame, 'release').mockImplementation(() => {});
       await buffer.add(frame);
     }
 
@@ -139,7 +137,7 @@ describe('Buffer', () => {
   });
 
   test('calls preprocess() for each added frame', async () => {
-    const preprocessSpy = jest.spyOn(buffer as any, 'preprocess');
+    const preprocessSpy = vi.spyOn(buffer as any, 'preprocess');
     const rawData = new Int32Array([1, 2, 3]).buffer;
     const frame = new Frame({
       rawData,

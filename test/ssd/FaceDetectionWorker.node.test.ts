@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// FaceDetectionWorker.node.test.ts
+
 import { Worker } from 'worker_threads';
 import { FaceDetectionWorker } from '../../src/ssd/FaceDetectionWorker.node';
+import { describe, expect, beforeAll, afterAll, it } from 'vitest';
 
 describe('FaceDetectionWorker (Real Worker - Node)', () => {
   // Inline dummy worker code:

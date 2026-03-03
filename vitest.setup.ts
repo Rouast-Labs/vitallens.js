@@ -1,35 +1,38 @@
+import { vi } from 'vitest';
+import { TextEncoder, TextDecoder } from 'util';
 import * as tf from '@tensorflow/tfjs';
+
+(globalThis as any).TextEncoder = TextEncoder;
+(globalThis as any).TextDecoder = TextDecoder;
 
 const originalWarn = console.warn;
 
 console.warn = (message, ...args) => {
-  // Suppress specific TensorFlow.js warnings
   if (
-    message.includes('is already registered') ||
-    message.includes('was already registered') ||
-    message.includes('has already been set') ||
-    message.includes('Hi, looks like')
+    typeof message === 'string' && (
+      message.includes('is already registered') ||
+      message.includes('was already registered') ||
+      message.includes('has already been set') ||
+      message.includes('Hi, looks like')
+    )
   ) {
     return;
   }
-
-  // Call the original console.warn for other warnings
   originalWarn(message, ...args);
 };
 
-// Check if the environment is Node.js or browser
 const isBrowser =
   typeof window !== 'undefined' && typeof window.document !== 'undefined';
 
 if (isBrowser) {
   Object.defineProperty(HTMLMediaElement.prototype, 'play', {
     configurable: true,
-    value: jest.fn().mockResolvedValue(undefined),
+    value: vi.fn().mockResolvedValue(undefined),
   });
 
   Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
     configurable: true,
-    value: jest.fn(),
+    value: vi.fn(),
   });
 
   Object.defineProperty(HTMLMediaElement.prototype, 'muted', {
@@ -52,6 +55,5 @@ if (isBrowser) {
     },
   });
 
-  // Force TensorFlow.js to use the CPU backend for browser tests
   tf.setBackend('cpu');
 }

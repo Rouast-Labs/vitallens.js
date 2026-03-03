@@ -7,6 +7,7 @@ import { Frame } from '../../src/processing/Frame';
 import { ROI, VideoInput, VideoProbeResult } from '../../src/types/core';
 import { IFFmpegWrapper } from '../../src/types/IFFmpegWrapper';
 import { nms } from '../../src/ssd/FaceDetectorAsync.base';
+import { describe, expect, beforeAll, afterAll, vi, it } from 'vitest';
 
 // Helper to compare ROIs
 function areROIsClose(
@@ -29,25 +30,25 @@ function areROIsClose(
 }
 
 // --- Mocks for TensorFlow and model files ---
-jest.mock('@tensorflow/tfjs', () => {
-  const actualTf = jest.requireActual('@tensorflow/tfjs');
+vi.mock('@tensorflow/tfjs', async () => {
+  const actualTf: any = await vi.importActual('@tensorflow/tfjs');
   return {
     ...actualTf,
-    loadGraphModel: jest.fn(),
+    loadGraphModel: vi.fn(),
     io: {
       ...actualTf.io,
-      fromMemory: jest.fn(),
+      fromMemory: vi.fn(),
     },
   };
 });
 
-jest.mock(
+vi.mock(
   '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json',
   () =>
     'data:application/json;base64,eyJtb2RlbFRvcG9sb2d5Ijp7InNvbWVWYWx1ZSI6MH0sIndlaWdodHNNYW5pZmVzdCI6W3sid2VpZ2h0cyI6W119XX0='
 );
 
-jest.mock(
+vi.mock(
   '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1.bin',
   () => 'data:application/octet-stream;base64,AAAAAA=='
 );
@@ -77,12 +78,12 @@ describe('FaceDetectorAsync shared tests', () => {
   let faceDetector: FaceDetectorAsyncBase;
 
   beforeAll(async () => {
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
 
     // Create a mock GraphModel that will be used in all tests.
     const mockGraphModel = {
-      executeAsync: jest.fn().mockResolvedValue(
+      executeAsync: vi.fn().mockResolvedValue(
         tf.tensor3d([
           [
             [0.1, 0.9, 0.2, 0.2, 0.6, 0.6], // Box 1: [score, class, xMin, yMin, xMax, yMax]
@@ -92,8 +93,8 @@ describe('FaceDetectorAsync shared tests', () => {
       ),
     } as unknown as tf.GraphModel;
 
-    jest.spyOn(tf.io, 'fromMemory').mockReturnValue('mockedModelSource' as any);
-    jest.spyOn(tf, 'loadGraphModel').mockResolvedValue(mockGraphModel);
+    vi.spyOn(tf.io, 'fromMemory').mockReturnValue('mockedModelSource' as any);
+    vi.spyOn(tf, 'loadGraphModel').mockResolvedValue(mockGraphModel);
 
     // Instantiate your FaceDetectorAsyncBase (or subclass) with desired parameters.
     faceDetector = new TestFaceDetectorAsync(1, 0.5, 0.3);
@@ -101,7 +102,7 @@ describe('FaceDetectorAsync shared tests', () => {
   });
 
   afterAll(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('should initialize the model from memory', async () => {
@@ -182,7 +183,7 @@ describe('FaceDetectorAsync shared tests', () => {
 
   describe('VideoInput detection with ffmpeg and fs', () => {
     const fakeFfmpeg = {
-      readVideo: jest.fn().mockResolvedValue(
+      readVideo: vi.fn().mockResolvedValue(
         new Uint8Array(3 * 320 * 240 * 3) // 3 frames of 320x240 RGB data.
       ),
     } as unknown as IFFmpegWrapper;
@@ -217,7 +218,7 @@ describe('FaceDetectorAsync shared tests', () => {
         ],
       ]);
       const mockGraphModel = {
-        executeAsync: jest.fn().mockResolvedValue(mockTensorOutput),
+        executeAsync: vi.fn().mockResolvedValue(mockTensorOutput),
       } as unknown as tf.GraphModel;
       (faceDetector as any).model = mockGraphModel;
 

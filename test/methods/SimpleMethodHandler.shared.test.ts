@@ -4,9 +4,9 @@
 import { SimpleMethodHandler } from '../../src/methods/SimpleMethodHandler';
 import { VitalLensOptions, VitalLensResult } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
+import { describe, expect, afterEach, it, vi } from 'vitest';
 
 describe('SimpleMethodHandler', () => {
-  // Create a mock subclass that implements the abstract methods.
   class MockSimpleMethodHandler extends SimpleMethodHandler {
     protected getMethodName(): string {
       return 'Mock';
@@ -24,15 +24,15 @@ describe('SimpleMethodHandler', () => {
   };
 
   const mockFrame = {
-    getROI: jest.fn().mockReturnValue([
+    getROI: vi.fn().mockReturnValue([
       { x0: 0, y0: 0, x1: 10, y1: 10 },
       { x0: 1, y0: 1, x1: 11, y1: 11 },
     ]),
-    getTimestamp: jest.fn().mockReturnValue([0, 1, 2]),
+    getTimestamp: vi.fn().mockReturnValue([0, 1, 2]),
   } as unknown as Frame;
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should initialize without errors', async () => {

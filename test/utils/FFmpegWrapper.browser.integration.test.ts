@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/// <reference types="jest-puppeteer" />
+
+import { describe, expect, beforeEach, beforeAll, it } from 'vitest';
 
 describe('FFmpegWrapper (Browser)', () => {
   beforeAll(async () => {

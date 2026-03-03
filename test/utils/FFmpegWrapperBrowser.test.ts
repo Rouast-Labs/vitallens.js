@@ -1,30 +1,48 @@
+// @vitest-environment jsdom
+
 import FFmpegWrapper from '../../src/utils/FFmpegWrapper.browser';
+import { describe, expect, beforeEach, vi, it } from 'vitest';
 
-jest.mock('@ffmpeg/ffmpeg', () => ({
-  FFmpeg: jest.fn(() => ({
-    isLoaded: jest.fn(() => false),
-    load: jest.fn(),
-    writeFile: jest.fn(),
-    exec: jest.fn(),
-    readFile: jest.fn(() => new Uint8Array([1, 2, 3])),
-    unlink: jest.fn(),
-  })),
+// Mock the ffmpeg worker bundle
+vi.mock('../../dist/ffmpeg.worker.bundle.js', () => ({
+  default:
+    'data:application/javascript;base64,Y29uc29sZS5sb2coImZha2Ugd29ya2VyIik7',
 }));
 
-jest.mock('@ffmpeg/util', () => ({
-  fetchFile: jest.fn(() => new Uint8Array([1, 2, 3])),
-  toBlobURL: jest.fn((url, type) => `${url}-${type}`),
+vi.mock('@ffmpeg/ffmpeg', () => ({
+  FFmpeg: class {
+    isLoaded = vi.fn(() => false);
+    load = vi.fn();
+    writeFile = vi.fn();
+    exec = vi.fn();
+    readFile = vi.fn(() => new Uint8Array([1, 2, 3]));
+    deleteFile = vi.fn();
+    on = vi.fn();
+    off = vi.fn();
+  },
 }));
+
+vi.mock('@ffmpeg/util', () => ({
+  fetchFile: vi.fn(() => new Uint8Array([1, 2, 3])),
+  toBlobURL: vi.fn(async (url) => url),
+}));
+
+// Mock URL.createObjectURL since it's not implemented in JSDOM
+if (typeof window !== 'undefined') {
+  global.URL.createObjectURL = vi.fn(() => 'blob:mock');
+  global.URL.revokeObjectURL = vi.fn();
+}
 
 describe('FFmpegWrapper (Browser)', () => {
   let wrapper: FFmpegWrapper;
 
   beforeEach(() => {
     wrapper = new FFmpegWrapper();
+    vi.clearAllMocks();
   });
 
   it('should initialize correctly', async () => {
-    const initSpy = jest.spyOn(wrapper, 'init');
+    const initSpy = vi.spyOn(wrapper, 'init');
     await wrapper.init();
     expect(initSpy).toHaveBeenCalled();
   });

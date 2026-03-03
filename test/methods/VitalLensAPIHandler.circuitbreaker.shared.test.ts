@@ -2,7 +2,8 @@ import { VitalLensAPIHandler } from '../../src/methods/VitalLensAPIHandler';
 import { IRestClient, ResolveModelResponse } from '../../src/types/IRestClient';
 import { VitalLensOptions, VitalLensResult } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
-import { jest } from '@jest/globals';
+import { describe, expect, beforeEach, vi, afterEach, it } from 'vitest';
+
 import { VitalLensAPIError } from '../../src/utils/errors';
 
 // A standard successful response from the API for our mocks
@@ -28,9 +29,9 @@ const mockSuccessResponseBody: VitalLensResult = {
 };
 
 // Mock the RestClient's methods
-const mockRestClient: jest.Mocked<IRestClient> = {
-  sendFrames: jest.fn(),
-  resolveModel: jest.fn(
+const mockRestClient: vi.Mocked<IRestClient> = {
+  sendFrames: vi.fn(),
+  resolveModel: vi.fn(
     async () =>
       ({
         resolved_model: 'vitallens-2.0',
@@ -61,14 +62,14 @@ describe('VitalLensAPIHandler Circuit Breaker', () => {
     method: 'vitallens',
     requestMode: 'rest',
   };
-  let consoleErrorSpy: jest.SpyInstance;
-  let consoleWarnSpy: jest.SpyInstance;
+  let consoleErrorSpy: vi.SpyInstance;
+  let consoleWarnSpy: vi.SpyInstance;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Suppress console logs for these tests as errors/warnings are expected
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     handler = new VitalLensAPIHandler(mockRestClient, mockOptions);
     await handler.init();

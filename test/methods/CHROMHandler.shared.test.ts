@@ -2,6 +2,7 @@ import * as tf from '@tensorflow/tfjs-core';
 import { CHROMHandler } from '../../src/methods/CHROMHandler';
 import { Frame } from '../../src/processing/Frame';
 import { VitalLensOptions } from '../../src/types';
+import { describe, expect, beforeEach, it } from 'vitest';
 
 describe('CHROMHandler', () => {
   let chromHandler: CHROMHandler;

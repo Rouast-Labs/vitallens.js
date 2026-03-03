@@ -12,31 +12,34 @@ import {
 } from '../../src/types/core';
 import { IFFmpegWrapper } from '../../src/types/IFFmpegWrapper';
 import { IFaceDetectionWorker } from '../../src/types/IFaceDetectionWorker';
+import { describe, expect, beforeEach, vi, it } from 'vitest';
 
-jest.mock('../../src/core/wasmProvider', () => {
+vi.mock('../../src/core/wasmProvider', () => {
   return {
-    getCore: jest.fn().mockResolvedValue({
-      calculateRoi: jest.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
-      computeBufferConfig: jest.fn().mockReturnValue({}),
-      BufferPlanner: jest.fn().mockImplementation(() => ({
-        evaluateTarget: jest.fn(),
-        poll: jest.fn(),
+    getCore: vi.fn().mockResolvedValue({
+      calculateRoi: vi
+        .fn()
+        .mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
+      computeBufferConfig: vi.fn().mockReturnValue({}),
+      BufferPlanner: vi.fn().mockImplementation(() => ({
+        evaluateTarget: vi.fn(),
+        poll: vi.fn(),
       })),
-      Session: jest.fn().mockImplementation(() => ({
-        processJs: jest.fn(),
-        reset: jest.fn(),
+      Session: vi.fn().mockImplementation(() => ({
+        processJs: vi.fn(),
+        reset: vi.fn(),
       })),
-    })
+    }),
   };
 });
 
 // Dummy FFmpeg wrapper that simulates behavior for testing.
 class DummyFFmpegWrapper implements IFFmpegWrapper {
-  init = jest.fn(async () => Promise.resolve());
-  loadInput = jest.fn(async (videoInput: VideoInput): Promise<string> => {
+  init = vi.fn(async () => Promise.resolve());
+  loadInput = vi.fn(async (videoInput: VideoInput): Promise<string> => {
     return 'test.mp4';
   });
-  probeVideo = jest.fn(
+  probeVideo = vi.fn(
     async (videoInput: VideoInput): Promise<VideoProbeResult> => {
       return {
         totalFrames: 20,
@@ -50,7 +53,7 @@ class DummyFFmpegWrapper implements IFFmpegWrapper {
       };
     }
   );
-  readVideo = jest.fn(
+  readVideo = vi.fn(
     async (
       videoInput: VideoInput,
       options: any,
@@ -68,7 +71,7 @@ class DummyFFmpegWrapper implements IFFmpegWrapper {
       return new Uint8Array(expectedLength).fill(60);
     }
   );
-  cleanup = jest.fn(() => {});
+  cleanup = vi.fn(() => {});
 }
 
 // Dummy face detection worker that returns the same ROI for every frame.
@@ -88,7 +91,7 @@ class DummyFaceDetectionWorker implements IFaceDetectionWorker {
     type: string,
     listener: EventListenerOrEventListenerObject
   ): void {}
-  detectFaces = jest.fn(
+  detectFaces = vi.fn(
     async (videoInput: VideoInput, type: string, fs: number) => {
       // For testing the "face detection" branch, we simulate a detection.
       const expectedROI: ROI = {
@@ -134,15 +137,18 @@ const dummyMethodConfig: MethodConfig = {
 
 const dummyVideoInput: VideoInput = 'test.mp4';
 
-jest.mock('../../src/utils/faceOps', () => ({
-  ...jest.requireActual('../../src/utils/faceOps'),
-  getROIForMethod: jest.fn(
-    (face: any, methodConfig: any, dims: any, flag: boolean) => face
-  ),
-  getRepresentativeROI: jest.fn((rois: ROI[]) => {
-    return rois[0];
-  }),
-}));
+vi.mock('../../src/utils/faceOps', async () => {
+  const actual: any = await vi.importActual('../../src/utils/faceOps');
+  return {
+    ...actual,
+    getROIForMethod: vi.fn(
+      (face: any, methodConfig: any, dims: any, flag: boolean) => face
+    ),
+    getRepresentativeROI: vi.fn((rois: ROI[]) => {
+      return rois[0];
+    }),
+  };
+});
 
 describe('FileFrameIterator', () => {
   let ffmpegWrapper: DummyFFmpegWrapper;
@@ -172,7 +178,7 @@ describe('FileFrameIterator', () => {
         ffmpegWrapper
       );
       // Force probeVideo to return null.
-      ffmpegWrapper.probeVideo = jest.fn(
+      ffmpegWrapper.probeVideo = vi.fn(
         async (videoInput: VideoInput) => null as any
       );
       await expect(iteratorNoFace.start()).rejects.toThrow(

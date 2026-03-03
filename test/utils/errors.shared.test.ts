@@ -3,6 +3,7 @@ import {
   VitalLensAPIKeyError,
   VitalLensAPIQuotaExceededError,
 } from '../../src/utils/errors';
+import { describe, expect, it } from 'vitest';
 
 describe('VitalLensAPIError classes', () => {
   describe('VitalLensAPIError', () => {

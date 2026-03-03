@@ -1,11 +1,14 @@
+// @vitest-environment jsdom
+
 import { FaceDetectionWorker } from '../../src/ssd/FaceDetectionWorker.browser';
+import { describe, expect, beforeEach, vi, it } from 'vitest';
 
 // A fake Worker class that mimics the basic Worker API.
 class FakeWorker {
   onmessage: ((ev: MessageEvent) => void) | null = null;
   onerror: ((ev: ErrorEvent) => void) | null = null;
-  postMessage = jest.fn();
-  terminate = jest.fn();
+  postMessage = vi.fn();
+  terminate = vi.fn();
 }
 
 describe('FaceDetectionWorker (Browser Extension)', () => {
@@ -39,7 +42,7 @@ describe('FaceDetectionWorker (Browser Extension)', () => {
 
   describe('onmessage and addEventListener', () => {
     it('should call the onmessage property when a message event is fired', () => {
-      const onMessageMock = jest.fn();
+      const onMessageMock = vi.fn();
       worker.onmessage = onMessageMock;
 
       const event = new MessageEvent('message', { data: { foo: 'bar' } });
@@ -51,8 +54,8 @@ describe('FaceDetectionWorker (Browser Extension)', () => {
     });
 
     it('should call all added event listeners on a message event', () => {
-      const handler1 = jest.fn();
-      const handler2 = jest.fn();
+      const handler1 = vi.fn();
+      const handler2 = vi.fn();
 
       worker.addEventListener('message', handler1);
       worker.addEventListener('message', handler2);
@@ -67,7 +70,7 @@ describe('FaceDetectionWorker (Browser Extension)', () => {
     });
 
     it('should remove an event listener via removeEventListener', () => {
-      const handler = jest.fn();
+      const handler = vi.fn();
       worker.addEventListener('message', handler);
       worker.removeEventListener('message', handler);
 
@@ -81,7 +84,7 @@ describe('FaceDetectionWorker (Browser Extension)', () => {
 
   describe('onerror', () => {
     it('should call the onerror property when an error event is fired', () => {
-      const onErrorMock = jest.fn();
+      const onErrorMock = vi.fn();
       worker.onerror = onErrorMock;
 
       const errorEvent = new ErrorEvent('error', { message: 'Test error' });

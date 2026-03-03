@@ -49,7 +49,7 @@ npm run test
 You can also run tests for specific environments:
 
 ```bash
-# Run only Browser tests (uses Puppeteer)
+# Run only Browser tests
 npm run test:browser
 
 # Run only Node.js tests
@@ -63,7 +63,13 @@ npm run test:node-integration
 To run a specific test file:
 
 ```bash
-npx jest test/core/VitalLens.browser.test.ts
+npx vitest run test/core/VitalLens.browser.test.ts
+```
+
+To run a specific test file in watch mode (re-runs automatically when you save changes):
+
+```bash
+npx vitest test/core/VitalLens.browser.test.ts
 ```
 
 ## Linting

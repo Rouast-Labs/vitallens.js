@@ -11,7 +11,7 @@ import {
   VitalLensAPIKeyError,
   VitalLensAPIQuotaExceededError,
 } from '../../src/utils/errors';
-import { jest } from '@jest/globals';
+import { describe, expect, vi, afterEach, it } from 'vitest';
 
 const mockResponse: VitalLensAPIResponse = {
   statusCode: 200,
@@ -41,7 +41,7 @@ const mockResponse: VitalLensAPIResponse = {
 
 const mockRestClient: Partial<IRestClient> = {
   sendFrames:
-    jest.fn<
+    vi.fn<
       (
         metadata: Record<string, unknown>,
         frames: Uint8Array,
@@ -49,7 +49,7 @@ const mockRestClient: Partial<IRestClient> = {
         state?: Float32Array
       ) => Promise<VitalLensAPIResponse>
     >(),
-  resolveModel: jest.fn(
+  resolveModel: vi.fn(
     async () =>
       ({
         resolved_model: 'vitalens-2.0',
@@ -71,17 +71,17 @@ describe('VitalLensAPIHandler', () => {
     requestMode: 'rest',
   };
   const mockFrame = {
-    getUint8Array: jest.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
-    getROI: jest.fn().mockReturnValue([
+    getUint8Array: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
+    getROI: vi.fn().mockReturnValue([
       { x0: 0, y0: 0, x1: 10, y1: 10 },
       { x0: 0, y0: 0, x1: 10, y1: 10 },
       { x0: 0, y0: 0, x1: 10, y1: 10 },
     ]),
-    getTimestamp: jest.fn().mockReturnValue([0, 1, 2]),
+    getTimestamp: vi.fn().mockReturnValue([0, 1, 2]),
   } as unknown as Frame;
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should behave correctly for REST client readiness', () => {
@@ -96,7 +96,7 @@ describe('VitalLensAPIHandler', () => {
   });
 
   it('should process frames and return a valid result for REST client', async () => {
-    mockRestClient.sendFrames = jest
+    mockRestClient.sendFrames = vi
       .fn<
         (
           metadata: Record<string, unknown>,
@@ -141,7 +141,7 @@ describe('VitalLensAPIHandler', () => {
   });
 
   it('should throw an error for invalid response format', async () => {
-    mockRestClient.sendFrames = jest
+    mockRestClient.sendFrames = vi
       .fn<
         (
           metadata: Record<string, unknown>,
@@ -170,7 +170,7 @@ describe('VitalLensAPIHandler', () => {
       statusCode: 403,
       body: { face: {}, vital_signs: {}, time: [], message: 'Invalid API Key' },
     };
-    mockRestClient.sendFrames = jest
+    mockRestClient.sendFrames = vi
       .fn<
         (
           metadata: Record<string, unknown>,
@@ -195,7 +195,7 @@ describe('VitalLensAPIHandler', () => {
       statusCode: 429,
       body: { face: {}, vital_signs: {}, time: [], message: 'Quota exceeded' },
     };
-    mockRestClient.sendFrames = jest
+    mockRestClient.sendFrames = vi
       .fn<
         (
           metadata: Record<string, unknown>,

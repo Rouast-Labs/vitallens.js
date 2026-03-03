@@ -1,21 +1,24 @@
 import { VitalLens } from '../../src/core/VitalLens.node';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 
-jest.mock('../../src/core/VitalLensController.node', () => ({
-  VitalLensController: jest.fn().mockImplementation(() => ({
-    setVideoStream: jest.fn(async () => {}),
-    startVideoStream: jest.fn(),
-    pauseVideoStream: jest.fn(),
-    stopVideoStream: jest.fn(),
-    setInferenceEnabled: jest.fn(),
-    reset: jest.fn(),
-    processVideoFile: jest.fn(async () => ({
-      message: 'Processed file successfully.',
-    })),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispose: jest.fn(),
-  })),
-}));
+vi.mock('../../src/core/VitalLensController.node', () => {
+  return {
+    VitalLensController: class {
+      setVideoStream = vi.fn(async () => {});
+      startVideoStream = vi.fn();
+      pauseVideoStream = vi.fn();
+      stopVideoStream = vi.fn();
+      setInferenceEnabled = vi.fn();
+      reset = vi.fn();
+      processVideoFile = vi.fn(async () => ({
+        message: 'Processed file successfully.',
+      }));
+      addEventListener = vi.fn();
+      removeEventListener = vi.fn();
+      dispose = vi.fn();
+    },
+  };
+});
 
 describe('VitalLens (Node)', () => {
   let vitalLens: VitalLens;
@@ -53,7 +56,7 @@ describe('VitalLens (Node)', () => {
   });
 
   test('should call addEventListener on the controller', () => {
-    vitalLens.addEventListener('vitals', jest.fn());
+    vitalLens.addEventListener('vitals', vi.fn());
     expect(vitalLens['controller'].addEventListener).toHaveBeenCalled();
   });
 

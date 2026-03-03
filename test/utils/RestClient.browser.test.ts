@@ -2,23 +2,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { RestClient } from '../../src/utils/RestClient.browser';
+import { describe, expect, beforeEach, afterEach, vi, it } from 'vitest';
 
 describe('RestClient (Browser)', () => {
   let client: RestClient;
 
   beforeEach(() => {
     // Mock the global fetch function
-    global.fetch = jest.fn();
+    global.fetch = vi.fn();
     client = new RestClient('test-api-key');
   });
 
   afterEach(() => {
-    jest.clearAllMocks(); // Clear mocks after each test
+    vi.clearAllMocks(); // Clear mocks after each test
   });
 
   it('should send frames and return JSON response', async () => {
     // Mock a successful API response with .text() method
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
+    (global.fetch as vi.Mock).mockResolvedValueOnce({
       ok: true,
       status: 200,
       text: async () => JSON.stringify({ success: true }),
@@ -52,9 +53,7 @@ describe('RestClient (Browser)', () => {
 
   it('should throw an error for network failure', async () => {
     // Mock a network failure
-    (global.fetch as jest.Mock).mockRejectedValueOnce(
-      new Error('Network Error')
-    );
+    (global.fetch as vi.Mock).mockRejectedValueOnce(new Error('Network Error'));
 
     const metadata = { test: 'data' };
     const frames = new Uint8Array([1, 2, 3]);

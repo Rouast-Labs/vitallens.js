@@ -4,6 +4,7 @@
 import { FaceDetectionWorkerBase } from '../../src/ssd/FaceDetectionWorker.base';
 import { ROI, VideoProbeResult } from '../../src/types/core';
 import { FaceDetectorInput } from '../../src/ssd/FaceDetectorAsync.base';
+import { describe, expect, beforeEach, it } from 'vitest';
 
 // Create a concrete subclass for testing.
 class TestFaceDetectionWorker extends FaceDetectionWorkerBase {

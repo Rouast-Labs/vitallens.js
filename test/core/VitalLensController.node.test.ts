@@ -7,36 +7,42 @@ import FFmpegWrapper from '../../src/utils/FFmpegWrapper.node';
 import { StreamProcessor } from '../../src/processing/StreamProcessor.node';
 import { FaceDetectionWorker } from '../../src/ssd/FaceDetectionWorker.node';
 import { Worker } from 'worker_threads';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 
-jest.mock('../../src/core/wasmProvider', () => {
+vi.mock('../../src/core/wasmProvider', () => {
   return {
-    getCore: jest.fn().mockResolvedValue({
-      calculateRoi: jest.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
-      computeBufferConfig: jest.fn().mockReturnValue({}),
-      BufferPlanner: jest.fn().mockImplementation(() => ({
-        evaluateTarget: jest.fn(),
-        poll: jest.fn(),
+    getCore: vi.fn().mockResolvedValue({
+      calculateRoi: vi.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
+      computeBufferConfig: vi.fn().mockReturnValue({}),
+      BufferPlanner: vi.fn().mockImplementation(() => ({
+        evaluateTarget: vi.fn(),
+        poll: vi.fn(),
       })),
-      Session: jest.fn().mockImplementation(() => ({
-        processJs: jest.fn(),
-        reset: jest.fn(),
+      Session: vi.fn().mockImplementation(() => ({
+        processJs: vi.fn(),
+        reset: vi.fn(),
       })),
     })
   };
 });
-jest.mock('../../src/utils/RestClient.node');
-jest.mock('../../src/utils/FFmpegWrapper.node');
-jest.mock('../../src/processing/StreamProcessor.node');
-jest.mock('../../src/ssd/FaceDetectionWorker.node');
-jest.mock('worker_threads', () => {
+vi.mock('../../src/utils/RestClient.node');
+vi.mock('../../src/utils/FFmpegWrapper.node');
+vi.mock('../../src/processing/StreamProcessor.node');
+vi.mock('../../src/ssd/FaceDetectionWorker.node');
+vi.mock('worker_threads', () => {
   return {
-    Worker: jest.fn(),
+    Worker: vi.fn().mockImplementation(function () {
+      return {
+        postMessage: vi.fn(),
+        terminate: vi.fn(),
+        on: vi.fn(),
+      };
+    }),
   };
 });
-jest.mock(
-  '../../dist/faceDetection.worker.node.bundle.js',
-  () => 'data:application/javascript;base64,ZmFrZSBjb2Rl'
-);
+vi.mock('../../dist/faceDetection.worker.node.bundle.js', () => ({
+  default: 'data:application/javascript;base64,ZmFrZSBjb2Rl',
+}));
 
 describe('VitalLensController (Node)', () => {
   let controller: VitalLensController;
@@ -47,9 +53,8 @@ describe('VitalLensController (Node)', () => {
   };
 
   beforeEach(() => {
-    // Instantiate a new controller for each test.
     controller = new VitalLensController(mockOptions);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('createRestClient', () => {
@@ -58,7 +63,6 @@ describe('VitalLensController (Node)', () => {
         mockOptions.apiKey
       );
       expect(RestClient).toHaveBeenCalledWith(mockOptions.apiKey, undefined);
-      // Since RestClient is a mock constructor, we can also check that the returned value is an instance.
       expect(restClient).toBeInstanceOf(RestClient);
     });
 
@@ -68,7 +72,6 @@ describe('VitalLensController (Node)', () => {
         mockOptions.proxyUrl
       );
       expect(RestClient).toHaveBeenCalledWith('', mockOptions.proxyUrl);
-      // Since RestClient is a mock constructor, we can also check that the returned value is an instance.
       expect(restClient).toBeInstanceOf(RestClient);
     });
   });
@@ -84,18 +87,15 @@ describe('VitalLensController (Node)', () => {
   describe('createFaceDetectionWorker', () => {
     test('should create a FaceDetectionWorker using an inline worker', () => {
       const faceWorker = (controller as any).createFaceDetectionWorker();
-      // Ensure that the Worker was created using the inline code and with eval: true.
       expect(Worker).toHaveBeenCalled();
-      const workerCallArgs = (Worker as unknown as jest.Mock).mock.calls[0];
+      const workerCallArgs = vi.mocked(Worker).mock.calls[0];
       expect(workerCallArgs[1]).toEqual({ eval: true });
-      // Check that the created faceWorker is an instance of FaceDetectionWorker.
       expect(faceWorker).toBeInstanceOf(FaceDetectionWorker);
     });
   });
 
   describe('createStreamProcessor', () => {
     test('should create a StreamProcessor', () => {
-      // Create dummy parameters
       const dummyOptions = mockOptions;
       const dummyMethodConfig = {} as any;
       const dummyFrameIterator = {} as any;
@@ -103,10 +103,10 @@ describe('VitalLensController (Node)', () => {
       const dummyFaceDetectionWorker = {} as any;
       const dummyMethodHandler = {} as any;
       const dummyBufferedResultsConsumer = {} as any;
-      const dummyOnPredict = jest.fn();
-      const dummyOnNoFace = jest.fn();
-      const dummyOnStreamReset = jest.fn();
-      const dummyOnFaceDetected = jest.fn();
+      const dummyOnPredict = vi.fn();
+      const dummyOnNoFace = vi.fn();
+      const dummyOnStreamReset = vi.fn();
+      const dummyOnFaceDetected = vi.fn();
 
       const streamProcessor = (controller as any).createStreamProcessor(
         dummyOptions,

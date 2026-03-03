@@ -7,6 +7,7 @@ import {
   VITALLENS_STREAM_ENDPOINT,
 } from '../../src/config/constants';
 import { InferenceMode } from '../../src/types';
+import { describe, expect, beforeEach, it } from 'vitest';
 
 class MockRestClient extends RestClientBase {
   protected getRestEndpoint(): string {

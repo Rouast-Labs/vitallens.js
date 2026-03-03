@@ -13,6 +13,7 @@ import {
   movingAverageSizeForRRResponse,
 } from '../../src/utils/arrayOps';
 import { Frame } from '../../src/processing/Frame';
+import { describe, expect, it } from 'vitest';
 
 describe('mergeFrames', () => {
   it('throws an error when merging an empty array', async () => {

@@ -1,21 +1,26 @@
-import { VitalLens } from '../../src/core/VitalLens.browser';
+// @vitest-environment jsdom
 
-jest.mock('../../src/core/VitalLensController.browser', () => ({
-  VitalLensController: jest.fn().mockImplementation(() => ({
-    setVideoStream: jest.fn(async () => {}),
-    startVideoStream: jest.fn(),
-    pauseVideoStream: jest.fn(),
-    stopVideoStream: jest.fn(),
-    setInferenceEnabled: jest.fn(),
-    reset: jest.fn(),
-    processVideoFile: jest.fn(async () => ({
-      message: 'Processed file successfully.',
-    })),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispose: jest.fn(),
-  })),
-}));
+import { VitalLens } from '../../src/core/VitalLens.browser';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('../../src/core/VitalLensController.browser', () => {
+  return {
+    VitalLensController: class {
+      setVideoStream = vi.fn(async () => {});
+      startVideoStream = vi.fn();
+      pauseVideoStream = vi.fn();
+      stopVideoStream = vi.fn();
+      setInferenceEnabled = vi.fn();
+      reset = vi.fn();
+      processVideoFile = vi.fn(async () => ({
+        message: 'Processed file successfully.',
+      }));
+      addEventListener = vi.fn();
+      removeEventListener = vi.fn();
+      dispose = vi.fn();
+    },
+  };
+});
 
 describe('VitalLens (Browser)', () => {
   let vitalLens: VitalLens;
@@ -67,7 +72,7 @@ describe('VitalLens (Browser)', () => {
   });
 
   test('should call addEventListener on the controller', () => {
-    vitalLens.addEventListener('vitals', jest.fn());
+    vitalLens.addEventListener('vitals', vi.fn());
     expect(vitalLens['controller'].addEventListener).toHaveBeenCalled();
   });
 

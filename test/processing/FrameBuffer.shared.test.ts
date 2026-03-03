@@ -4,6 +4,7 @@
 import { FrameBuffer } from '../../src/processing/FrameBuffer';
 import { ROI } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
+import { describe, expect, beforeEach, vi, test, afterEach } from 'vitest';
 
 describe('FrameBuffer', () => {
   let buffer: FrameBuffer;
@@ -26,7 +27,7 @@ describe('FrameBuffer', () => {
 
   afterEach(() => {
     buffer.clear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('preprocess() crops and resizes frame correctly', async () => {
@@ -89,7 +90,7 @@ describe('FrameBuffer', () => {
     });
     await buffer.add(frame);
     expect((buffer as any).buffer.size).toBe(1);
-    
+
     for (let i = 1; i < 3; i++) {
       const loopFrame = new Frame({
         rawData,
@@ -130,10 +131,10 @@ describe('FrameBuffer', () => {
         dtype: 'float32',
         timestamp: [1000 + i],
       });
-      jest.spyOn(frame, 'release').mockImplementation(() => {});
+      vi.spyOn(frame, 'release').mockImplementation(() => {});
       await buffer.add(frame);
     }
-    
+
     const consumedFrames = await buffer.consume(4, 2);
     expect(consumedFrames!.getShape()[0]).toBe(4);
     expect((buffer as any).buffer.size).toBe(3); // 5 total - 4 consumed + 2 kept
