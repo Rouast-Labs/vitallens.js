@@ -1,6 +1,11 @@
 import tf from 'tfjs-provider';
 import { FaceDetectorAsyncBase } from './FaceDetectorAsync.base';
-import { modelJsonBase64, modelBinBase64 } from './modelAssets';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class FaceDetectorAsync extends FaceDetectorAsyncBase {
   /**
@@ -8,17 +13,21 @@ export class FaceDetectorAsync extends FaceDetectorAsyncBase {
    */
   protected async init(): Promise<void> {
     try {
-      // Decode the model.json
-      const jsonBase64 = (modelJsonBase64 as unknown as string).split(',')[1];
-      const jsonStr = Buffer.from(jsonBase64, 'base64').toString('utf-8');
+      const jsonPath = path.resolve(
+        __dirname,
+        '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json'
+      );
+      const binPath = path.resolve(
+        __dirname,
+        '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1.bin'
+      );
+
+      const jsonStr = fs.readFileSync(jsonPath, 'utf-8');
       const jsonObj = JSON.parse(jsonStr);
 
-      // Decode the binary weights file
-      const binBase64 = modelBinBase64.split(',')[1];
-      const buffer = Buffer.from(binBase64, 'base64');
+      const buffer = fs.readFileSync(binPath);
       const uint8Array = new Uint8Array(buffer);
 
-      // Prepare the ModelArtifacts object
       const weightSpecs = jsonObj.weightsManifest[0].weights;
       const modelArtifacts: tf.io.ModelArtifacts = {
         modelTopology: jsonObj.modelTopology ?? jsonObj,

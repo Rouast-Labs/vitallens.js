@@ -19,8 +19,6 @@ import {
   FFMPEG_WASM_URL,
 } from '../utils/FFmpegAssets.browser';
 
-declare const SELF_CONTAINED_BUILD: boolean;
-
 export class VitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
     return new RestClient(apiKey, proxyUrl);
@@ -34,15 +32,6 @@ export class VitalLensController extends VitalLensControllerBase {
 
     // Create the browser Worker using the blob URL.
     const worker = new Worker(blobURL, { type: 'module' });
-
-    // For the self-contained build, send the asset URLs to the worker.
-    if (typeof SELF_CONTAINED_BUILD !== 'undefined' && SELF_CONTAINED_BUILD) {
-      worker.postMessage({
-        type: 'init',
-        coreURL: FFMPEG_CORE_URL,
-        wasmURL: FFMPEG_WASM_URL,
-      });
-    }
 
     // Wrap the worker with your interface wrapper.
     return new FaceDetectionWorker(worker);

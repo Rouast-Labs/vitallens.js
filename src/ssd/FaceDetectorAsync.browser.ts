@@ -1,6 +1,7 @@
 import tf from 'tfjs-provider';
 import { FaceDetectorAsyncBase } from './FaceDetectorAsync.base';
-import { modelJsonBase64, modelBinBase64 } from './modelAssets';
+import { modelJsonPath, modelBinPath } from './modelAssets';
+import { resolveAsset } from '../utils/assetResolver';
 
 export class FaceDetectorAsync extends FaceDetectorAsyncBase {
   /**
@@ -8,24 +9,22 @@ export class FaceDetectorAsync extends FaceDetectorAsyncBase {
    */
   protected async init(): Promise<void> {
     try {
-      // Decode the model.json from base64
-      const jsonBase64 = (modelJsonBase64 as unknown as string).split(',')[1];
-      const jsonStr = atob(jsonBase64);
-      const jsonObj = JSON.parse(jsonStr);
+      const jsonUrl = resolveAsset(modelJsonPath);
+      const binUrl = resolveAsset(modelBinPath);
 
-      // Decode the weights (.bin) from base64
-      const binBase64 = modelBinBase64.split(',')[1];
-      const raw = atob(binBase64);
-      const buffer = new Uint8Array(raw.length);
-      for (let i = 0; i < raw.length; i++) {
-        buffer[i] = raw.charCodeAt(i);
-      }
+      const [jsonResponse, binResponse] = await Promise.all([
+        fetch(jsonUrl),
+        fetch(binUrl),
+      ]);
+
+      const jsonObj = await jsonResponse.json();
+      const binBuffer = await binResponse.arrayBuffer();
 
       const weightSpecs = jsonObj.weightsManifest[0].weights;
       const modelArtifacts: tf.io.ModelArtifacts = {
         modelTopology: jsonObj.modelTopology ?? jsonObj,
         weightSpecs,
-        weightData: buffer.buffer,
+        weightData: binBuffer,
         format: 'graph-model',
       };
 
