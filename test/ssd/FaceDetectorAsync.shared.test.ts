@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import * as tf from '@tensorflow/tfjs'; // This import will be remapped in Jest config if needed.
+import * as tf from '@tensorflow/tfjs';
 import { FaceDetectorAsyncBase } from '../../src/ssd/FaceDetectorAsync.base';
 import { Frame } from '../../src/processing/Frame';
 import { ROI, VideoInput, VideoProbeResult } from '../../src/types/core';

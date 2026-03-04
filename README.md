@@ -88,7 +88,6 @@ Full documentation, including the API Reference, Web Component guide, Code examp
 ## Troubleshooting
 
 - **Chrome Security:** If testing locally (`file://`), Chrome may block video processing. Use a local server (e.g., `npx serve`) instead.
-- **Node Versions:**  For server-side usage (running inference in Node.js), we recommend using Node 18.16.1 to ensure the AI engine installs correctly.
 
 ## Disclaimer
 

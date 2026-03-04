@@ -3,12 +3,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { VitalLensController } from '../../src/core/VitalLensController.node';
 import { VitalLensOptions, VitalLensResult } from '../../src/types/core';
-import {
-  CALC_HR_MAX,
-  CALC_HR_MIN,
-  CALC_RR_MAX,
-  CALC_RR_MIN,
-} from '../../src/config/constants';
+import { describe, expect, beforeAll, it } from 'vitest';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -72,8 +67,8 @@ describe('VitalLensController Integration (Node)', () => {
     expect(result.vital_signs.heart_rate).toHaveProperty('value');
     expect(result.vital_signs.heart_rate).toHaveProperty('confidence');
     expect(typeof result.vital_signs.heart_rate!.value).toBe('number');
-    expect(result.vital_signs.heart_rate!.value).toBeGreaterThan(CALC_HR_MIN);
-    expect(result.vital_signs.heart_rate!.value).toBeLessThan(CALC_HR_MAX);
+    expect(result.vital_signs.heart_rate!.value).toBeGreaterThan(40);
+    expect(result.vital_signs.heart_rate!.value).toBeLessThan(220);
     expect(result.vital_signs.heart_rate!.confidence).toBeGreaterThanOrEqual(0);
     expect(result.vital_signs.heart_rate!.confidence).toBeLessThanOrEqual(1);
 
@@ -82,12 +77,8 @@ describe('VitalLensController Integration (Node)', () => {
     expect(result.vital_signs.respiratory_rate).toHaveProperty('value');
     expect(result.vital_signs.respiratory_rate).toHaveProperty('confidence');
     expect(typeof result.vital_signs.respiratory_rate!.value).toBe('number');
-    expect(result.vital_signs.respiratory_rate!.value).toBeGreaterThan(
-      CALC_RR_MIN
-    );
-    expect(result.vital_signs.respiratory_rate!.value).toBeLessThan(
-      CALC_RR_MAX
-    );
+    expect(result.vital_signs.respiratory_rate!.value).toBeGreaterThan(4);
+    expect(result.vital_signs.respiratory_rate!.value).toBeLessThan(40);
     expect(
       result.vital_signs.respiratory_rate!.confidence
     ).toBeGreaterThanOrEqual(0);
