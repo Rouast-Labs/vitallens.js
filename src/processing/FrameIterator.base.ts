@@ -1,6 +1,5 @@
 import { IFrameIterator } from '../types/IFrameIterator';
 import { Frame } from './Frame';
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Abstract base class for frame iterators.
@@ -13,7 +12,7 @@ export abstract class FrameIteratorBase implements IFrameIterator {
 
   constructor() {
     // Generate a unique ID for each iterator
-    this.id = uuidv4();
+    this.id = crypto.randomUUID();
   }
 
   /**

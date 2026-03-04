@@ -3,12 +3,11 @@
 
 import { FrameIteratorBase } from '../../src/processing/FrameIterator.base';
 import { Frame } from '../../src/processing/Frame';
-import { v4 as uuidv4 } from 'uuid';
 import { describe, expect, beforeEach, vi, test } from 'vitest';
 
-vi.mock('uuid', () => ({
-  v4: vi.fn(() => 'mock-unique-id'),
-}));
+vi.stubGlobal('crypto', {
+  randomUUID: vi.fn().mockReturnValue('mock-unique-id'),
+});
 
 describe('FrameIteratorBase', () => {
   class MockFrameIterator extends FrameIteratorBase {
@@ -53,7 +52,7 @@ describe('FrameIteratorBase', () => {
   test('getId should return a unique ID', () => {
     const iterator = new MockFrameIterator(mockFrames);
     expect(iterator.getId()).toBe('mock-unique-id');
-    expect(uuidv4).toHaveBeenCalled();
+    expect(crypto.randomUUID).toHaveBeenCalled();
   });
 
   test('start should reset isClosed to false', async () => {

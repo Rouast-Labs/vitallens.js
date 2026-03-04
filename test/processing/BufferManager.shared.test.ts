@@ -61,9 +61,9 @@ vi.mock('../../src/core/wasmProvider', () => {
 });
 
 // Mock UUID to predict buffer keys
-vi.mock('uuid', () => ({
-  v4: vi.fn().mockReturnValue('mock-uuid'),
-}));
+vi.stubGlobal('crypto', {
+  randomUUID: vi.fn().mockReturnValue('mock-uuid'),
+});
 
 const mockROI: ROI = { x0: 0, y0: 0, x1: 100, y1: 100 };
 const mockMethodConfigVitalLens: MethodConfig = {
