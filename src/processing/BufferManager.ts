@@ -4,7 +4,6 @@ import { Buffer } from './Buffer';
 import { FrameBuffer } from './FrameBuffer';
 import { RGBBuffer } from './RGBBuffer';
 import { getCore } from '../core/wasmProvider';
-import { v4 as uuidv4 } from 'uuid';
 
 let core: any = null;
 getCore().then((c) => (core = c));
@@ -69,7 +68,7 @@ export class BufferManager {
     const action = this.planner.evaluateTarget(rect, timestamp, activeBuffers);
 
     if (action.action === 'Create') {
-      const newId = uuidv4();
+      const newId = crypto.randomUUID();
       let newBuffer: Buffer;
       if (methodConfig.method.startsWith('vitallens')) {
         newBuffer = new FrameBuffer(targetRoi, methodConfig);
