@@ -27,13 +27,23 @@ export class VitalLensController extends VitalLensControllerBase {
     return new FFmpegWrapper(FFMPEG_CORE_URL, FFMPEG_WASM_URL);
   }
   protected createFaceDetectionWorker(): IFaceDetectionWorker {
-    // Convert the inlined data URI to a Blob URL.
     const blobURL = createWorkerBlobURL(faceDetectionWorkerDataURI);
-
-    // Create the browser Worker using the blob URL.
     const worker = new Worker(blobURL, { type: 'module' });
 
-    // Wrap the worker with your interface wrapper.
+    let baseURL = window.location.href;
+    try {
+      if (typeof import.meta !== 'undefined' && import.meta.url) {
+        baseURL = import.meta.url;
+      }
+    } catch (e) {}
+
+    worker.postMessage({
+      type: 'init',
+      baseURL,
+      coreURL: FFMPEG_CORE_URL,
+      wasmURL: FFMPEG_WASM_URL,
+    });
+
     return new FaceDetectionWorker(worker);
   }
   protected createStreamProcessor(

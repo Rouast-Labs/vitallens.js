@@ -4,18 +4,34 @@ import { modelJsonPath, modelBinPath } from './modelAssets';
 import { resolveAsset } from '../utils/assetResolver';
 
 export class FaceDetectorAsync extends FaceDetectorAsyncBase {
-  /**
-   * Loads the face detection model (browser).
-   */
+  constructor(
+    maxFaces: number = 1,
+    scoreThreshold: number = 0.5,
+    iouThreshold: number = 0.3,
+    private jsonUrl?: string,
+    private binUrl?: string
+  ) {
+    super(maxFaces, scoreThreshold, iouThreshold);
+  }
+
   protected async init(): Promise<void> {
     try {
-      const jsonUrl = resolveAsset(modelJsonPath);
-      const binUrl = resolveAsset(modelBinPath);
+      const finalJsonUrl = this.jsonUrl || resolveAsset(modelJsonPath);
+      const finalBinUrl = this.binUrl || resolveAsset(modelBinPath);
 
       const [jsonResponse, binResponse] = await Promise.all([
-        fetch(jsonUrl),
-        fetch(binUrl),
+        fetch(finalJsonUrl),
+        fetch(finalBinUrl),
       ]);
+
+      if (!jsonResponse.ok)
+        throw new Error(
+          `Failed to fetch JSON: ${jsonResponse.status} ${jsonResponse.statusText}`
+        );
+      if (!binResponse.ok)
+        throw new Error(
+          `Failed to fetch BIN: ${binResponse.status} ${binResponse.statusText}`
+        );
 
       const jsonObj = await jsonResponse.json();
       const binBuffer = await binResponse.arrayBuffer();
