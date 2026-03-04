@@ -1,5 +1,3 @@
-
-
 export const FFmpeg = vi.fn().mockImplementation(() => ({
   load: vi.fn(),
   exec: vi.fn(),

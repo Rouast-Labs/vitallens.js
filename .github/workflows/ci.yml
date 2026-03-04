@@ -46,7 +46,7 @@ jobs:
       - name: Lint code
         run: npm run lint
 
-      - name: Test with Jest
+      - name: Run tests
         env:
           VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
         run: npm test
@@ -90,7 +90,7 @@ jobs:
       - name: Lint code
         run: npm run lint
 
-      - name: Browser only test
+      - name: Run tests
         env:
           VITALLENS_DEV_API_KEY: ${{ secrets.VITALLENS_DEV_API_KEY }}
-        run: npx jest --selectProjects browser --testPathIgnorePatterns FaceDetectorAsyncIntegration
+        run: npm test
