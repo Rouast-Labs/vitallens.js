@@ -35,10 +35,12 @@ export class Session {
     const sessionInput = toSessionInput(incrementalResult);
 
     const reqMode = this.options.waveformMode || defaultWaveformMode;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let wasmMode: any = 'Incremental';
-    if (reqMode === 'complete' || reqMode === 'global') wasmMode = 'Global';
-    else if (reqMode === 'windowed') wasmMode = { Windowed: 10.0 };
+    let wasmMode: unknown = 'Incremental';
+    if (reqMode === 'complete' || reqMode === 'global') {
+      wasmMode = 'Global';
+    } else if (reqMode === 'windowed') {
+      wasmMode = { Windowed: { seconds: 10.0 } };
+    }
 
     const wasmResult = this.wasmSession.processJs(sessionInput, wasmMode);
 

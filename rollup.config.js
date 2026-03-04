@@ -16,12 +16,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const bundleDir = path.resolve(__dirname, 'dist');
 
-// Helper function to read a file and convert to a data URI
-const toDataURI = (filePath, mimeType) => {
-  const data = fs.readFileSync(filePath);
-  return `data:${mimeType};base64,${data.toString('base64')}`;
-};
-
 function onwarn(warning, defaultHandler) {
   if (warning.code === 'THIS_IS_UNDEFINED') return;
   if (warning.code === 'CIRCULAR_DEPENDENCY') return;
@@ -160,10 +154,6 @@ const nodeEsmConfig = {
     json(),
     nodeResolve({ browser: false, preferBuiltins: true }),
     commonjs({ transformMixedEsModules: true, requireReturnsDefault: 'auto' }),
-    replace({
-      __dirname: JSON.stringify(bundleDir),
-      preventAssignment: true,
-    }),
     terser(),
   ],
 };

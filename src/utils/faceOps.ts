@@ -202,3 +202,8 @@ export function checkROIValid(roi: ROI): boolean {
     roi.x0 >= 0 && roi.y0 >= 0 && roi.x1 - roi.x0 > 0 && roi.y1 - roi.y0 > 0
   );
 }
+
+export function getVitalMetadata(vitalId: string) {
+  const core = getCoreSync();
+  return core.getVitalInfo(vitalId);
+}

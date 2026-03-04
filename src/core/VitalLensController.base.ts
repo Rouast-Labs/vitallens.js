@@ -126,6 +126,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     videoElement?: HTMLVideoElement
   ): Promise<void> {
     const core = await getCore();
+    await this.methodHandler.init();
     if (!this.session) {
       this.session = new Session(
         core,
@@ -255,6 +256,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   async processVideoFile(videoInput: VideoInput): Promise<VitalLensResult> {
     const core = await getCore();
+    await this.methodHandler.init();
     if (!this.session) {
       this.session = new Session(
         core,
@@ -269,8 +271,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     if (!this.ffmpeg) {
       this.ffmpeg = this.createFFmpegWrapper();
     }
-
-    await this.methodHandler.init();
 
     const frameIterator = this.frameIteratorFactory.createFileFrameIterator(
       videoInput,

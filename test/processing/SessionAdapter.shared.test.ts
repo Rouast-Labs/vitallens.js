@@ -103,7 +103,9 @@ describe('SessionAdapter', () => {
       };
 
       const sessionInput = toSessionInput(input);
-      expect(sessionInput.signals.ppg_waveform.confidence).toEqual([0.99, 0.99]);
+      expect(sessionInput.signals.ppg_waveform.confidence).toEqual([
+        0.99, 0.99,
+      ]);
     });
 
     it('handles empty or missing data gracefully', () => {
@@ -132,22 +134,23 @@ describe('SessionAdapter', () => {
           confidence: [0.9, 0.95],
           note: 'face note',
         },
-        waveforms: {
-          ppg_waveform: {
-            data: [0.5, 0.6],
-            confidence: [0.8, 0.85],
-            unit: 'unitless',
-            note: 'wf note',
-          },
-        },
-        vitals: {
-          heart_rate: {
-            value: 72,
-            confidence: 0.9,
-            unit: 'bpm',
-            note: 'hr note',
-          },
-        },
+        waveforms: new Map([
+          [
+            'ppg_waveform',
+            {
+              data: [0.5, 0.6],
+              confidence: [0.8, 0.85],
+              unit: 'unitless',
+              note: 'wf note',
+            },
+          ],
+        ]),
+        vitals: new Map([
+          [
+            'heart_rate',
+            { value: 72, confidence: 0.9, unit: 'bpm', note: 'hr note' },
+          ],
+        ]),
         fps: 30.0,
         message: 'Success',
       };
@@ -166,12 +169,12 @@ describe('SessionAdapter', () => {
       expect(result.message).toBe('Success');
       expect(result.model_used).toBe('test-model');
       expect(result.fps).toBe(30.0);
-      
+
       expect(result.face.coordinates).toEqual([
         [0, 0, 20, 20],
         [1, 1, 21, 21],
       ]);
-      
+
       // Waveforms mapped into vital_signs
       expect(result.vital_signs.ppg_waveform).toEqual({
         data: [0.5, 0.6],
@@ -179,7 +182,7 @@ describe('SessionAdapter', () => {
         unit: 'unitless',
         note: 'wf note',
       });
-      
+
       // Vitals mapped into vital_signs
       expect(result.vital_signs.heart_rate).toEqual({
         value: 72,

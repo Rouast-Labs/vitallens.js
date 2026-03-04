@@ -32,13 +32,12 @@ describe('Session', () => {
       minWindowLength: 10,
       maxWindowLength: 10,
       requiresState: false,
-      bufferOffset: 1, // display_time offset
+      bufferOffset: 1,
       supportedVitals: ['heart_rate', 'ppg_waveform'],
     };
     options = {
       method: 'vitallens-2.0',
       overrideFpsTarget: 30,
-      waveformMode: 'windowed',
     };
     session = new Session(mockCore, methodConfig, options);
   });
@@ -85,14 +84,56 @@ describe('Session', () => {
       expect(results![0].display_time).toBe(1001); // 1000 + bufferOffset (1)
       expect(results![0].face.coordinates).toEqual([[0, 0, 1, 1]]);
       expect(results![0].vital_signs.ppg_waveform?.data).toEqual([0.5]);
-      expect(results![0].vital_signs.heart_rate).toBeUndefined(); 
+      expect(results![0].vital_signs.heart_rate).toBeUndefined();
 
       // Frame 2: Should have array values at index 1, and the scalar values attached
       expect(results![1].time).toEqual([1001]);
       expect(results![1].display_time).toBe(1002); // 1001 + bufferOffset (1)
       expect(results![1].face.coordinates).toEqual([[2, 2, 3, 3]]);
       expect(results![1].vital_signs.ppg_waveform?.data).toEqual([0.6]);
-      expect(results![1].vital_signs.heart_rate?.value).toBe(60); 
+      expect(results![1].vital_signs.heart_rate?.value).toBe(60);
+    });
+  });
+
+  describe('WaveformMode mapping', () => {
+    beforeEach(() => {
+      mockSessionInstance.processJs.mockReturnValue({
+        timestamp: [1000],
+        message: '',
+      });
+    });
+
+    it('maps windowed mode to the Rust enum object format', async () => {
+      await session.processIncrementalResult(
+        { time: [1000] } as VitalLensResult,
+        'windowed'
+      );
+      expect(mockSessionInstance.processJs).toHaveBeenCalledWith(
+        expect.any(Object),
+        { Windowed: { seconds: 10.0 } }
+      );
+    });
+
+    it('maps global mode to the Global string', async () => {
+      await session.processIncrementalResult(
+        { time: [1000] } as VitalLensResult,
+        'global'
+      );
+      expect(mockSessionInstance.processJs).toHaveBeenCalledWith(
+        expect.any(Object),
+        'Global'
+      );
+    });
+
+    it('maps incremental mode to the Incremental string', async () => {
+      await session.processIncrementalResult(
+        { time: [1000] } as VitalLensResult,
+        'incremental'
+      );
+      expect(mockSessionInstance.processJs).toHaveBeenCalledWith(
+        expect.any(Object),
+        'Incremental'
+      );
     });
   });
 

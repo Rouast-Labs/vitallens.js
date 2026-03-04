@@ -2,10 +2,8 @@ import tf from 'tfjs-provider';
 import { FaceDetectorAsyncBase } from './FaceDetectorAsync.base';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { workerData } from 'worker_threads';
+import { modelJsonPath, modelBinPath } from './modelAssets';
 
 export class FaceDetectorAsync extends FaceDetectorAsyncBase {
   /**
@@ -13,14 +11,12 @@ export class FaceDetectorAsync extends FaceDetectorAsyncBase {
    */
   protected async init(): Promise<void> {
     try {
-      const jsonPath = path.resolve(
-        __dirname,
-        '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json'
-      );
-      const binPath = path.resolve(
-        __dirname,
-        '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1.bin'
-      );
+      // Fallback to process.cwd() just in case workerData isn't present in a test context
+      const baseDir = workerData?.baseDir || process.cwd();
+
+      // Resolve the path exported by Rollup/Vitest relative to the base directory
+      const jsonPath = path.resolve(baseDir, modelJsonPath);
+      const binPath = path.resolve(baseDir, modelBinPath);
 
       const jsonStr = fs.readFileSync(jsonPath, 'utf-8');
       const jsonObj = JSON.parse(jsonStr);

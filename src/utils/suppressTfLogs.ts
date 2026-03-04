@@ -2,6 +2,7 @@
 const filteredMessages = [
   'already registered',
   'Platform node has already been set. Overwriting the platform with node.',
+  'Hi, looks like',
 ];
 
 // Save a reference to the original console.warn

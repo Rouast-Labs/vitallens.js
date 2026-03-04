@@ -4,6 +4,7 @@ import {
   getUnionROI,
   checkFaceInROI,
   checkROIInFace,
+  getVitalMetadata,
 } from '../../src/utils/faceOps';
 import { MethodConfig, ROI } from '../../src/types/core';
 import { getCore } from '../../src/core/wasmProvider';
@@ -11,11 +12,12 @@ import { describe, expect, beforeAll, vi, it } from 'vitest';
 
 vi.mock('../../src/core/wasmProvider', () => {
   const mockCore = {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     calculateRoi: vi.fn((rect, method, detector, w, h, forceEven) => {
-      // Return a dummy rect that mimics what the Rust core would output
       return { x: 116, y: 112, width: 48, height: 96 };
     }),
+    getVitalInfo: vi
+      .fn()
+      .mockReturnValue({ display_name: 'Heart Rate', unit: 'bpm' }),
   };
   return {
     getCore: vi.fn().mockResolvedValue(mockCore),
@@ -138,5 +140,14 @@ describe('checkROIInFace', () => {
     const face: ROI = { x0: 10, y0: 10, x1: 30, y1: 30 };
     const result = checkROIInFace(roi, face);
     expect(result).toBe(true);
+  });
+});
+
+describe('getVitalMetadata', () => {
+  it('calls Wasm core getVitalInfo', async () => {
+    const core = await getCore();
+    const result = getVitalMetadata('heart_rate');
+    expect(core.getVitalInfo).toHaveBeenCalledWith('heart_rate');
+    expect(result).toEqual({ display_name: 'Heart Rate', unit: 'bpm' });
   });
 });

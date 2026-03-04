@@ -31,7 +31,17 @@ vi.mock('../../src/core/wasmProvider', () => {
     }),
   };
 });
-vi.mock('../../src/utils/RestClient.browser');
+vi.mock('../../src/utils/RestClient.browser', () => {
+  return {
+    RestClient: vi.fn().mockImplementation(function (this: any) {
+      this.resolveModel = vi.fn().mockResolvedValue({
+        resolved_model: 'vitallens',
+        config: { fps_target: 30, roi_method: 'face', supported_vitals: [] },
+      });
+      this.sendFrames = vi.fn();
+    }),
+  };
+});
 vi.mock('../../src/utils/FFmpegWrapper.browser');
 vi.mock('../../src/processing/StreamProcessor.browser');
 vi.mock('../../src/ssd/FaceDetectionWorker.browser');
@@ -52,7 +62,8 @@ global.URL.createObjectURL = vi.fn(
 class FakeWorker extends EventTarget implements Worker {
   onerror: ((this: AbstractWorker, ev: ErrorEvent) => any) | null = null;
   onmessage: ((this: AbstractWorker, ev: MessageEvent) => any) | null = null;
-  onmessageerror: ((this: AbstractWorker, ev: MessageEvent) => any) | null = null;
+  onmessageerror: ((this: AbstractWorker, ev: MessageEvent) => any) | null =
+    null;
 
   addEventListener: Worker['addEventListener'] = vi.fn();
   removeEventListener: Worker['removeEventListener'] = vi.fn();
@@ -60,7 +71,10 @@ class FakeWorker extends EventTarget implements Worker {
   terminate: Worker['terminate'] = vi.fn();
   dispatchEvent: Worker['dispatchEvent'] = vi.fn();
 
-  constructor(public scriptURL: string | URL, public options?: WorkerOptions) {
+  constructor(
+    public scriptURL: string | URL,
+    public options?: WorkerOptions
+  ) {
     super();
   }
 }
