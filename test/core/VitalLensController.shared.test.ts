@@ -4,7 +4,7 @@
 import { VitalLensControllerBase } from '../../src/core/VitalLensController.base';
 import { BufferManager } from '../../src/processing/BufferManager';
 import { MethodHandlerFactory } from '../../src/methods/MethodHandlerFactory';
-import { VitalsEstimateManager } from '../../src/processing/VitalsEstimateManager';
+import { Session } from '../../src/processing/Session';
 import {
   MethodConfig,
   VitalLensOptions,
@@ -35,14 +35,14 @@ vi.mock('../../src/core/wasmProvider', () => {
         processJs: vi.fn(),
         reset: vi.fn(),
       })),
-    })
+    }),
   };
 });
 vi.mock('../../src/processing/BufferManager');
 vi.mock('../../src/processing/FrameIteratorFactory');
 vi.mock('../../src/methods/MethodHandler');
 vi.mock('../../src/methods/MethodHandlerFactory');
-vi.mock('../../src/processing/VitalsEstimateManager');
+vi.mock('../../src/processing/Session');
 
 class TestVitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
@@ -120,10 +120,6 @@ describe('VitalLensControllerBase', () => {
     test('should initialize components', () => {
       expect(BufferManager).toHaveBeenCalled();
       expect(FrameIteratorFactory).toHaveBeenCalled();
-      expect(VitalsEstimateManager).toHaveBeenCalledWith(
-        expect.any(Function),
-        mockOptions
-      );
       expect(MethodHandlerFactory.createHandler).toHaveBeenCalledWith(
         mockOptions,
         expect.any(Object)
@@ -230,11 +226,11 @@ describe('VitalLensControllerBase', () => {
         init: vi.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as IStreamProcessor;
-      controller['vitalsEstimateManager'].resetAll = vi.fn();
+      controller['session'] = { reset: vi.fn() } as any;
 
       controller.pauseVideoStream();
       expect(mockStreamProcessor.stop).toHaveBeenCalled();
-      expect(controller['vitalsEstimateManager'].resetAll).toHaveBeenCalled();
+      expect(controller['session']!.reset).toHaveBeenCalled();
     });
 
     test('should do nothing on pauseVideoStream if not processing', () => {
@@ -247,18 +243,16 @@ describe('VitalLensControllerBase', () => {
         init: vi.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as IStreamProcessor;
-      controller['vitalsEstimateManager'].resetAll = vi.fn();
+      controller['session'] = { reset: vi.fn() } as any;
 
       controller.pauseVideoStream();
       expect(mockStreamProcessor.stop).not.toHaveBeenCalled();
-      expect(
-        controller['vitalsEstimateManager'].resetAll
-      ).not.toHaveBeenCalled();
+      expect(controller['session']!.reset).not.toHaveBeenCalled();
     });
   });
 
   describe('stopVideoStream', () => {
-    test('should stop the streamProcessor (if exists) and reset vitalsEstimateManager', () => {
+    test('should stop the streamProcessor (if exists) and reset session', () => {
       mockStreamProcessor = {
         isProcessing: vi.fn().mockReturnValue(true),
         stop: vi.fn(),
@@ -268,20 +262,20 @@ describe('VitalLensControllerBase', () => {
         init: vi.fn(),
       };
       controller['streamProcessor'] = mockStreamProcessor as IStreamProcessor;
-      controller['vitalsEstimateManager'].resetAll = vi.fn();
+      controller['session'] = { reset: vi.fn() } as any;
 
       controller.stopVideoStream();
       expect(mockStreamProcessor.stop).toHaveBeenCalled();
       expect(controller['streamProcessor']).toBeNull();
-      expect(controller['vitalsEstimateManager'].resetAll).toHaveBeenCalled();
+      expect(controller['session']!.reset).toHaveBeenCalled();
     });
 
-    test('should call vitalsEstimateManager.resetAll even if streamProcessor is null', () => {
+    test('should call session.reset even if streamProcessor is null', () => {
       controller['streamProcessor'] = null;
-      controller['vitalsEstimateManager'].resetAll = vi.fn();
+      controller['session'] = { reset: vi.fn() } as any;
 
       controller.stopVideoStream();
-      expect(controller['vitalsEstimateManager'].resetAll).toHaveBeenCalled();
+      expect(controller['session']!.reset).toHaveBeenCalled();
     });
   });
 
@@ -312,13 +306,12 @@ describe('VitalLensControllerBase', () => {
       controller['methodHandler'].init = vi.fn();
       controller['methodHandler'].cleanup = vi.fn();
 
-      controller['vitalsEstimateManager'].processIncrementalResult = vi
-        .fn()
-        .mockResolvedValue({});
       const mockFinalResult = { message: 'Processing complete' };
-      controller['vitalsEstimateManager'].getResult = vi
-        .fn()
-        .mockResolvedValue(mockFinalResult);
+      controller['session'] = {
+        processIncrementalResult: vi.fn().mockResolvedValue({}),
+        getResult: vi.fn().mockResolvedValue(mockFinalResult),
+        reset: vi.fn(),
+      } as any;
 
       const result = await controller.processVideoFile(mockFileInput);
 
@@ -348,22 +341,14 @@ describe('VitalLensControllerBase', () => {
       );
 
       expect(
-        controller['vitalsEstimateManager'].processIncrementalResult
+        controller['session']!.processIncrementalResult
       ).toHaveBeenCalledTimes(2);
       expect(
-        controller['vitalsEstimateManager'].processIncrementalResult
-      ).toHaveBeenCalledWith(
-        mockIncrementalResult,
-        'frameIteratorId',
-        'complete',
-        true,
-        false
-      );
+        controller['session']!.processIncrementalResult
+      ).toHaveBeenCalledWith(mockIncrementalResult, 'incremental', false);
 
       expect(controller['methodHandler'].cleanup).toHaveBeenCalled();
-      expect(controller['vitalsEstimateManager'].reset).toHaveBeenCalledWith(
-        'frameIteratorId'
-      );
+      expect(controller['session']!.reset).toHaveBeenCalled();
 
       expect(result).toEqual(mockFinalResult);
     });
@@ -414,7 +399,7 @@ describe('VitalLensControllerBase', () => {
       controller['streamProcessor'] =
         fakeStreamProcessor as unknown as IStreamProcessor;
       controller['bufferManager'].cleanup = vi.fn();
-      controller['vitalsEstimateManager'].resetAll = vi.fn();
+      controller['session'] = { reset: vi.fn() } as any;
 
       await controller.dispose();
 
@@ -425,7 +410,7 @@ describe('VitalLensControllerBase', () => {
       expect(fakeStreamProcessor.stop).toHaveBeenCalled();
       expect(controller['streamProcessor']).toBeNull();
       expect(controller['bufferManager'].cleanup).toHaveBeenCalled();
-      expect(controller['vitalsEstimateManager'].resetAll).toHaveBeenCalled();
+      expect(controller['session']!.reset).toHaveBeenCalled();
     });
   });
 
@@ -494,17 +479,21 @@ describe('VitalLensControllerBase', () => {
         reset: vi.fn(),
       };
       controller['streamProcessor'] = mockProc as unknown as IStreamProcessor;
+      controller['session'] = { reset: vi.fn() } as any;
 
       controller.reset();
       expect(mockProc.reset).toHaveBeenCalled();
+      expect(controller['session']!.reset).toHaveBeenCalled();
     });
 
     test('should cleanup bufferManager if streamProcessor does not exist', () => {
       controller['streamProcessor'] = null;
       controller['bufferManager'].cleanup = vi.fn();
+      controller['session'] = { reset: vi.fn() } as any;
 
       controller.reset();
       expect(controller['bufferManager'].cleanup).toHaveBeenCalled();
+      expect(controller['session']!.reset).toHaveBeenCalled();
     });
   });
 });

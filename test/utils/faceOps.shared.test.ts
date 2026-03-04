@@ -19,6 +19,7 @@ vi.mock('../../src/core/wasmProvider', () => {
   };
   return {
     getCore: vi.fn().mockResolvedValue(mockCore),
+    getCoreSync: vi.fn().mockReturnValue(mockCore),
   };
 });
 

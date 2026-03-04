@@ -1,8 +1,5 @@
 import { MethodConfig, ROI } from '../types/core';
-import { getCore } from '../core/wasmProvider';
-
-let core: any = null;
-getCore().then(c => core = c);
+import { getCoreSync } from '../core/wasmProvider';
 
 /**
  * Determines the ROI based on the specified roiMethod.
@@ -18,7 +15,7 @@ export function getROIForMethod(
   clipDims: { width: number; height: number },
   forceEvenDims: boolean = false
 ): ROI {
-  if (!core) throw new Error("Wasm core not initialized");
+  const core = getCoreSync();
 
   const rect = {
     x: det.x0,

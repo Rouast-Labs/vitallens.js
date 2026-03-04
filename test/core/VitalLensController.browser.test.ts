@@ -20,10 +20,14 @@ vi.mock('../../src/core/wasmProvider', () => {
         evaluateTarget: vi.fn(),
         poll: vi.fn(),
       })),
-      Session: vi.fn().mockImplementation(() => ({
-        processJs: vi.fn(),
-        reset: vi.fn(),
-      })),
+      Session: class {
+        constructor() {
+          return {
+            processJs: vi.fn(),
+            reset: vi.fn(),
+          };
+        }
+      },
     }),
   };
 });
