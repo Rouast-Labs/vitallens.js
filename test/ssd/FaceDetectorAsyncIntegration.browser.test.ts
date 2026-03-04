@@ -31,7 +31,12 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
             ),
             'utf8'
           );
-          return { json: async () => JSON.parse(data) } as Response;
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => JSON.parse(data),
+          } as Response;
         }
         if (url.includes('mock-model.bin')) {
           const data = fs.readFileSync(
@@ -40,7 +45,12 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
               '../../models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1.bin'
             )
           );
-          return { arrayBuffer: async () => data.buffer } as Response;
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            arrayBuffer: async () => data.buffer,
+          } as Response;
         }
         throw new Error(`Unexpected fetch URL: ${url}`);
       }

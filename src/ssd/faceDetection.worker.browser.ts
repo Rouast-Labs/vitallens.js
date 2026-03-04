@@ -4,28 +4,57 @@ import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import FFmpegWrapper from '../utils/FFmpegWrapper.browser';
 import { FaceDetectorInput } from './FaceDetectorAsync.base';
 import { VideoProbeResult } from '../types';
+import { modelJsonPath, modelBinPath } from './modelAssets';
 
-const faceDetector = new FaceDetectorAsync();
-await faceDetector.load();
-
+let faceDetector: FaceDetectorAsync | null = null;
 let ffmpeg: IFFmpegWrapper | null = null;
 let ffmpegCoreURL: string | undefined;
 let ffmpegWasmURL: string | undefined;
+let initPromise: Promise<void> | null = null;
 
-// Message handler.
 self.onmessage = async (event: MessageEvent) => {
-  const { id, data, dataType, fs, timestamp, type } = event.data;
+  const { id, data, dataType, fs, timestamp, type, baseURL } = event.data;
 
-  // Handle the initialization message for self-contained builds
   if (type === 'init') {
     ffmpegCoreURL = event.data.coreURL;
     ffmpegWasmURL = event.data.wasmURL;
+    initPromise = (async () => {
+      try {
+        const finalJsonUrl = baseURL
+          ? new URL(modelJsonPath, baseURL).href
+          : undefined;
+        const finalBinUrl = baseURL
+          ? new URL(modelBinPath, baseURL).href
+          : undefined;
+        faceDetector = new FaceDetectorAsync(
+          1,
+          0.5,
+          0.3,
+          finalJsonUrl,
+          finalBinUrl
+        );
+        await faceDetector.load();
+      } catch (err) {
+        console.error('Worker init error:', err);
+      }
+    })();
+    await initPromise;
     return;
   }
 
   try {
+    if (initPromise) {
+      await initPromise;
+    }
+
     let input: FaceDetectorInput;
     let probeInfo: VideoProbeResult;
+
+    if (!faceDetector) {
+      throw new Error(
+        'Face detection model is not loaded. Call .load() first.'
+      );
+    }
 
     if (dataType === 'video') {
       // Data is a File or Blob. We need to use ffmpeg - init if not already done.
