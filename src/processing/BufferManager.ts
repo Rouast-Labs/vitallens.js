@@ -3,10 +3,7 @@ import { Frame } from './Frame';
 import { Buffer } from './Buffer';
 import { FrameBuffer } from './FrameBuffer';
 import { RGBBuffer } from './RGBBuffer';
-import { getCore } from '../core/wasmProvider';
-
-let core: any = null;
-getCore().then((c) => (core = c));
+import { getCoreSync } from '../core/wasmProvider';
 
 export class BufferManager {
   private buffers: Map<
@@ -21,7 +18,8 @@ export class BufferManager {
   }
 
   private ensurePlanner(methodConfig: MethodConfig) {
-    if (!this.planner && core) {
+    if (!this.planner) {
+      const core = getCoreSync();
       const sessionConfig = {
         model_name: methodConfig.method,
         supported_vitals: methodConfig.supportedVitals,

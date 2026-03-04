@@ -11,7 +11,7 @@ import {
 } from '../types/core';
 import { IVitalLensController } from '../types/IVitalLensController';
 import { METHODS_CONFIG } from '../config/methodsConfig';
-import { VitalsEstimateManager } from '../processing/VitalsEstimateManager';
+import { Session } from '../processing/Session';
 import { isBrowser } from '../utils/env';
 import { IRestClient } from '../types/IRestClient';
 import { IStreamProcessor } from '../types/IStreamProcessor';
@@ -34,7 +34,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   protected methodConfig: MethodConfig;
   protected faceDetectionWorker: IFaceDetectionWorker | null = null;
   protected ffmpeg: IFFmpegWrapper | null = null;
-  protected vitalsEstimateManager: VitalsEstimateManager;
+  protected session: Session | null = null;
   protected eventListeners: { [event: string]: ((data: unknown) => void)[] } =
     {};
 
@@ -44,10 +44,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     this.methodHandler = this.createMethodHandler(options);
     this.frameIteratorFactory = new FrameIteratorFactory(options, () =>
       this.methodHandler.getConfig()
-    );
-    this.vitalsEstimateManager = new VitalsEstimateManager(
-      () => this.methodHandler.getConfig(),
-      this.options
     );
     if (options.globalRoi === undefined) {
       this.faceDetectionWorker = this.createFaceDetectionWorker();
@@ -129,7 +125,14 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     stream?: MediaStream,
     videoElement?: HTMLVideoElement
   ): Promise<void> {
-    await getCore();
+    const core = await getCore();
+    if (!this.session) {
+      this.session = new Session(
+        core,
+        this.methodHandler.getConfig(),
+        this.options
+      );
+    }
     if (!isBrowser) {
       throw new Error(
         'setVideoStream is not supported yet in the Node environment.'
@@ -164,12 +167,10 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
         // onPredict - process and dispatch incremental result unless paused
         if (this.isProcessing()) {
           // Buffer results; Produce one result for each frame and deliver with buffer offset.
-          const bufferedResults =
-            await this.vitalsEstimateManager.produceBufferedResults(
-              incrementalResult,
-              frameIterator.getId(),
-              this.options.waveformMode || 'windowed'
-            );
+          const bufferedResults = await this.session!.produceBufferedResults(
+            incrementalResult,
+            this.options.waveformMode || 'incremental'
+          );
           // Send the results to be delivered
           if (bufferedResults && bufferedResults.length) {
             bufferedResultsConsumer?.addResults(bufferedResults);
@@ -178,11 +179,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       },
       async () => {
         // onNoFace - reset the vitals estimate manager and dispatch empty result
-        this.vitalsEstimateManager.reset(frameIterator.getId());
-        this.dispatchEvent(
-          'vitals',
-          this.vitalsEstimateManager.getEmptyResult()
-        );
+        this.session!.reset();
+        this.dispatchEvent('vitals', this.session!.getEmptyResult());
         this.dispatchEvent('faceDetected', null);
       },
       async () => {
@@ -221,7 +219,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   pauseVideoStream(): void {
     if (this.isProcessing()) {
       this.streamProcessor!.stop();
-      this.vitalsEstimateManager.resetAll();
+      this.session?.reset();
     }
   }
 
@@ -233,14 +231,14 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.streamProcessor.stop();
       this.streamProcessor = null;
     }
-    this.vitalsEstimateManager.resetAll();
+    this.session?.reset();
   }
 
   /**
    * Resets internal state.
    */
   reset(): void {
-    this.vitalsEstimateManager.resetAll();
+    this.session?.reset();
     if (this.streamProcessor) {
       // If streaming, let the processor handle the reset (clears ROI + Buffers)
       this.streamProcessor.reset();
@@ -256,7 +254,14 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @returns The results after processing the video.
    */
   async processVideoFile(videoInput: VideoInput): Promise<VitalLensResult> {
-    await getCore();
+    const core = await getCore();
+    if (!this.session) {
+      this.session = new Session(
+        core,
+        this.methodHandler.getConfig(),
+        this.options
+      );
+    }
     if (!this.frameIteratorFactory) {
       throw new Error('FrameIteratorFactory is not initialized.');
     }
@@ -306,24 +311,20 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
           );
         }
         // Feed the chunk into Wasm to accumulate in the buffer
-        await this.vitalsEstimateManager.processIncrementalResult(
+        await this.session.processIncrementalResult(
           incrementalResult,
-          frameIterator.getId(),
-          'incremental', 
-          true,
-          false 
+          'incremental',
+          false
         );
       }
       chunkCounter++;
     }
 
     // Trigger the final Global calculation on the accumulated buffer
-    const result = await this.vitalsEstimateManager.getResult(
-      frameIterator.getId()
-    );
+    const result = await this.session.getResult();
 
     await this.methodHandler.cleanup();
-    this.vitalsEstimateManager.reset(frameIterator.getId());
+    this.session.reset();
 
     return result;
   }
@@ -378,7 +379,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     }
     // Reset any internal state.
     this.bufferManager.cleanup();
-    this.vitalsEstimateManager.resetAll();
+    this.session?.reset();
   }
 
   /**
