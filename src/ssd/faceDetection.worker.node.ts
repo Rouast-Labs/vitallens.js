@@ -1,3 +1,4 @@
+import '../utils/suppressTfLogs';
 import { parentPort } from 'worker_threads';
 import { FaceDetectorAsync } from './FaceDetectorAsync.node';
 import { Frame, FrameTransferable } from '../processing/Frame';

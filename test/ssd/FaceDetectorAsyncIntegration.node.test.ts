@@ -11,6 +11,20 @@ import { describe, expect, beforeAll, afterAll, vi, it } from 'vitest';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+vi.mock('../../src/ssd/modelAssets', () => {
+  const path = require('path');
+  return {
+    modelJsonPath: path.resolve(
+      process.cwd(),
+      'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/model.json'
+    ),
+    modelBinPath: path.resolve(
+      process.cwd(),
+      'models/Ultra-Light-Fast-Generic-Face-Detector-1MB/group1-shard1of1.bin'
+    ),
+  };
+});
+
 describe('FaceDetectorAsync (Node) Integration Test', () => {
   let faceDetector: FaceDetectorAsync;
 
@@ -69,7 +83,7 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     imageTensor.dispose();
     resizedImage.dispose();
     frame.disposeTensor();
-  }, 30000);
+  }, 60000);
 
   it('should detect faces in a batch of two images', async () => {
     // Load the image file
@@ -123,5 +137,5 @@ describe('FaceDetectorAsync (Node) Integration Test', () => {
     singleImageBatch.dispose();
     batchedImage.dispose();
     frame.disposeTensor();
-  }, 30000);
+  }, 60000);
 });

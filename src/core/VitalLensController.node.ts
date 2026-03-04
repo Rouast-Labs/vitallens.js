@@ -14,6 +14,24 @@ import { Worker } from 'worker_threads';
 import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.node';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 import { BufferedResultsConsumer } from '../processing/BufferedResultsConsumer';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+function getBaseDir(): string {
+  let currentDir = '';
+  if (typeof __dirname !== 'undefined') {
+    currentDir = __dirname;
+  } else if (typeof import.meta !== 'undefined' && import.meta.url) {
+    currentDir = path.dirname(fileURLToPath(import.meta.url));
+  } else {
+    currentDir = process.cwd();
+  }
+
+  if (process.env.RUN_INTEGRATION === 'true') {
+    return path.resolve(currentDir, '../../dist');
+  }
+  return currentDir;
+}
 
 export class VitalLensController extends VitalLensControllerBase {
   protected createRestClient(apiKey: string, proxyUrl?: string): IRestClient {
@@ -23,14 +41,16 @@ export class VitalLensController extends VitalLensControllerBase {
     return new FFmpegWrapper();
   }
   protected createFaceDetectionWorker(): IFaceDetectionWorker {
-    // Obtain the data URL string from inlined worker module and decode it.
     const code = Buffer.from(
       faceDetectionWorkerDataURI.split(',')[1],
       'base64'
     ).toString('utf8');
-    // Create the Worker.
-    const worker = new Worker(code, { eval: true });
-    // Wrap the Worker in your common interface wrapper.
+
+    const worker = new Worker(code, {
+      eval: true,
+      workerData: { baseDir: getBaseDir() },
+    });
+
     return new FaceDetectionWorker(worker);
   }
   protected createStreamProcessor(

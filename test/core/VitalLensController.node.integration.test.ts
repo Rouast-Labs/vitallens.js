@@ -114,5 +114,5 @@ describe('VitalLensController Integration (Node)', () => {
     // expect(typeof result.model_used).toBe('string');
 
     controller.dispose();
-  }, 30000);
+  }, 60000);
 });

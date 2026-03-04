@@ -1,5 +1,11 @@
 import { MethodConfig, VitalLensResult } from '../types/core';
 
+function iterEntries(obj: any): [string, any][] {
+  if (!obj) return [];
+  if (typeof obj.entries === 'function') return Array.from(obj.entries());
+  return Object.entries(obj);
+}
+
 export function toSessionConfig(
   methodConfig: MethodConfig,
   overrideFpsTarget?: number
@@ -17,7 +23,7 @@ export function toSessionConfig(
 }
 
 export function toSessionInput(result: VitalLensResult) {
-  const signals: Record<string, any> = {};
+  const signals: Record<string, unknown> = {};
 
   if (result.vital_signs) {
     for (const [key, val] of Object.entries(result.vital_signs)) {
@@ -30,7 +36,7 @@ export function toSessionInput(result: VitalLensResult) {
     }
   }
 
-  let faceInput: any = undefined;
+  let faceInput: unknown = undefined;
   if (result.face?.coordinates && result.face?.confidence) {
     faceInput = {
       coordinates: result.face.coordinates,
@@ -62,14 +68,13 @@ export function toVitalLensResult(
     fps: wasmResult.fps || incrementalResult?.fps,
   };
 
-  if (incrementalResult?.model_used) {
+  if (incrementalResult?.model_used)
     result.model_used = incrementalResult.model_used;
-  }
-  if (incrementalResult?.display_time) {
+  if (incrementalResult?.display_time)
     result.display_time = incrementalResult.display_time;
-  }
 
-  if (wasmResult.face && Object.keys(wasmResult.face).length > 0) {
+  // Handle Face Result (mapped from Rust types.rs FaceResult)
+  if (wasmResult.face) {
     result.face.coordinates =
       wasmResult.face.coordinates || result.face.coordinates;
     result.face.confidence =
@@ -77,31 +82,29 @@ export function toVitalLensResult(
     if (wasmResult.face.note) result.face.note = wasmResult.face.note;
   }
 
-  if (wasmResult.waveforms) {
-    for (const [key, wf] of Object.entries(wasmResult.waveforms)) {
-      const waveform = wf as any;
-      result.vital_signs[key] = {
-        ...result.vital_signs[key],
-        data: waveform.data,
-        confidence: waveform.confidence,
-        unit: waveform.unit,
-        note: waveform.note,
-      };
-    }
+  // Handle Waveforms (Maps from Rust HashMap<String, WaveformResult>)
+  for (const [key, wf] of iterEntries(wasmResult.waveforms)) {
+    const waveform = wf as any;
+    result.vital_signs[key] = {
+      ...result.vital_signs[key],
+      data: waveform.data,
+      confidence: waveform.confidence,
+      unit: waveform.unit,
+      note: waveform.note,
+    };
   }
 
-  if (wasmResult.vitals) {
-    for (const [key, v] of Object.entries(wasmResult.vitals)) {
-      const vital = v as any;
-      if (vital.value !== undefined && vital.value !== null) {
-        result.vital_signs[key] = {
-          ...result.vital_signs[key],
-          value: vital.value,
-          confidence: vital.confidence,
-          unit: vital.unit,
-          note: vital.note,
-        };
-      }
+  // Handle Vitals (Maps from Rust HashMap<String, VitalResult>)
+  for (const [key, v] of iterEntries(wasmResult.vitals)) {
+    const vital = v as any;
+    if (vital.value !== undefined && vital.value !== null) {
+      result.vital_signs[key] = {
+        ...result.vital_signs[key],
+        value: vital.value,
+        confidence: vital.confidence,
+        unit: vital.unit,
+        note: vital.note,
+      };
     }
   }
 

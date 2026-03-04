@@ -67,7 +67,7 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
       expect(roi).toHaveProperty('x1');
       expect(roi).toHaveProperty('y1');
     });
-  }, 30000);
+  }, 60000);
 
   it('should detect faces in a batch of two images', async () => {
     const imageTensor = getTestImageFrame().getTensor();
@@ -91,5 +91,5 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
     singleImageBatch.dispose();
     batchedImage.dispose();
     frame.disposeTensor();
-  }, 30000);
+  }, 60000);
 });

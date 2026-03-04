@@ -12,7 +12,9 @@ import { describe, test, expect, beforeEach, vi } from 'vitest';
 vi.mock('../../src/core/wasmProvider', () => {
   return {
     getCore: vi.fn().mockResolvedValue({
-      calculateRoi: vi.fn().mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
+      calculateRoi: vi
+        .fn()
+        .mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
       computeBufferConfig: vi.fn().mockReturnValue({}),
       BufferPlanner: vi.fn().mockImplementation(() => ({
         evaluateTarget: vi.fn(),
@@ -26,10 +28,20 @@ vi.mock('../../src/core/wasmProvider', () => {
           };
         }
       },
-    })
+    }),
   };
 });
-vi.mock('../../src/utils/RestClient.node');
+vi.mock('../../src/utils/RestClient.node', () => {
+  return {
+    RestClient: vi.fn().mockImplementation(function (this: any) {
+      this.resolveModel = vi.fn().mockResolvedValue({
+        resolved_model: 'vitallens',
+        config: { fps_target: 30, roi_method: 'face', supported_vitals: [] },
+      });
+      this.sendFrames = vi.fn();
+    }),
+  };
+});
 vi.mock('../../src/utils/FFmpegWrapper.node');
 vi.mock('../../src/processing/StreamProcessor.node');
 vi.mock('../../src/ssd/FaceDetectionWorker.node');
@@ -93,7 +105,10 @@ describe('VitalLensController (Node)', () => {
       const faceWorker = (controller as any).createFaceDetectionWorker();
       expect(Worker).toHaveBeenCalled();
       const workerCallArgs = vi.mocked(Worker).mock.calls[0];
-      expect(workerCallArgs[1]).toEqual({ eval: true });
+      expect(workerCallArgs[1]).toEqual({
+        eval: true,
+        workerData: { baseDir: expect.any(String) },
+      });
       expect(faceWorker).toBeInstanceOf(FaceDetectionWorker);
     });
   });
