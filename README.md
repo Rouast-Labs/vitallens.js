@@ -76,7 +76,7 @@ const vl = new VitalLens({
 
 // Process a file
 const result = await vl.processVideoFile(myFile);
-console.log("Heart Rate:", result.vital_signs.heart_rate.value);
+console.log("Heart Rate:", result.vitals.heart_rate.value);
 ```
 <!-- mkdocs-end -->
 
