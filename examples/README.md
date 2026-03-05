@@ -54,7 +54,7 @@ The quickest way to get started without a build step. This uses the raw `VitalLe
       await vl.setVideoStream(stream, videoElement);
       
       vl.addEventListener('vitals', (result) => {
-        console.log('Heart Rate:', result.vital_signs.heart_rate.value);
+        console.log('Heart Rate:', result.vitals.heart_rate.value);
       });
       
       vl.startVideoStream();

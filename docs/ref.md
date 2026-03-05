@@ -113,7 +113,7 @@ Registers a listener for specific library events.
 
 ```javascript
 vl.addEventListener('vitals', (result) => {
-  console.log(result.vital_signs.heart_rate.value);
+  console.log(result.vitals.heart_rate.value);
 });
 ```
 
