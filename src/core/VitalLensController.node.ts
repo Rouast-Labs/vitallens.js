@@ -17,7 +17,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 function getBaseDir(): string {
-  let currentDir = '';
+  let currentDir: string;
   if (typeof __dirname !== 'undefined') {
     currentDir = __dirname;
   } else if (typeof import.meta !== 'undefined' && import.meta.url) {
