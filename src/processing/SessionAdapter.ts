@@ -25,8 +25,8 @@ export function toSessionConfig(
 export function toSessionInput(result: VitalLensResult) {
   const signals: Record<string, unknown> = {};
 
-  if (result.vital_signs) {
-    for (const [key, val] of Object.entries(result.vital_signs)) {
+  if (result.waveforms) {
+    for (const [key, val] of Object.entries(result.waveforms)) {
       if (val.data && val.confidence) {
         const confArray = Array.isArray(val.confidence)
           ? val.confidence
@@ -57,8 +57,11 @@ export function toVitalLensResult(
 ): VitalLensResult {
   const result: VitalLensResult = {
     face: incrementalResult?.face ? { ...incrementalResult.face } : {},
-    vital_signs: incrementalResult?.vital_signs
-      ? structuredClone(incrementalResult.vital_signs)
+    vitals: incrementalResult?.vitals
+      ? structuredClone(incrementalResult.vitals)
+      : {},
+    waveforms: incrementalResult?.waveforms
+      ? structuredClone(incrementalResult.waveforms)
       : {},
     time:
       wasmResult.timestamp && wasmResult.timestamp.length > 0
@@ -73,7 +76,6 @@ export function toVitalLensResult(
   if (incrementalResult?.display_time)
     result.display_time = incrementalResult.display_time;
 
-  // Handle Face Result (mapped from Rust types.rs FaceResult)
   if (wasmResult.face) {
     result.face.coordinates =
       wasmResult.face.coordinates || result.face.coordinates;
@@ -82,11 +84,9 @@ export function toVitalLensResult(
     if (wasmResult.face.note) result.face.note = wasmResult.face.note;
   }
 
-  // Handle Waveforms (Maps from Rust HashMap<String, WaveformResult>)
   for (const [key, wf] of iterEntries(wasmResult.waveforms)) {
     const waveform = wf as any;
-    result.vital_signs[key] = {
-      ...result.vital_signs[key],
+    result.waveforms[key] = {
       data: waveform.data,
       confidence: waveform.confidence,
       unit: waveform.unit,
@@ -94,12 +94,10 @@ export function toVitalLensResult(
     };
   }
 
-  // Handle Vitals (Maps from Rust HashMap<String, VitalResult>)
   for (const [key, v] of iterEntries(wasmResult.vitals)) {
     const vital = v as any;
     if (vital.value !== undefined && vital.value !== null) {
-      result.vital_signs[key] = {
-        ...result.vital_signs[key],
+      result.vitals[key] = {
         value: vital.value,
         confidence: vital.confidence,
         unit: vital.unit,

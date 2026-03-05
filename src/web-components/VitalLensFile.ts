@@ -98,7 +98,8 @@ export class VitalLensFile extends VitalLensBase {
   }
 
   private showResults(result: VitalLensResult) {
-    const vs = result.vital_signs;
+    const vs = result.vitals;
+    const wf = result.waveforms;
     const getConf = (v: any) => Array.isArray(v?.confidence) ? v.confidence[v.confidence.length - 1] : (v?.confidence ?? 0);
 
     const hrConf = getConf(vs.heart_rate);
@@ -144,10 +145,9 @@ export class VitalLensFile extends VitalLensBase {
       primaryVitals,
       secondaryVitals,
       stats: { duration, sampleCount, avgFaceConf: avgFace },
-      ppgWaveform: vs.ppg_waveform?.data,
-      respWaveform: vs.respiratory_waveform?.data
+      ppgWaveform: wf.ppg_waveform?.data,
+      respWaveform: wf.respiratory_waveform?.data,
     };
-
     this.transitionState('completed');
   }
 
@@ -160,6 +160,10 @@ export class VitalLensFile extends VitalLensBase {
   }
 }
 
-if (!customElements.get('vitallens-file')) {
-  customElements.define('vitallens-file', VitalLensFile);
+try {
+  if (!customElements.get('vitallens-file')) {
+    customElements.define('vitallens-file', VitalLensFile);
+  }
+} catch (e) {
+  console.warn('vitallens-file registration bypassed');
 }

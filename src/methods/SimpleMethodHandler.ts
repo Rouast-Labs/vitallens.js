@@ -54,7 +54,8 @@ export abstract class SimpleMethodHandler extends MethodHandler {
         confidence: new Array(ppg.length).fill(1.0),
         note: 'Face detection coordinates for this face, along with live confidence levels. This method is not capable of providing a confidence estimate, hence returning 1.',
       },
-      vital_signs: {
+      vitals: {},
+      waveforms: {
         ppg_waveform: {
           data: ppg,
           unit: 'bpm',

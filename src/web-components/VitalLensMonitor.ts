@@ -185,7 +185,7 @@ export class VitalLensMonitor extends VitalLensBase {
   protected updateUI(result: VitalLensResult): void {
     if (!this.isProcessingFlag || !this.isFaceCurrentlyDetected) return;
 
-    for (const key of Object.keys(result.vital_signs)) {
+    for (const key of Object.keys(result.vitals)) {
       this.receivedVitals.add(key);
     }
 
@@ -216,7 +216,7 @@ export class VitalLensMonitor extends VitalLensBase {
       this.ppgSampleCount += result.time.length;
     }
 
-    const vs = result.vital_signs;
+    const vs = result.vitals;
     const getConf = (v: any) =>
       Array.isArray(v?.confidence)
         ? v.confidence[v.confidence.length - 1]
@@ -509,9 +509,13 @@ export class VitalLensMonitor extends VitalLensBase {
   }
 }
 
-if (!customElements.get('vitallens-monitor')) {
-  customElements.define('vitallens-monitor', VitalLensMonitor);
+try {
+  if (!customElements.get('vitallens-monitor')) {
+    customElements.define('vitallens-monitor', VitalLensMonitor);
+  }
+} catch (e) {
+  console.warn('vitallens-monitor registration bypassed');
 }
-if (!customElements.get('vitallens-vitals-monitor')) {
-  customElements.define('vitallens-vitals-monitor', VitalLensMonitor);
-}
+// if (!customElements.get('vitallens-vitals-monitor')) {
+//   customElements.define('vitallens-vitals-monitor', VitalLensMonitor);
+// }

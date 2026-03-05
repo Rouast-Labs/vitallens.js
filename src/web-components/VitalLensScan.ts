@@ -208,19 +208,19 @@ export class VitalLensScan extends VitalLensBase {
 
     if (result.face?.confidence) this.faceConfHistory.push(...result.face.confidence);
     
-    if (result.vital_signs?.ppg_waveform?.data) {
-      this.ppgHistory.push(...result.vital_signs.ppg_waveform.data);
+    if (result.waveforms?.ppg_waveform?.data) {
+      this.ppgHistory.push(...result.waveforms.ppg_waveform.data);
     }
-    if (result.vital_signs?.ppg_waveform?.confidence) {
-      const c = result.vital_signs.ppg_waveform.confidence;
+    if (result.waveforms?.ppg_waveform?.confidence) {
+      const c = result.waveforms.ppg_waveform.confidence;
       this.ppgConfHistory.push(...(Array.isArray(c) ? c : [c]));
     }
 
-    if (result.vital_signs?.respiratory_waveform?.data) {
-      this.respHistory.push(...result.vital_signs.respiratory_waveform.data);
+    if (result.waveforms?.respiratory_waveform?.data) {
+      this.respHistory.push(...result.waveforms.respiratory_waveform.data);
     }
-    if (result.vital_signs?.respiratory_waveform?.confidence) {
-      const c = result.vital_signs.respiratory_waveform.confidence;
+    if (result.waveforms?.respiratory_waveform?.confidence) {
+      const c = result.waveforms.respiratory_waveform.confidence;
       this.respConfHistory.push(...(Array.isArray(c) ? c : [c]));
     }
 
@@ -275,26 +275,6 @@ export class VitalLensScan extends VitalLensBase {
   }
 
   private finishScan(result: VitalLensResult) {
-    // 1. Check confidence FIRST while the camera is still running
-    const vs = result.vital_signs;
-    const getConf = (v: any) => Array.isArray(v?.confidence) ? v.confidence[v.confidence.length - 1] : (v?.confidence ?? 0);
-
-    const hrConf = getConf(vs.heart_rate);
-    const rrConf = getConf(vs.respiratory_rate);
-    const sdnnConf = getConf(vs.hrv_sdnn);
-    const rmssdConf = getConf(vs.hrv_rmssd);
-
-    const isVitallens2 = result.model_used?.includes('vitallens-2.0');
-    const requiredVitalsConfident = isVitallens2 
-      ? (hrConf >= this.VITAL_CONF_THRESHOLD && rrConf >= this.VITAL_CONF_THRESHOLD && sdnnConf >= this.HRV_CONF_THRESHOLD && rmssdConf >= this.HRV_CONF_THRESHOLD)
-      : (hrConf >= this.VITAL_CONF_THRESHOLD && rrConf >= this.VITAL_CONF_THRESHOLD);
-
-    if (!requiredVitalsConfident) {
-      this.handleIssue('Measurements uncertain.');
-      return; // Early return, keeping the stream active for the retry
-    }
-
-    // 2. NOW stop the stream since it's a success
     this.isProcessingFlag = false;
     this.vitalLensInstance?.stopVideoStream();
     this.stopCamera();
@@ -305,6 +285,14 @@ export class VitalLensScan extends VitalLensBase {
 
     const avgFace = this.faceConfHistory.length ? this.faceConfHistory.reduce((a, b) => a + b, 0) / this.faceConfHistory.length : 0;
     const duration = this.totalFramesProcessed / (result.fps ?? (this.currentMode === 'eco' ? 15 : 30));
+
+    const vs = result.vitals;
+    const getConf = (v: any) => Array.isArray(v?.confidence) ? v.confidence[v.confidence.length - 1] : (v?.confidence ?? 0);
+
+    const hrConf = getConf(vs.heart_rate);
+    const rrConf = getConf(vs.respiratory_rate);
+    const sdnnConf = getConf(vs.hrv_sdnn);
+    const rmssdConf = getConf(vs.hrv_rmssd);
 
     const buildVital = (id: string, value: number | null | undefined, conf: number, format: string, useShortTitle: boolean = false) => {
       if (value == null) return null;
@@ -322,13 +310,13 @@ export class VitalLensScan extends VitalLensBase {
     };
 
     const primaryVitals = [
-      buildVital('heart_rate', vs.heart_rate?.value, hrConf, '%.0f', false),
-      buildVital('respiratory_rate', vs.respiratory_rate?.value, rrConf, '%.0f', false)
+      buildVital('heart_rate', hrConf >= this.VITAL_CONF_THRESHOLD ? vs.heart_rate?.value : null, hrConf, '%.0f', false),
+      buildVital('respiratory_rate', rrConf >= this.VITAL_CONF_THRESHOLD ? vs.respiratory_rate?.value : null, rrConf, '%.0f', false)
     ].filter(Boolean) as any[];
 
     const secondaryVitals = [
-      buildVital('hrv_sdnn', vs.hrv_sdnn?.value, sdnnConf, '%.0f', true),
-      buildVital('hrv_rmssd', vs.hrv_rmssd?.value, rmssdConf, '%.0f', true)
+      buildVital('hrv_sdnn', sdnnConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_sdnn?.value : null, sdnnConf, '%.0f', true),
+      buildVital('hrv_rmssd', rmssdConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_rmssd?.value : null, rmssdConf, '%.0f', true)
     ].filter(Boolean) as any[];
 
     this.resultScreen.resultData = {
@@ -349,9 +337,13 @@ export class VitalLensScan extends VitalLensBase {
     this.resetToIdle();
   }
 }
-if (!customElements.get('vitallens-scan')) {
-  customElements.define('vitallens-scan', VitalLensScan);
+try {
+  if (!customElements.get('vitallens-scan')) {
+    customElements.define('vitallens-scan', VitalLensScan);
+  }
+} catch (e) {
+  console.warn('vitallens-scan registration bypassed');
 }
-if (!customElements.get('vitallens-vitals-scan')) {
-  customElements.define('vitallens-vitals-scan', VitalLensScan);
-}
+// if (!customElements.get('vitallens-vitals-scan')) {
+//   customElements.define('vitallens-vitals-scan', VitalLensScan);
+// }

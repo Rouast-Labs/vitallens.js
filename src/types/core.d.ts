@@ -61,13 +61,22 @@ export interface MethodConfig {
 }
 
 /**
- * Represents a single vital's data.
+ * Represents a single scalar vital sign.
  */
 export interface VitalData {
-  value?: number | null;
-  data?: number[];
+  value: number;
   unit: string;
-  confidence: number | number[]; // Scalar or array depending on waveform
+  confidence: number;
+  note: string;
+}
+
+/**
+ * Represents a time-series waveform signal.
+ */
+export interface WaveformData {
+  data: number[];
+  unit: string;
+  confidence: number[];
   note: string;
 }
 
@@ -76,11 +85,12 @@ export interface VitalData {
  */
 export interface VitalLensResult {
   face: {
-    coordinates?: Array<[number, number, number, number]>; // (x0, y0, x1, y1) for each frame
+    coordinates?: Array<[number, number, number, number]>;
     confidence?: number[];
     note?: string;
   };
-  vital_signs: Record<string, VitalData>;
+  vitals: Record<string, VitalData>;
+  waveforms: Record<string, WaveformData>;
   n?: number;
   time?: number[];
   display_time?: number;

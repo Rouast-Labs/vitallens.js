@@ -64,7 +64,8 @@ describe('SimpleMethodHandler', () => {
         confidence: [1.0, 1.0, 1.0],
         note: 'Face detection coordinates for this face, along with live confidence levels. This method is not capable of providing a confidence estimate, hence returning 1.',
       },
-      vital_signs: {
+      vitals: {},
+      waveforms: {
         ppg_waveform: {
           data: [1, 2, 3],
           unit: 'bpm',

@@ -151,27 +151,42 @@ export class VitalLensAPIHandler extends MethodHandler {
       throw new VitalLensAPIError(`Error ${response.statusCode}: ${message}`);
     }
 
-    const parsedResponse = response.body;
+    const parsedResponse = response.body as any;
 
-    // CHANGED: Removed the strict requirement for parsedResponse.state
+    const n = parsedResponse.n ?? framesChunk.getTimestamp().length;
+    const roi = framesChunk.getROI();
+    const coords = roi.map((r) => [r.x0, r.y0, r.x1, r.y1]) as [
+      number,
+      number,
+      number,
+      number,
+    ][];
+
+    const vitals: Record<string, any> = parsedResponse.vitals || {};
+    const waveforms: Record<string, any> = parsedResponse.waveforms || {};
+
+    // Backward compatibility for old API structure
     if (parsedResponse.vital_signs) {
-      // CHANGED: Fallback to the actual chunk size if the API doesn't provide 'n'
-      const n = parsedResponse.n ?? framesChunk.getTimestamp().length;
-      const roi = framesChunk.getROI();
-      const coords = roi.map((r) => [r.x0, r.y0, r.x1, r.y1]) as [
-        number,
-        number,
-        number,
-        number,
-      ][];
+      for (const [key, val] of Object.entries(
+        parsedResponse.vital_signs as Record<string, any>
+      )) {
+        if (val.data !== undefined) {
+          waveforms[key] = val;
+        } else if (val.value !== undefined) {
+          vitals[key] = val;
+        }
+      }
+    }
 
+    if (Object.keys(vitals).length > 0 || Object.keys(waveforms).length > 0) {
       return {
         face: {
           coordinates: coords.slice(-n),
           confidence: parsedResponse.face?.confidence?.slice(-n),
           note: 'Face detection coordinates for this face, along with live confidence levels.',
         },
-        vital_signs: parsedResponse.vital_signs,
+        vitals,
+        waveforms,
         state: parsedResponse.state,
         model_used: parsedResponse.model_used,
         time: framesChunk.getTimestamp().slice(-n),

@@ -16,7 +16,8 @@ import { describe, expect, vi, afterEach, it } from 'vitest';
 const mockResponse: VitalLensAPIResponse = {
   statusCode: 200,
   body: {
-    vital_signs: {
+    vitals: {},
+    waveforms: {
       ppg_waveform: {
         data: [1, 2, 3],
         confidence: [0.9, 0.9, 0.9],
@@ -124,7 +125,8 @@ describe('VitalLensAPIHandler', () => {
         confidence: mockResponse.body.face.confidence,
         note: 'Face detection coordinates for this face, along with live confidence levels.',
       },
-      vital_signs: mockResponse.body.vital_signs,
+      vitals: mockResponse.body.vitals,
+      waveforms: mockResponse.body.waveforms,
       state: mockResponse.body.state,
       time: mockFrame.getTimestamp(),
       n: mockResponse.body.n,
@@ -152,7 +154,7 @@ describe('VitalLensAPIHandler', () => {
       >()
       .mockResolvedValue({
         statusCode: 1234,
-        body: { face: {}, vital_signs: {}, time: [], message: '' },
+        body: { face: {}, vitals: {}, waveforms: {}, time: [], message: '' },
       });
 
     const handler = new VitalLensAPIHandler(
@@ -168,7 +170,7 @@ describe('VitalLensAPIHandler', () => {
   it('should handle API key errors', async () => {
     const mockErrorResponse: VitalLensAPIResponse = {
       statusCode: 403,
-      body: { face: {}, vital_signs: {}, time: [], message: 'Invalid API Key' },
+      body: { face: {}, vitals: {}, waveforms: {}, time: [], message: 'Invalid API Key' },
     };
     mockRestClient.sendFrames = vi
       .fn<
@@ -193,7 +195,7 @@ describe('VitalLensAPIHandler', () => {
   it('should handle quota exceeded errors', async () => {
     const mockErrorResponse = {
       statusCode: 429,
-      body: { face: {}, vital_signs: {}, time: [], message: 'Quota exceeded' },
+      body: { face: {}, vitals: {}, waveforms: {}, time: [], message: 'Quota exceeded' },
     };
     mockRestClient.sendFrames = vi
       .fn<

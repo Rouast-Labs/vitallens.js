@@ -62,7 +62,8 @@ describe('SessionAdapter', () => {
           ],
           confidence: [0.9, 0.95],
         },
-        vital_signs: {
+        vitals: {},
+        waveforms: {
           ppg_waveform: {
             data: [0.1, 0.2],
             confidence: [0.8, 0.85],
@@ -91,10 +92,11 @@ describe('SessionAdapter', () => {
       const input: VitalLensResult = {
         time: [1000, 1001],
         face: {},
-        vital_signs: {
+        vitals: {},
+        waveforms: {
           ppg_waveform: {
             data: [0.1, 0.2],
-            confidence: 0.99, // Scalar confidence
+            confidence: 0.99 as any,  
             unit: 'unitless',
             note: '',
           },
@@ -110,7 +112,8 @@ describe('SessionAdapter', () => {
 
     it('handles empty or missing data gracefully', () => {
       const input: VitalLensResult = {
-        vital_signs: {},
+        vitals: {},
+        waveforms: {},
         face: {},
         message: '',
       };
@@ -158,7 +161,8 @@ describe('SessionAdapter', () => {
       const incrementalResult: VitalLensResult = {
         time: [1000, 1001],
         face: {},
-        vital_signs: {},
+        vitals: {},
+        waveforms: {},
         message: 'incremental msg',
         model_used: 'test-model',
       };
@@ -175,16 +179,14 @@ describe('SessionAdapter', () => {
         [1, 1, 21, 21],
       ]);
 
-      // Waveforms mapped into vital_signs
-      expect(result.vital_signs.ppg_waveform).toEqual({
+      expect(result.waveforms.ppg_waveform).toEqual({
         data: [0.5, 0.6],
         confidence: [0.8, 0.85],
         unit: 'unitless',
         note: 'wf note',
       });
 
-      // Vitals mapped into vital_signs
-      expect(result.vital_signs.heart_rate).toEqual({
+      expect(result.vitals.heart_rate).toEqual({
         value: 72,
         confidence: 0.9,
         unit: 'bpm',
@@ -201,7 +203,8 @@ describe('SessionAdapter', () => {
       const incrementalResult: VitalLensResult = {
         time: [999],
         face: { confidence: [1.0] },
-        vital_signs: {},
+        vitals: {},
+        waveforms: {},
         message: 'fallback msg',
         fps: 15.0,
       };

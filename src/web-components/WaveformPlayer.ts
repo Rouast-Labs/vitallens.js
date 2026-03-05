@@ -34,10 +34,10 @@ export class WaveformPlayer {
   }
 
   public addData(result: VitalLensResult) {
-    const ppgChunk = result.vital_signs?.ppg_waveform?.data ?? [];
-    const ppgConfs = result.vital_signs?.ppg_waveform?.confidence ?? [];
-    const respChunk = result.vital_signs?.respiratory_waveform?.data ?? [];
-    const respConfs = result.vital_signs?.respiratory_waveform?.confidence ?? [];
+    const ppgChunk = result.waveforms?.ppg_waveform?.data ?? [];
+    const ppgConfs = result.waveforms?.ppg_waveform?.confidence ?? [];
+    const respChunk = result.waveforms?.respiratory_waveform?.data ?? [];
+    const respConfs = result.waveforms?.respiratory_waveform?.confidence ?? [];
     const times = result.time ?? [];
 
     if (times.length === 0) return;

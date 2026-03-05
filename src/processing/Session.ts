@@ -34,6 +34,7 @@ export class Session {
 
     const sessionInput = toSessionInput(incrementalResult);
 
+    // TODO: Expose waveform window configuration to users (e.g., allow custom duration).
     const reqMode = this.options.waveformMode || defaultWaveformMode;
     let wasmMode: unknown = 'Incremental';
     if (reqMode === 'global') {
@@ -61,7 +62,8 @@ export class Session {
   getEmptyResult(): VitalLensResult {
     return {
       face: {},
-      vital_signs: {},
+      vitals: {},
+      waveforms: {},
       time: [],
       message: 'Prediction is empty because no face was detected.',
     };

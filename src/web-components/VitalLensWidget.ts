@@ -241,7 +241,7 @@ export class VitalLensWidget extends VitalLensBase {
 
   protected updateUI(result: VitalLensResult): void {
     this.clearBufferingTimeout();
-    const { face, vital_signs, fps } = result;
+    const { face, vitals, waveforms, fps } = result;
     const faceConfidence = face?.confidence?.[face.confidence.length - 1] ?? 0;
 
     if (faceConfidence < FACE_CONFIDENCE_THRESHOLD) {
@@ -256,7 +256,8 @@ export class VitalLensWidget extends VitalLensBase {
     
     this.hideVitalsLoader();
 
-    const { ppg_waveform, respiratory_waveform, heart_rate, respiratory_rate, hrv_sdnn, hrv_rmssd } = vital_signs;
+    const { ppg_waveform, respiratory_waveform } = waveforms;
+    const { heart_rate, respiratory_rate, hrv_sdnn, hrv_rmssd } = vitals;
 
     if (this.mode === 'webcam') {
       this.waveformPlayer.addData(result);
@@ -652,7 +653,7 @@ export class VitalLensWidget extends VitalLensBase {
       if (this.mode === 'file' && this.latestResult) {
         const currentTime = this.videoElement.currentTime;
         const duration = this.videoElement.duration;
-        const waveformLength = this.latestResult.vital_signs?.ppg_waveform?.data?.length || 0;
+        const waveformLength = this.latestResult.waveforms?.ppg_waveform?.data?.length || 0;
         if (duration > 0 && waveformLength > 0) {
           const markerIndex = (currentTime / duration) * (waveformLength - 1);
           if (this.charts.ppgChart.options.plugins.playbackDot) {

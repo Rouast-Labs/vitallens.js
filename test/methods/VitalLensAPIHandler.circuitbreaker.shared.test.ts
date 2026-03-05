@@ -8,7 +8,8 @@ import { VitalLensAPIError } from '../../src/utils/errors';
 
 // A standard successful response from the API for our mocks
 const mockSuccessResponseBody: VitalLensResult = {
-  vital_signs: {
+  vitals: {},
+  waveforms: {
     ppg_waveform: {
       data: [1, 2, 3],
       confidence: [1, 1, 1],
