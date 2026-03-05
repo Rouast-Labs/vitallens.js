@@ -1,4 +1,4 @@
-import { VitalLensBase } from './VitalLensBase';
+import { VitalLensBase, SessionState } from './VitalLensBase';
 import { VitalLensResult } from '../types';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './monitor.html';
@@ -21,14 +21,11 @@ Chart.register(
   CategoryScale
 );
 
-type MonitorState = 'idle' | 'searching' | 'warmingUp' | 'tracking' | 'issue';
-
 export class VitalLensMonitor extends VitalLensBase {
-  private state: MonitorState = 'idle';
+  private state: SessionState = 'idle';
   private currentMode: 'eco' | 'standard' = 'eco';
 
   private videoEl!: HTMLVideoElement;
-  private canvasEl!: HTMLCanvasElement;
   private startScreen!: HTMLElement;
   private cameraLayer!: HTMLElement;
   private bottomPanel!: HTMLElement;
@@ -46,11 +43,6 @@ export class VitalLensMonitor extends VitalLensBase {
   private ppgChart: any;
   private respChart: any;
 
-  private readonly VITAL_CONF_THRESHOLD = 0.8;
-  private readonly HRV_CONF_THRESHOLD = 0.7;
-  private readonly FACE_CONF_THRESHOLD = 0.5;
-  private readonly MIN_DISPLAY_SAMPLES = 6.0 * 15; // Minimum samples required before showing charts TODO make depending on display mode (fps)
-
   private ppgSampleCount = 0;
   private receivedVitals: Set<string> = new Set();
   private stream: MediaStream | null = null;
@@ -58,6 +50,7 @@ export class VitalLensMonitor extends VitalLensBase {
 
   private ppgConfHistory: number[] = [];
   private respConfHistory: number[] = [];
+  private faceConfHistory: number[] = [];
 
   constructor() {
     super();
@@ -81,8 +74,8 @@ export class VitalLensMonitor extends VitalLensBase {
     super.connectedCallback();
     this.shadowRoot!.querySelector<HTMLImageElement>('#logo')!.src = logoUrl;
 
-    this.ppgChart = this.createChart('#ppgCanvas', '#e62300');  
-    this.respChart = this.createChart('#respCanvas', '#007bff');  
+    this.ppgChart = this.createChart('#ppgCanvas', '#e62300');
+    this.respChart = this.createChart('#respCanvas', '#007bff');
 
     this.startScreen.addEventListener('start', () => this.startProcessing());
     this.startScreen.addEventListener('modechange', (e: any) => {
@@ -101,7 +94,6 @@ export class VitalLensMonitor extends VitalLensBase {
 
   protected getElements(): void {
     this.videoEl = this.shadowRoot!.querySelector('#video')!;
-    this.canvasEl = this.shadowRoot!.querySelector('#canvas')!;
     this.startScreen = this.shadowRoot!.querySelector('#startScreen')!;
     this.cameraLayer = this.shadowRoot!.querySelector('#cameraLayer')!;
     this.bottomPanel = this.shadowRoot!.querySelector('#bottomPanel')!;
@@ -120,12 +112,8 @@ export class VitalLensMonitor extends VitalLensBase {
     this.startScreen.style.display = 'none';
     this.cameraLayer.style.display = 'block';
 
-    // Bottom panel is always visible during processing
     this.bottomPanel.classList.add('visible');
-    this.transitionState(
-      'searching',
-      'Face the camera, ensure good lighting and hold still.'
-    );
+    this.transitionState('searching', 'Face the camera and hold still.');
 
     const fps = this.currentMode === 'eco' ? 15 : 30;
     this.waveformPlayer.setFps(fps);
@@ -136,7 +124,6 @@ export class VitalLensMonitor extends VitalLensBase {
         video: { facingMode: 'user' },
       });
       this.videoEl.srcObject = this.stream;
-      this.videoEl.onloadeddata = () => this.resizeCanvas();
 
       await this.initVitalLensInstance({ overrideFpsTarget: fps });
 
@@ -148,13 +135,11 @@ export class VitalLensMonitor extends VitalLensBase {
 
         this.isFaceCurrentlyDetected = isPresent;
         if (!isPresent) {
-          this.transitionState(
-            'issue',
-            'Check Position: Face the camera and hold still.'
-          );
+          // Changed to gracefully fallback to searching instead of fatal issue
+          this.transitionState('searching', 'Face the camera and hold still.');
           this.vitalLensInstance?.reset();
           this.clearMeasurements();
-        } else if (this.state === 'issue' || this.state === 'idle') {
+        } else if (this.state === 'searching' || this.state === 'idle') {
           this.transitionState('searching', 'Face detected, analyzing...');
         }
       });
@@ -191,92 +176,75 @@ export class VitalLensMonitor extends VitalLensBase {
 
     this.updateHRVDisplay();
 
-    const faceConfs = result.face.confidence ?? [];
-    const currentFaceConf =
-      faceConfs.length > 0 ? faceConfs[faceConfs.length - 1] : 0.0;
-
-    if (currentFaceConf < this.FACE_CONF_THRESHOLD) {
-      this.transitionState('issue', 'Face not clear. Hold still.');
-      this.canvasEl
-        .getContext('2d')!
-        .clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
-      return;
-    }
-
-    if (result.face.coordinates && result.face.coordinates.length > 0) {
-      this.drawFaceBox(
-        result.face.coordinates[result.face.coordinates.length - 1]
-      );
+    // Maintain a brief history of face confidences
+    if (result.face?.confidence) {
+      this.faceConfHistory.push(...result.face.confidence);
+      // Cap memory usage (keep roughly 2 seconds)
+      const fps = this.currentMode === 'eco' ? 15 : 30;
+      if (this.faceConfHistory.length > fps * 2) {
+        this.faceConfHistory = this.faceConfHistory.slice(-Math.round(fps * 2));
+      }
     }
 
     this.waveformPlayer.addData(result);
 
-    // Track sample count for warming up phase
     if (result.time) {
       this.ppgSampleCount += result.time.length;
     }
 
-    const vs = result.vitals;
+    const { heart_rate, respiratory_rate, hrv_sdnn, hrv_rmssd } = result.vitals;
     const getConf = (v: any) =>
       Array.isArray(v?.confidence)
         ? v.confidence[v.confidence.length - 1]
         : (v?.confidence ?? 0);
 
-    const hrConf = getConf(vs.heart_rate);
-    const rrConf = getConf(vs.respiratory_rate);
-    const sdnnConf = getConf(vs.hrv_sdnn);
-    const rmssdConf = getConf(vs.hrv_rmssd);
+    const hrConf = getConf(heart_rate);
+    const rrConf = getConf(respiratory_rate);
+    const sdnnConf = getConf(hrv_sdnn);
+    const rmssdConf = getConf(hrv_rmssd);
 
-    // Update Vitals UI mirroring iOS: show value if ready, otherwise -- with unready class
     this.updateValue(
       'hrVal',
-      vs.heart_rate?.value,
+      heart_rate?.value,
       hrConf >= this.VITAL_CONF_THRESHOLD,
       0
     );
     this.updateValue(
       'rrVal',
-      vs.respiratory_rate?.value,
+      respiratory_rate?.value,
       rrConf >= this.VITAL_CONF_THRESHOLD,
       0
     );
     this.updateValue(
       'sdnnVal',
-      vs.hrv_sdnn?.value,
+      hrv_sdnn?.value,
       sdnnConf >= this.HRV_CONF_THRESHOLD,
       1
     );
     this.updateValue(
       'rmssdVal',
-      vs.hrv_rmssd?.value,
+      hrv_rmssd?.value,
       rmssdConf >= this.HRV_CONF_THRESHOLD,
       1
     );
 
-    const hasConfidentHr = hrConf >= this.VITAL_CONF_THRESHOLD;
-    const hasConfidentRr = rrConf >= this.VITAL_CONF_THRESHOLD;
-    const hasConfidentHrv =
-      sdnnConf >= this.HRV_CONF_THRESHOLD ||
-      rmssdConf >= this.HRV_CONF_THRESHOLD;
-
+    // Let the shared state machine evaluate our situation
     const fps = this.currentMode === 'eco' ? 15 : 30;
     const requiredSamples = 6.0 * fps;
     const hasEnoughData = this.ppgSampleCount >= requiredSamples;
 
-    if (!(hasConfidentHr || hasConfidentRr || hasConfidentHrv)) {
-      this.transitionState(
-        'issue',
-        'Low confidence. Ensure you are well lit and hold still.'
-      );
-    } else if (!hasEnoughData) {
-      const prog = Math.min(
-        100,
-        Math.round((this.ppgSampleCount / requiredSamples) * 100)
-      );
-      this.transitionState('warmingUp', `Calibrating signals... (${prog}%)`);
-    } else {
-      this.transitionState('tracking', 'Tracking vitals');
-    }
+    const feedback = this.resolveFeedbackState(
+      this.state,
+      result,
+      this.faceConfHistory,
+      this.ppgConfHistory,
+      fps,
+      this.videoEl.videoWidth,
+      this.videoEl.videoHeight,
+      hasEnoughData
+    );
+
+    this.transitionState(feedback.state, feedback.message);
   }
 
   // Determines if waveforms should be shown based on average confidence & minimum data
@@ -305,21 +273,33 @@ export class VitalLensMonitor extends VitalLensBase {
     this.respSpinner.style.display = isRespReady ? 'none' : 'block';
   }
 
-  private transitionState(newState: MonitorState, msg: string) {
+  private transitionState(newState: SessionState, msg: string) {
     if (this.state !== newState) {
       this.statusBadge.className = `status-badge status-${newState}`;
-      const stateLabels: Record<MonitorState, string> = {
+      const stateLabels: Record<SessionState, string> = {
         idle: 'Idle',
-        searching: 'Searching...',
-        warmingUp: 'Calibrating...',
+        searching: 'Searching',
+        warmingUp: 'Calibrating',
         tracking: 'Tracking',
-        issue: 'Check Position',
+        recovering: 'Recovering',
+        issue: 'Issue',
+        completed: 'Done',
       };
       this.statusText.textContent = stateLabels[newState];
       this.state = newState;
     }
 
-    this.messageEl.textContent = msg;
+    if (this.state === 'warmingUp') {
+      const fps = this.currentMode === 'eco' ? 15 : 30;
+      const requiredSamples = 6.0 * fps;
+      const prog = Math.min(
+        100,
+        Math.round((this.ppgSampleCount / requiredSamples) * 100)
+      );
+      this.messageEl.textContent = `Calibrating signals... (${prog}%)`;
+    } else {
+      this.messageEl.textContent = msg;
+    }
   }
 
   private clearMeasurements() {
@@ -328,18 +308,16 @@ export class VitalLensMonitor extends VitalLensBase {
     this.receivedVitals.clear();
     this.ppgConfHistory = [];
     this.respConfHistory = [];
+    this.faceConfHistory = []; // Ensure this clears
 
     this.updateChart(this.ppgChart, []);
     this.updateChart(this.respChart, []);
-    this.evaluateChartReadiness(); // Reset to spinner state
+    this.evaluateChartReadiness();
 
     this.updateValue('hrVal', null, false, 0);
     this.updateValue('rrVal', null, false, 0);
     this.updateValue('sdnnVal', null, false, 1);
     this.updateValue('rmssdVal', null, false, 1);
-    this.canvasEl
-      .getContext('2d')!
-      .clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
   }
 
   protected updateHRVDisplay(): void {
@@ -359,35 +337,48 @@ export class VitalLensMonitor extends VitalLensBase {
     // HR
     const hrMeta = VitalMetadataCache.getMeta('heart_rate');
     if (hrMeta) {
-      this.shadowRoot!.querySelector('#hrTitle')!.textContent = hrMeta.shortName || hrMeta.short_name || 'HR';
-      this.shadowRoot!.querySelector('#hrUnit')!.textContent = (hrMeta.unit || 'BPM').toUpperCase();
+      this.shadowRoot!.querySelector('#hrTitle')!.textContent =
+        hrMeta.shortName || hrMeta.short_name || 'HR';
+      this.shadowRoot!.querySelector('#hrUnit')!.textContent = (
+        hrMeta.unit || 'BPM'
+      ).toUpperCase();
     }
 
     // RR
     const rrMeta = VitalMetadataCache.getMeta('respiratory_rate');
     if (rrMeta) {
-      this.shadowRoot!.querySelector('#rrTitle')!.textContent = rrMeta.shortName || rrMeta.short_name || 'RR';
-      this.shadowRoot!.querySelector('#rrUnit')!.textContent = (rrMeta.unit || 'RPM').toUpperCase();
+      this.shadowRoot!.querySelector('#rrTitle')!.textContent =
+        rrMeta.shortName || rrMeta.short_name || 'RR';
+      this.shadowRoot!.querySelector('#rrUnit')!.textContent = (
+        rrMeta.unit || 'RPM'
+      ).toUpperCase();
     }
 
     // SDNN
     const sdnnMeta = VitalMetadataCache.getMeta('hrv_sdnn');
     if (sdnnMeta) {
-      this.shadowRoot!.querySelector('#sdnnTitle')!.textContent = sdnnMeta.shortName || sdnnMeta.short_name || 'SDNN';
-      this.shadowRoot!.querySelector('#sdnnUnit')!.textContent = (sdnnMeta.unit || 'ms').toLowerCase();
+      this.shadowRoot!.querySelector('#sdnnTitle')!.textContent =
+        sdnnMeta.shortName || sdnnMeta.short_name || 'SDNN';
+      this.shadowRoot!.querySelector('#sdnnUnit')!.textContent = (
+        sdnnMeta.unit || 'ms'
+      ).toLowerCase();
     }
 
     // RMSSD
     const rmssdMeta = VitalMetadataCache.getMeta('hrv_rmssd');
     if (rmssdMeta) {
-      this.shadowRoot!.querySelector('#rmssdTitle')!.textContent = rmssdMeta.shortName || rmssdMeta.short_name || 'RMSSD';
-      this.shadowRoot!.querySelector('#rmssdUnit')!.textContent = (rmssdMeta.unit || 'ms').toLowerCase();
+      this.shadowRoot!.querySelector('#rmssdTitle')!.textContent =
+        rmssdMeta.shortName || rmssdMeta.short_name || 'RMSSD';
+      this.shadowRoot!.querySelector('#rmssdUnit')!.textContent = (
+        rmssdMeta.unit || 'ms'
+      ).toLowerCase();
     }
 
     // PPG Chart
     const ppgMeta = VitalMetadataCache.getMeta('ppg_waveform');
     if (ppgMeta) {
-      this.shadowRoot!.querySelector('#ppgChartLabel')!.textContent = ppgMeta.display_name || ppgMeta.displayName || 'PPG Waveform';
+      this.shadowRoot!.querySelector('#ppgChartLabel')!.textContent =
+        ppgMeta.display_name || ppgMeta.displayName || 'PPG Waveform';
       this.ppgChart.data.datasets[0].borderColor = ppgMeta.color || '#e62300';
       this.ppgChart.update();
     }
@@ -395,7 +386,8 @@ export class VitalLensMonitor extends VitalLensBase {
     // RESP Chart
     const respMeta = VitalMetadataCache.getMeta('respiratory_waveform');
     if (respMeta) {
-      this.shadowRoot!.querySelector('#respChartLabel')!.textContent = respMeta.display_name || respMeta.displayName || 'Respiratory Waveform';
+      this.shadowRoot!.querySelector('#respChartLabel')!.textContent =
+        respMeta.display_name || respMeta.displayName || 'Respiratory Waveform';
       this.respChart.data.datasets[0].borderColor = respMeta.color || '#007bff';
       this.respChart.update();
     }
@@ -454,54 +446,6 @@ export class VitalLensMonitor extends VitalLensBase {
     chart.data.labels = Array.from({ length: data.length }, (_, i) => i);
     chart.data.datasets[0].data = data;
     chart.update();
-  }
-
-  private resizeCanvas() {
-    const rect = this.videoEl.getBoundingClientRect();
-    this.canvasEl.width = rect.width;
-    this.canvasEl.height = rect.height;
-  }
-
-  private drawFaceBox(roi: number[]) {
-    const ctx = this.canvasEl.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
-    const [x0, y0, x1, y1] = roi;
-
-    const vw = this.videoEl.videoWidth,
-      vh = this.videoEl.videoHeight;
-    const cw = this.canvasEl.width,
-      ch = this.canvasEl.height;
-    const vRatio = vw / vh;
-    const cRatio = cw / ch;
-
-    let drawW,
-      drawH,
-      offX = 0,
-      offY = 0;
-    if (vRatio > cRatio) {
-      drawH = ch;
-      drawW = ch * vRatio;
-      offX = (cw - drawW) / 2;
-    } else {
-      drawW = cw;
-      drawH = cw / vRatio;
-      offY = (ch - drawH) / 2;
-    }
-
-    // Multiply absolute coordinates by the scale factor
-    const scaleX = drawW / vw;
-    const scaleY = drawH / vh;
-    
-    const boxX = cw - (offX + x1 * scaleX);
-    const boxY = offY + y0 * scaleY;
-    const boxW = (x1 - x0) * scaleX;
-    const boxH = (y1 - y0) * scaleY;
-
-    ctx.strokeStyle = 'rgba(70, 163, 219, 0.8)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    ctx.strokeRect(boxX, boxY, boxW, boxH);
   }
 
   protected resetUI(): void {

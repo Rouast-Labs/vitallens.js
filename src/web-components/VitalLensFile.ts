@@ -26,7 +26,9 @@ export class VitalLensFile extends VitalLensBase {
     super.connectedCallback();
 
     this.startScreen.addEventListener('start', () => this.fileInput.click());
-    this.fileInput.addEventListener('change', (e) => this.handleFileSelection(e));
+    this.fileInput.addEventListener('change', (e) =>
+      this.handleFileSelection(e)
+    );
     this.resultScreen.addEventListener('done', () => this.resetToIdle());
     this.retryBtn.addEventListener('click', () => this.resetToIdle());
 
@@ -36,7 +38,8 @@ export class VitalLensFile extends VitalLensBase {
 
   protected getElements(): void {
     this.startScreen = this.shadowRoot!.querySelector('#startScreen')!;
-    this.processingScreen = this.shadowRoot!.querySelector('#processingScreen')!;
+    this.processingScreen =
+      this.shadowRoot!.querySelector('#processingScreen')!;
     this.resultScreen = this.shadowRoot!.querySelector('#resultScreen')!;
     this.errorScreen = this.shadowRoot!.querySelector('#errorScreen')!;
     this.progressText = this.shadowRoot!.querySelector('#progressText')!;
@@ -60,7 +63,7 @@ export class VitalLensFile extends VitalLensBase {
 
     try {
       await this.initVitalLensInstance({ waveformMode: 'global' });
-      
+
       this.vitalLensInstance!.addEventListener('fileProgress', (msg: any) => {
         this.progressText.textContent = msg as string;
       });
@@ -79,8 +82,10 @@ export class VitalLensFile extends VitalLensBase {
   private transitionState(newState: FileState) {
     this.state = newState;
     this.startScreen.style.display = newState === 'idle' ? 'block' : 'none';
-    this.processingScreen.style.display = newState === 'processing' ? 'flex' : 'none';
-    this.resultScreen.style.display = newState === 'completed' ? 'block' : 'none';
+    this.processingScreen.style.display =
+      newState === 'processing' ? 'flex' : 'none';
+    this.resultScreen.style.display =
+      newState === 'completed' ? 'block' : 'none';
     this.errorScreen.style.display = newState === 'error' ? 'flex' : 'none';
   }
 
@@ -100,7 +105,10 @@ export class VitalLensFile extends VitalLensBase {
   private showResults(result: VitalLensResult) {
     const vs = result.vitals;
     const wf = result.waveforms;
-    const getConf = (v: any) => Array.isArray(v?.confidence) ? v.confidence[v.confidence.length - 1] : (v?.confidence ?? 0);
+    const getConf = (v: any) =>
+      Array.isArray(v?.confidence)
+        ? v.confidence[v.confidence.length - 1]
+        : (v?.confidence ?? 0);
 
     const hrConf = getConf(vs.heart_rate);
     const rrConf = getConf(vs.respiratory_rate);
@@ -108,38 +116,71 @@ export class VitalLensFile extends VitalLensBase {
     const rmssdConf = getConf(vs.hrv_rmssd);
 
     const faceConfs = result.face.confidence ?? [];
-    const avgFace = faceConfs.length ? faceConfs.reduce((a, b) => a + b, 0) / faceConfs.length : 0;
-    
+    const avgFace = faceConfs.length
+      ? faceConfs.reduce((a, b) => a + b, 0) / faceConfs.length
+      : 0;
+
     let duration = 0;
     if (result.time && result.time.length > 1) {
       duration = result.time[result.time.length - 1] - result.time[0];
     }
     const sampleCount = result.n ?? result.time?.length ?? 0;
 
-    const buildVital = (id: string, value: number | null | undefined, conf: number, format: string, useShortTitle: boolean = false) => {
-      if (value == null) return null;
+    const buildVital = (
+      id: string,
+      value: number | null | undefined,
+      conf: number,
+      format: string,
+      useShortTitle: boolean = false
+    ) => {
       const meta = VitalMetadataCache.getMeta(id);
-      const title = useShortTitle ? (meta?.short_name || meta?.shortName || id) : (meta?.display_name || meta?.displayName || id);
+      const title = useShortTitle
+        ? meta?.short_name || meta?.shortName || id
+        : meta?.display_name || meta?.displayName || id;
       return {
         id,
         title,
-        value,
+        value: value ?? null,
         unit: (meta?.unit || '').toUpperCase(),
         format,
         confidence: conf,
-        emoji: meta?.emoji || ''
+        emoji: meta?.emoji || '',
       };
     };
 
     const primaryVitals = [
-      buildVital('heart_rate', vs.heart_rate?.value, hrConf, '%.0f', false),
-      buildVital('respiratory_rate', vs.respiratory_rate?.value, rrConf, '%.0f', false)
-    ].filter(Boolean) as any[];
+      buildVital(
+        'heart_rate',
+        hrConf >= this.VITAL_CONF_THRESHOLD ? vs.heart_rate?.value : null,
+        hrConf,
+        '%.0f',
+        false
+      ),
+      buildVital(
+        'respiratory_rate',
+        rrConf >= this.VITAL_CONF_THRESHOLD ? vs.respiratory_rate?.value : null,
+        rrConf,
+        '%.0f',
+        false
+      ),
+    ];
 
     const secondaryVitals = [
-      buildVital('hrv_sdnn', vs.hrv_sdnn?.value, sdnnConf, '%.0f', true),
-      buildVital('hrv_rmssd', vs.hrv_rmssd?.value, rmssdConf, '%.0f', true)
-    ].filter(Boolean) as any[];
+      buildVital(
+        'hrv_sdnn',
+        sdnnConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_sdnn?.value : null,
+        sdnnConf,
+        '%.0f',
+        true
+      ),
+      buildVital(
+        'hrv_rmssd',
+        rmssdConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_rmssd?.value : null,
+        rmssdConf,
+        '%.0f',
+        true
+      ),
+    ].filter((v) => v.value !== null);
 
     this.resultScreen.resultData = {
       primaryVitals,
@@ -148,6 +189,7 @@ export class VitalLensFile extends VitalLensBase {
       ppgWaveform: wf.ppg_waveform?.data,
       respWaveform: wf.respiratory_waveform?.data,
     };
+
     this.transitionState('completed');
   }
 
