@@ -25,7 +25,7 @@
     "build:integration": "rollup -c --environment BUILD_INTEGRATION",
     "test": "vitest run",
     "test:browser": "vitest run test/**/*.browser.test.ts test/**/*.shared.test.ts",
-    "test:node": "vitest run test/**/*.node.test.ts",
+    "test:node": "vitest run test/**/*.node.test.ts test/**/*.shared.test.ts",
     "test:browser-integration": "npm run build:integration && cross-env RUN_INTEGRATION=true vitest run test/**/*.browser.integration.test.ts",
     "test:node-integration": "npm run build:integration && cross-env NODE_OPTIONS='--experimental-wasm-modules' RUN_INTEGRATION=true vitest run test/**/*.node.integration.test.ts",
     "lint": "eslint src/**/*.ts",
