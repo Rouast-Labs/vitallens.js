@@ -33,8 +33,6 @@ Below is a production-ready example using Node.js and Express.
 
 ### Sample Implementation
 
-<!-- TODO: Review this -->
-
 ```javascript
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -49,12 +47,13 @@ const API_BASE = 'https://api.rouast.com/vitallens-v3';
 
 // Increase limit for video file uploads if necessary
 app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.raw({ type: 'application/octet-stream', limit: '50mb' }));
 
 // Enable CORS for your allowed domain
 app.use(cors({
   origin: 'http://example.com', // Your allowed domain
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Encoding', 'X-State']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Encoding', 'X-State', 'X-Model', 'X-Origin']
 }));
 
 // 1. Forward Model Resolution
@@ -89,7 +88,9 @@ app.post(['/stream', '/file'], async (req, res) => {
         'x-api-key': API_KEY,
         // Forward custom headers used by the client
         'X-Encoding': req.headers['x-encoding'] || '',
-        'X-State': req.headers['x-state'] || ''
+        'X-State': req.headers['x-state'] || '',
+        'X-Model': req.headers['x-model'] || '',
+        'X-Origin': req.headers['x-origin'] || ''
       },
       body: req.headers['content-type'] === 'application/json' 
             ? JSON.stringify(req.body) 
