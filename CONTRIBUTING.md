@@ -4,7 +4,7 @@ Thank you for your interest in contributing! This guide will help you set up you
 
 ## Development setup
 
-We recommend using a specific Node.js version (Node 18+) to ensure compatibility.
+We recommend using **Node 20 or higher** to ensure compatibility with our build tools and testing suite.
 
 ### Clone and install
 
@@ -16,7 +16,6 @@ git clone https://github.com/Rouast-Labs/vitallens.js.git
 cd vitallens.js
 
 # Install dependencies
-# This installs all required packages for building and testing.
 npm install
 ```
 
@@ -89,3 +88,38 @@ npm run build
 ```
 
 The artifacts will be generated in the `dist/` directory.
+
+## Releases
+
+Releases are automated via GitHub Actions and triggered by git tags. All release activities should be performed on the `main` branch.
+
+### 1. Prerelease (Beta)
+
+Use this to test new features or major changes on the CDN/NPM without affecting stable users.
+
+1. Merge your changes from `dev` to `main`.
+2. Switch to `main` and pull: `git switch main && git pull`.
+3. Create the beta version: `npm version 0.x.x-beta.x`.
+4. Push with tags: `git push origin main --follow-tags`.
+
+The CI will automatically publish to NPM with the `@beta` tag.
+
+### 2. Production Release
+
+1. Merge `dev` (or your beta fixes) to `main`.
+2. Switch to `main` and pull: `git switch main && git pull`.
+3. Create the stable version: `npm version patch` (or `minor`/`major`).
+4. Push with tags: `git push origin main --follow-tags`.
+
+The CI will publish this as the `latest` stable release.
+
+### 3. Syncing back to Dev
+
+After a release, ensure the version bump and tags are pulled back into your development branch:
+
+```bash
+git switch dev
+git fetch origin
+git pull --ff-only origin main
+git push origin dev
+```
