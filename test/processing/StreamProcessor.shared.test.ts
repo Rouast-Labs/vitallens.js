@@ -13,8 +13,7 @@ import {
 } from '../../src/types';
 import { Frame } from '../../src/processing/Frame';
 import * as tf from '@tensorflow/tfjs-core';
-import { BufferedResultsConsumer } from '../../src/processing/BufferedResultsConsumer';
-import { describe, test, expect, beforeEach, vi, it } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 
 class TestStreamProcessor extends StreamProcessorBase {
   triggerFaceDetection(frame: Frame, currentTime: number): void {
@@ -110,7 +109,6 @@ describe('StreamProcessor', () => {
   let mockBufferManager: vi.Mocked<BufferManager>;
   let mockMethodHandler: vi.Mocked<MethodHandler>;
   let mockFrameIterator: vi.Mocked<IFrameIterator>;
-  let mockBufferedResultsConsumer: vi.Mocked<BufferedResultsConsumer>;
   let onPredictMock: vi.Mock;
   let onNoFaceMock: vi.Mock;
   let onStreamResetMock: vi.Mock;
@@ -142,13 +140,6 @@ describe('StreamProcessor', () => {
       init: vi.fn(),
       cleanup: vi.fn(),
     } as unknown as vi.Mocked<MethodHandler>;
-
-    // Create a mock BufferedResultsConsumer
-    mockBufferedResultsConsumer = {
-      addResults: vi.fn(),
-      start: vi.fn(),
-      stop: vi.fn(),
-    } as unknown as vi.Mocked<BufferedResultsConsumer>;
 
     // Create a mock FrameIterator that yields frames indefinitely.
     mockFrameIterator = {
@@ -183,7 +174,6 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       null,
       mockMethodHandler,
-      null,
       onPredictMock,
       onNoFaceMock,
       onStreamResetMock,
@@ -204,7 +194,6 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       null, // No face detection worker provided.
       mockMethodHandler,
-      mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
       onStreamResetMock,
@@ -240,8 +229,6 @@ describe('StreamProcessor', () => {
 
     // Expect that method handler process() is invoked.
     expect(mockMethodHandler.process).toHaveBeenCalled();
-    // Expect buffered results consumer to have been started
-    expect(mockBufferedResultsConsumer.start).toHaveBeenCalled();
     // And eventually the onPredict callback should be invoked.
     expect(onPredictMock).toHaveBeenCalled();
   });
@@ -259,7 +246,6 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       null,
       mockMethodHandler,
-      mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
       onStreamResetMock,
@@ -281,7 +267,6 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       {} as any, // dummy face detection worker (not used since we override triggerFaceDetection)
       mockMethodHandler,
-      mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
       onStreamResetMock,
@@ -307,7 +292,6 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       {} as any,
       mockMethodHandler,
-      mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
       onStreamResetMock,
@@ -332,7 +316,6 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       {} as any,
       mockMethodHandler,
-      mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
       onStreamResetMock,
@@ -342,7 +325,6 @@ describe('StreamProcessor', () => {
     processor.stop();
 
     expect(mockFrameIterator.stop).toHaveBeenCalled();
-    expect(mockBufferedResultsConsumer.stop).toHaveBeenCalled();
     expect(mockMethodHandler.cleanup).toHaveBeenCalled();
     expect(mockBufferManager.cleanup).toHaveBeenCalled();
   });
@@ -355,7 +337,6 @@ describe('StreamProcessor', () => {
       mockBufferManager,
       null,
       mockMethodHandler,
-      mockBufferedResultsConsumer,
       onPredictMock,
       onNoFaceMock,
       onStreamResetMock,

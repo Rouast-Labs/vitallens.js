@@ -1,0 +1,94 @@
+<style>
+  :host {
+    display: block; position: relative; 
+    width: 100%; max-width: 420px; 
+    height: 100%; max-height: 85vh; min-height: 600px; 
+    background: #000; overflow: hidden; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+    color: white; border-radius: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  
+  /* Top Bar */
+  .top-bar { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 16px 20px; 
+    z-index: 100; 
+    position: absolute; 
+    top: 0; left: 0; right: 0;
+    box-sizing: border-box; 
+    background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%); 
+  }
+  .brand { display: flex; align-items: center; text-decoration: none; z-index: 2; }
+  .brand img { width: 32px; height: 32px; background: white; border-radius: 8px; }
+  .controls { z-index: 2; }
+  .btn-stop { background: rgba(255,255,255,0.15); border: none; color: white; font-size: 20px; width: 32px; height: 32px; border-radius: 16px; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); transition: background 0.2s;}
+  .btn-stop:hover { background: rgba(255,255,255,0.3); }
+  
+  .status-container { 
+    position: absolute; 
+    left: 50%; 
+    transform: translateX(-50%); 
+    z-index: 1; 
+  }
+  .status-badge { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); font-size: 12px; font-weight: 500; transition: background 0.3s; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+  
+  .status-idle .status-dot { background: gray; }
+  .status-searching .status-dot { background: #46a3db; animation: pulse 1s infinite alternate; }
+  .status-warmingUp .status-dot { background: #a855f7; animation: pulse 1s infinite alternate; }
+  .status-tracking .status-dot { background: #22c55e; }
+  .status-recovering .status-dot { background: #f97316; animation: pulse 1s infinite alternate; }
+  .status-issue .status-dot { background: #ef4444; }
+  
+  @keyframes pulse { from { opacity: 0.4; transform: scale(0.8); } to { opacity: 1; transform: scale(1.2); } }
+
+  /* Cutout Overlay */
+  .aperture-wrapper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 5; }
+  .aperture { position: relative; width: 300px; height: 400px; border-radius: 50%; box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; transition: box-shadow 0.3s; }
+  .is-scanning .aperture { box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.95); }
+  
+  #progress-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; } 
+  .ring-stroke { fill: none; stroke-width: 6; stroke-linecap: round; stroke: #46a3db; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset 0.2s linear; }
+  /* Bottom Message */
+  .bottom-msg { position: absolute; bottom: 40px; left: 0; width: 100%; display: flex; justify-content: center; z-index: 10; }
+  .msg-text { font-size: 14px; font-weight: 500; color: white; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px; backdrop-filter: blur(4px); }
+</style>
+
+<div class="layer" id="cameraLayer" style="display: none;">
+  <video id="video" autoplay muted playsinline></video>
+  
+  <div class="aperture-wrapper" id="apertureWrapper">
+    <div class="aperture">
+      <svg id="progress-svg" viewBox="0 0 300 400">
+        <path id="progress-fg" class="ring-stroke" d="M 150 5 A 145 195 0 1 1 150 395 A 145 195 0 1 1 150 5" pathLength="100" />
+      </svg>
+    </div>
+  </div>
+  
+  <div class="top-bar">
+    <a href="https://www.rouast.com/api" target="_blank" class="brand">
+      <img id="logo" src="" alt="Logo">
+    </a>
+    <div class="status-container">
+      <div class="status-badge status-idle" id="statusBadge">
+        <div class="status-dot"></div>
+        <span id="statusText">Idle</span>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn-stop" id="stopBtn">&times;</button>
+    </div>
+  </div>
+
+  <div class="bottom-msg">
+    <div class="msg-text" id="messageEl">Position your face in the oval</div>
+  </div>
+</div>
+
+<vitallens-start class="layer" id="startScreen" title-text="VitalLens Vitals Scan" subtitle="Estimate your vital signs using<br>only your camera" timing-hint="Scan takes<br>~30 seconds." button-label="Start Scan"></vitallens-start>
+<vitallens-result class="layer" id="resultScreen" title-text="Scan Complete" style="display: none;"></vitallens-result>

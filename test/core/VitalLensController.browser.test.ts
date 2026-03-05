@@ -181,7 +181,6 @@ describe('VitalLensController (Browser)', () => {
         expect.any(Object), // bufferManager
         expect.any(Object), // faceDetectionWorker
         expect.any(Object), // methodHandler
-        expect.any(Object), // bufferedResultsConsumer
         expect.any(Function), // onPredict
         expect.any(Function), // onNoFace
         expect.any(Function), // onStreamReset

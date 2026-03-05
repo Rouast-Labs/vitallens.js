@@ -17,7 +17,6 @@ import { IFrameIterator } from '../../src/types/IFrameIterator';
 import { MethodHandler } from '../../src/methods/MethodHandler';
 import { IStreamProcessor } from '../../src/types/IStreamProcessor';
 import { FrameIteratorFactory } from '../../src/processing/FrameIteratorFactory';
-import { BufferedResultsConsumer } from '../../src/processing/BufferedResultsConsumer';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('../../src/core/wasmProvider', () => {
@@ -79,7 +78,6 @@ class TestVitalLensController extends VitalLensControllerBase {
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
     methodHandler: MethodHandler,
-    bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>,
     onStreamReset: () => Promise<void>,

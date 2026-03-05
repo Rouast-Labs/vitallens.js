@@ -1,0 +1,136 @@
+<style>
+  :host {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 18, 23, 0.95);
+    backdrop-filter: blur(8px);
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: white;
+  }
+  .container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo { height: 32px; width: 32px; background: white; border-radius: 8px; }
+  .title { font-size: 17px; font-weight: 600; }
+  .spacer { flex-grow: 1; }
+  .subtitle { font-size: 20px; font-weight: 700; text-align: center; margin-bottom: 24px; }
+  .guide-box {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .guide-row { display: flex; gap: 16px; }
+  .guide-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+  }
+  .guide-item svg { width: 24px; height: 24px; color: #46a3db; }
+  .guide-item span { font-size: 11px; color: #ccc; line-height: 1.3; }
+  .btn-start {
+    background: #46a3db;
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+  .mode-toggle {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 12px 16px;
+    border-radius: 16px;
+    cursor: pointer;
+  }
+  .mode-pill {
+    display: flex;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    padding: 4px;
+    margin-right: 12px;
+  }
+  .mode-icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: gray;
+  }
+  .mode-icon svg { width: 14px; height: 14px; fill: currentColor; }
+  .mode-icon.active { background: #46a3db; color: white; }
+  .mode-text { display: flex; flex-direction: column; }
+  .mode-title { font-size: 14px; font-weight: 600; }
+  .mode-desc { font-size: 11px; color: #999; }
+</style>
+
+<div class="container">
+  <div class="header">
+    <img id="logo" class="logo" src="" alt="Logo">
+    <span class="title" id="titleEl"></span>
+  </div>
+  <div class="spacer"></div>
+  <div class="subtitle" id="subtitleEl"></div>
+  
+  <div class="guide-box">
+    <div class="guide-row">
+      <div class="guide-item">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+        <span id="inst1El">Center your face<br>in the oval.</span>
+      </div>
+      <div class="guide-item">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+        <span id="inst2El">Hold yourself and<br>camera still.</span>
+      </div>
+    </div>
+    <div class="guide-row">
+      <div class="guide-item">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/></svg>
+        <span>Ensure bright,<br>steady lighting.</span>
+      </div>
+      <div class="guide-item">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+        <span id="timingHintEl">Scan takes<br>~30 seconds.</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-start" id="startBtn">Start Scan</button>
+
+  <div class="mode-toggle" id="modeToggle">
+    <div class="mode-pill">
+      <div class="mode-icon active" id="ecoIcon">
+        <svg viewBox="0 0 16 16"><path d="M0.004,2.018c-0,0 3.845,-0.848 6.317,-0.745c2.473,0.103 5.363,0.932 6.932,2.595c1.371,1.455 2.181,3.357 2.513,5.295c0.399,2.33 0.167,4.591 0.167,4.591c-0,-0 -1.278,-2.833 -2.991,-4.61c-2.549,-2.643 -6.431,-4.037 -6.431,-4.037c0,0 3.377,2.399 5.03,4.131c2.252,2.357 3.373,4.947 3.373,4.947c-0,0 -2.196,0.851 -5.65,0.437c-1.639,-0.196 -4.155,-1.186 -6.493,-4.654c-1.996,-2.96 -2.836,-6.909 -2.767,-7.95Z"/></svg>
+      </div>
+      <div class="mode-icon" id="stdIcon">
+        <svg viewBox="0 0 16 16"><path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/></svg>
+      </div>
+    </div>
+    <div class="mode-text">
+      <span class="mode-title" id="modeTitle">Eco Mode</span>
+      <span class="mode-desc" id="modeDesc">Standard accuracy, for slower connection</span>
+    </div>
+  </div>
+  <div class="spacer"></div>
+</div>

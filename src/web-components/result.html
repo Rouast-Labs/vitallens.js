@@ -1,0 +1,93 @@
+<style>
+  :host {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 18, 23, 0.95);
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: white;
+    overflow-y: auto;
+  }
+  .container { padding: 24px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo { height: 32px; width: 32px; background: white; border-radius: 8px; }
+  .title { font-size: 17px; font-weight: 600; }
+  .btn-done { background: none; border: none; color: #46a3db; font-size: 16px; font-weight: 600; cursor: pointer; padding: 0; }
+  
+  .vitals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .vital-tile {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 20px 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .vital-title { font-size: 12px; font-weight: 600; color: #ccc; }
+  .vital-value-row { display: flex; align-items: baseline; justify-content: center; gap: 2px; }
+  .vital-val { font-size: 32px; font-weight: 700; font-family: monospace; }
+  .vital-unit { font-size: 12px; color: #999; }
+  .vital-conf { font-size: 10px; color: #888; display: none; }
+  .show-details .vital-conf { display: block; }
+
+  .stats-details { font-size: 12px; color: #888; text-align: center; margin-bottom: 16px; display: none; }
+  .show-details .stats-details { display: block; }
+
+  .chart-box { 
+    width: 100%; 
+    height: 100px; 
+    margin-bottom: 16px; 
+    background: rgba(255,255,255,0.05); 
+    border-radius: 12px; 
+    position: relative; 
+    padding: 8px; 
+    box-sizing: border-box; 
+  }
+  .chart-box canvas { 
+    width: 100% !important; 
+    height: 100% !important; 
+    position: absolute; 
+    top: 0; left: 0; 
+  }
+  
+  .btn-details {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 8px;
+  }
+  canvas { width: 100%; height: 100px; margin-bottom: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; }
+</style>
+
+<div class="container" id="wrapper">
+  <div class="header">
+    <div class="header-left">
+      <img id="logo" class="logo" src="" alt="Logo">
+      <span class="title" id="titleEl">Scan Complete</span>
+    </div>
+    <button class="btn-done" id="doneBtn">Done</button>
+  </div>
+
+  <div class="vitals-grid" id="primaryGrid"></div>
+  <div class="vitals-grid" id="secondaryGrid"></div>
+
+  <div class="chart-box" id="ppgBox" style="display: none;">
+    <canvas id="ppgCanvas"></canvas>
+  </div>
+  <div class="chart-box" id="respBox" style="display: none;">
+    <canvas id="respCanvas"></canvas>
+  </div>
+
+  <div class="stats-details" id="statsEl"></div>
+
+  <button class="btn-details" id="detailsBtn">View Details</button>
+</div>

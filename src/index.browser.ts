@@ -1,8 +1,9 @@
-import './web-components/VitalLensVitalsMonitor';
-import './web-components/VitalLensVitalsScan';
-import './web-components/VitalLensWidgetUnified';
-import './web-components/VitalLensWidgetFile';
-import './web-components/VitalLensWidgetWebcam';
+import './web-components/VitalLensWidget';
+import './web-components/VitalLensStart';
+import './web-components/VitalLensResult';
+import './web-components/VitalLensMonitor';
+import './web-components/VitalLensScan';
+import './web-components/VitalLensFile';
 
 export { VitalLens } from './core/VitalLens.browser';
 export type { VitalLensOptions, VitalLensResult } from './types/core';

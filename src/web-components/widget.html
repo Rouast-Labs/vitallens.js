@@ -125,18 +125,19 @@
     color: var(--resp-color-dark);
   }
   #hrv-stats-container {
-    margin-top: 8px; /* Space below the main HR value */
+    margin-top: 8px; 
     padding-top: 8px;
   }
   .hrv-stat {
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-start;
       align-items: baseline;
       font-size: 14px;
-      color: #e62300; /* Shade of red as requested */
+      color: #e62300; 
+      gap: 6px;
   }
   .hrv-stat:not(:last-child) {
-      margin-bottom: 4px; /* Space between SDNN and RMSSD */
+      margin-bottom: 4px; 
   }
   .hrv-label {
       font-weight: 300;
@@ -144,8 +145,6 @@
   }
   .hrv-value {
       font-weight: 600;
-      min-width: 3em; /* Align the values */
-      text-align: right;
   }
   .hrv-unit {
       font-weight: 300;

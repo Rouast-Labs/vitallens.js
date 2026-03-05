@@ -121,7 +121,6 @@ describe('VitalLensController (Node)', () => {
       const dummyBufferManager = {} as any;
       const dummyFaceDetectionWorker = {} as any;
       const dummyMethodHandler = {} as any;
-      const dummyBufferedResultsConsumer = {} as any;
       const dummyOnPredict = vi.fn();
       const dummyOnNoFace = vi.fn();
       const dummyOnStreamReset = vi.fn();
@@ -134,7 +133,6 @@ describe('VitalLensController (Node)', () => {
         dummyBufferManager,
         dummyFaceDetectionWorker,
         dummyMethodHandler,
-        dummyBufferedResultsConsumer,
         dummyOnPredict,
         dummyOnNoFace,
         dummyOnStreamReset,
@@ -147,7 +145,6 @@ describe('VitalLensController (Node)', () => {
         dummyBufferManager,
         dummyFaceDetectionWorker,
         dummyMethodHandler,
-        dummyBufferedResultsConsumer,
         dummyOnPredict,
         dummyOnNoFace,
         dummyOnStreamReset,
