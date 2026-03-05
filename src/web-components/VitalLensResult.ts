@@ -1,9 +1,22 @@
 import template from './result.html';
 import logoUrl from '../../assets/logo.svg';
-import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale } from 'chart.js';
+import {
+  Chart,
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+} from 'chart.js';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale);
+Chart.register(
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale
+);
 
 export interface ResolvedVital {
   id: string;
@@ -26,17 +39,30 @@ export class VitalLensResult extends HTMLElement {
 
   connectedCallback() {
     this.shadowRoot!.querySelector<HTMLImageElement>('#logo')!.src = logoUrl;
-    this.shadowRoot!.querySelector('#titleEl')!.textContent = this.getAttribute('title-text') || 'Scan Complete';
+    this.shadowRoot!.querySelector('#titleEl')!.textContent =
+      this.getAttribute('title-text') || 'Scan Complete';
 
-    this.shadowRoot!.querySelector('#doneBtn')!.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('done'));
-    });
+    this.shadowRoot!.querySelector('#doneBtn')!.addEventListener(
+      'click',
+      () => {
+        this.dispatchEvent(new CustomEvent('done'));
+      }
+    );
 
-    this.shadowRoot!.querySelector('#detailsBtn')!.addEventListener('click', () => {
-      this.showDetails = !this.showDetails;
-      this.shadowRoot!.querySelector('#wrapper')!.classList.toggle('show-details', this.showDetails);
-      this.shadowRoot!.querySelector('#detailsBtn')!.textContent = this.showDetails ? 'Hide Details' : 'View Details';
-    });
+    this.shadowRoot!.querySelector('#detailsBtn')!.addEventListener(
+      'click',
+      () => {
+        this.showDetails = !this.showDetails;
+        this.shadowRoot!.querySelector('#wrapper')!.classList.toggle(
+          'show-details',
+          this.showDetails
+        );
+        this.shadowRoot!.querySelector('#detailsBtn')!.textContent = this
+          .showDetails
+          ? 'Hide Details'
+          : 'View Details';
+      }
+    );
   }
 
   // Expose a setter to pass complex data into the component
@@ -59,27 +85,40 @@ export class VitalLensResult extends HTMLElement {
 
     if (data.ppgWaveform && data.ppgWaveform.length > 0) {
       const meta = VitalMetadataCache.getMeta('ppg_waveform');
-      this.renderStaticChart('#ppgBox', '#ppgCanvas', data.ppgWaveform, meta?.color || '#e62300');
+      this.renderStaticChart(
+        '#ppgBox',
+        '#ppgCanvas',
+        data.ppgWaveform,
+        meta?.color || '#e62300'
+      );
     }
     if (data.respWaveform && data.respWaveform.length > 0) {
       const meta = VitalMetadataCache.getMeta('respiratory_waveform');
-      this.renderStaticChart('#respBox', '#respCanvas', data.respWaveform, meta?.color || '#007bff');
+      this.renderStaticChart(
+        '#respBox',
+        '#respCanvas',
+        data.respWaveform,
+        meta?.color || '#007bff'
+      );
     }
   }
 
   private renderGrid(selector: string, vitals: ResolvedVital[]) {
     const grid = this.shadowRoot!.querySelector(selector)!;
     grid.innerHTML = '';
-    vitals.forEach(vital => {
+    vitals.forEach((vital) => {
       // Determine the format based on the config string (e.g., '%.0f' vs '%.2f')
       let valStr = '--';
       if (vital.value !== null) {
         const decimals = vital.format.includes('.2') ? 2 : 0;
         valStr = vital.value.toFixed(decimals);
       }
-      
-      const confStr = vital.confidence !== null ? `${(vital.confidence * 100).toFixed(0)}%` : '--';
-      
+
+      const confStr =
+        vital.confidence !== null
+          ? `${(vital.confidence * 100).toFixed(0)}%`
+          : '--';
+
       grid.innerHTML += `
         <div class="vital-tile">
           <div class="vital-title">${vital.emoji} ${vital.title}</div>
@@ -93,31 +132,39 @@ export class VitalLensResult extends HTMLElement {
     });
   }
 
-  private renderStaticChart(boxSelector: string, canvasSelector: string, data: number[], color: string) {
+  private renderStaticChart(
+    boxSelector: string,
+    canvasSelector: string,
+    data: number[],
+    color: string
+  ) {
     const colorStr = color.startsWith('#') ? color : `rgba(${color}, 1)`;
     const box = this.shadowRoot!.querySelector<HTMLElement>(boxSelector)!;
-    const canvas = this.shadowRoot!.querySelector<HTMLCanvasElement>(canvasSelector)!;
+    const canvas =
+      this.shadowRoot!.querySelector<HTMLCanvasElement>(canvasSelector)!;
     box.style.display = 'block';
 
     new Chart(canvas.getContext('2d')!, {
       type: 'line',
       data: {
         labels: data.map((_, i) => i),
-        datasets: [{
-          data,
-          borderColor: colorStr,
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0
-        }]
+        datasets: [
+          {
+            data,
+            borderColor: colorStr,
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0,
+          },
+        ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         animation: false,
-        scales: { x: { display: false }, y: { display: false } }
-      }
+        scales: { x: { display: false }, y: { display: false } },
+      },
     });
   }
 }

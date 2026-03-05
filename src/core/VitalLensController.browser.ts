@@ -34,7 +34,9 @@ export class VitalLensController extends VitalLensControllerBase {
       if (typeof import.meta !== 'undefined' && import.meta.url) {
         baseURL = import.meta.url;
       }
-    } catch (e) {}
+    } catch {
+      /* ignore */
+    }
 
     worker.postMessage({
       type: 'init',

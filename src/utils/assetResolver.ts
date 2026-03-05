@@ -4,7 +4,7 @@ export function resolveAsset(assetPath: string): string {
       // Resolves the asset relative to the currently executing script
       return new URL(assetPath, import.meta.url).href;
     }
-  } catch (e) {
+  } catch {
     // Ignore and proceed to fallback
   }
 

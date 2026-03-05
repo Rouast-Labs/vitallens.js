@@ -9,20 +9,22 @@ interface BufferedPoint {
 export class WaveformPlayer {
   private ppgQueue: BufferedPoint[] = [];
   private respQueue: BufferedPoint[] = [];
-  
+
   // Clean arrays (no nulls)
   private ppgHistory: number[] = [];
   private ppgConfHistory: number[] = [];
   private respHistory: number[] = [];
   private respConfHistory: number[] = [];
-  
+
   private timeAnchor: { videoTime: number; realTime: number } | null = null;
   private playbackLoopId: number | null = null;
 
   constructor(
     private onUpdate: (
-      ppgHistory: number[], ppgConfHistory: number[],
-      respHistory: number[], respConfHistory: number[]
+      ppgHistory: number[],
+      ppgConfHistory: number[],
+      respHistory: number[],
+      respConfHistory: number[]
     ) => void,
     private bufferOffset: number = 0.15,
     private windowSize: number = 8.0,
@@ -43,27 +45,45 @@ export class WaveformPlayer {
     if (times.length === 0) return;
 
     if (!this.timeAnchor) {
-      this.timeAnchor = { videoTime: times[0], realTime: performance.now() / 1000 };
+      this.timeAnchor = {
+        videoTime: times[0],
+        realTime: performance.now() / 1000,
+      };
       this.start();
     }
 
-    const ppgConfArray = Array.isArray(ppgConfs) ? ppgConfs : new Array(ppgChunk.length).fill(ppgConfs);
-    const respConfArray = Array.isArray(respConfs) ? respConfs : new Array(respChunk.length).fill(respConfs);
+    const ppgConfArray = Array.isArray(ppgConfs)
+      ? ppgConfs
+      : new Array(ppgChunk.length).fill(ppgConfs);
+    const respConfArray = Array.isArray(respConfs)
+      ? respConfs
+      : new Array(respChunk.length).fill(respConfs);
 
     for (let i = 0; i < times.length; i++) {
-      const targetDisplayTime = this.timeAnchor.realTime + (times[i] - this.timeAnchor.videoTime) + this.bufferOffset;
+      const targetDisplayTime =
+        this.timeAnchor.realTime +
+        (times[i] - this.timeAnchor.videoTime) +
+        this.bufferOffset;
       if (i < ppgChunk.length) {
-        this.ppgQueue.push({ value: ppgChunk[i], confidence: ppgConfArray[i], displayTime: targetDisplayTime });
+        this.ppgQueue.push({
+          value: ppgChunk[i],
+          confidence: ppgConfArray[i],
+          displayTime: targetDisplayTime,
+        });
       }
       if (i < respChunk.length) {
-        this.respQueue.push({ value: respChunk[i], confidence: respConfArray[i], displayTime: targetDisplayTime });
+        this.respQueue.push({
+          value: respChunk[i],
+          confidence: respConfArray[i],
+          displayTime: targetDisplayTime,
+        });
       }
     }
   }
 
   private start() {
     if (this.playbackLoopId !== null) return;
-    
+
     const loop = () => {
       const now = performance.now() / 1000;
       let hasNewData = false;
@@ -75,7 +95,10 @@ export class WaveformPlayer {
         hasNewData = true;
       }
 
-      while (this.respQueue.length > 0 && now >= this.respQueue[0].displayTime) {
+      while (
+        this.respQueue.length > 0 &&
+        now >= this.respQueue[0].displayTime
+      ) {
         const item = this.respQueue.shift()!;
         this.respHistory.push(item.value);
         this.respConfHistory.push(item.confidence);
@@ -84,22 +107,27 @@ export class WaveformPlayer {
 
       if (hasNewData) {
         const maxPoints = Math.round(this.windowSize * this.fps);
-        
+
         while (this.ppgHistory.length > maxPoints) {
-          this.ppgHistory.shift(); 
+          this.ppgHistory.shift();
         }
         while (this.ppgConfHistory.length > maxPoints) {
           this.ppgConfHistory.shift();
         }
-        
+
         while (this.respHistory.length > maxPoints) {
-          this.respHistory.shift(); 
+          this.respHistory.shift();
         }
         while (this.respConfHistory.length > maxPoints) {
           this.respConfHistory.shift();
         }
 
-        this.onUpdate(this.ppgHistory, this.ppgConfHistory, this.respHistory, this.respConfHistory);
+        this.onUpdate(
+          this.ppgHistory,
+          this.ppgConfHistory,
+          this.respHistory,
+          this.respConfHistory
+        );
       }
 
       this.playbackLoopId = requestAnimationFrame(loop);

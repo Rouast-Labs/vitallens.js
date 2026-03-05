@@ -27,7 +27,8 @@ export function getROIForMethod(
   let roiMethod = 'Face';
   if (methodConfig.roiMethod === 'forehead') roiMethod = 'Forehead';
   else if (methodConfig.roiMethod === 'upper_body') roiMethod = 'UpperBody';
-  else if (methodConfig.roiMethod === 'upper_body_cropped') roiMethod = 'UpperBodyCropped';
+  else if (methodConfig.roiMethod === 'upper_body_cropped')
+    roiMethod = 'UpperBodyCropped';
 
   const resultRect = core.calculateRoi(
     rect,
@@ -43,7 +44,7 @@ export function getROIForMethod(
     y0: resultRect.y,
     x1: resultRect.x + resultRect.width,
     y1: resultRect.y + resultRect.height,
-    confidence: det.confidence
+    confidence: det.confidence,
   };
 }
 

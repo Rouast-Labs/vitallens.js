@@ -10,7 +10,7 @@ export class VitalLensScan extends VitalLensBase {
 
   private videoEl!: HTMLVideoElement;
   private startScreen!: HTMLElement;
-  private resultScreen!: any;
+  private resultScreen!: HTMLElement & { resultData: unknown };
   private cameraLayer!: HTMLElement;
   private messageEl!: HTMLElement;
   private statusBadge!: HTMLElement;
@@ -46,8 +46,8 @@ export class VitalLensScan extends VitalLensBase {
     this.shadowRoot!.querySelector<HTMLImageElement>('#logo')!.src = logoUrl;
 
     this.startScreen.addEventListener('start', () => this.startProcessing());
-    this.startScreen.addEventListener('modechange', (e: any) => {
-      this.currentMode = e.detail.mode;
+    this.startScreen.addEventListener('modechange', (e: Event) => {
+      this.currentMode = (e as CustomEvent).detail.mode;
     });
 
     this.shadowRoot!.querySelector('#stopBtn')!.addEventListener('click', () =>
@@ -106,19 +106,22 @@ export class VitalLensScan extends VitalLensBase {
         waveformMode: 'incremental',
       });
 
-      this.vitalLensInstance!.addEventListener('faceDetected', (face: any) => {
-        const isPresent = face !== null;
-        if (!this.isProcessingFlag) return;
+      this.vitalLensInstance!.addEventListener(
+        'faceDetected',
+        (face: unknown) => {
+          const isPresent = face !== null;
+          if (!this.isProcessingFlag) return;
 
-        if (
-          !isPresent &&
-          this.state !== 'searching' &&
-          this.state !== 'issue' &&
-          this.state !== 'completed'
-        ) {
-          this.handleIssue('Face lost.');
+          if (
+            !isPresent &&
+            this.state !== 'searching' &&
+            this.state !== 'issue' &&
+            this.state !== 'completed'
+          ) {
+            this.handleIssue('Face lost.');
+          }
         }
-      });
+      );
 
       await this.vitalLensInstance!.setVideoStream(this.stream, this.videoEl);
       this.vitalLensInstance!.startVideoStream();
@@ -294,7 +297,7 @@ export class VitalLensScan extends VitalLensBase {
       (result.fps ?? (this.currentMode === 'eco' ? 15 : 30));
 
     const vs = result.vitals;
-    const getConf = (v: any) =>
+    const getConf = (v: { confidence?: number | number[] } | undefined) =>
       Array.isArray(v?.confidence)
         ? v.confidence[v.confidence.length - 1]
         : (v?.confidence ?? 0);
@@ -386,13 +389,13 @@ try {
   if (!customElements.get('vitallens-scan')) {
     customElements.define('vitallens-scan', VitalLensScan);
   }
-} catch (e) {
+} catch {
   console.warn('vitallens-scan registration bypassed');
 }
 try {
   if (!customElements.get('vitallens-vitals-scan')) {
     customElements.define('vitallens-vitals-scan', VitalLensScan);
   }
-} catch (e) {
+} catch {
   console.warn('vitallens-vitals-scan registration bypassed');
 }
