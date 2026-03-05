@@ -1,9 +1,19 @@
 import { MethodConfig, VitalLensResult } from '../types/core';
 
-function iterEntries(obj: any): [string, any][] {
+function iterEntries(obj: unknown): [string, unknown][] {
   if (!obj) return [];
-  if (typeof obj.entries === 'function') return Array.from(obj.entries());
-  return Object.entries(obj);
+  if (
+    typeof (obj as { entries?: () => IterableIterator<[string, unknown]> })
+      .entries === 'function'
+  ) {
+    return Array.from(
+      (obj as { entries: () => IterableIterator<[string, unknown]> }).entries()
+    );
+  }
+  if (typeof obj === 'object') {
+    return Object.entries(obj as Record<string, unknown>);
+  }
+  return [];
 }
 
 export function toSessionConfig(
@@ -51,8 +61,27 @@ export function toSessionInput(result: VitalLensResult) {
   };
 }
 
+interface WasmResult {
+  timestamp?: number[];
+  message?: string;
+  fps?: number;
+  face?: {
+    coordinates?: [number, number, number, number][];
+    confidence?: number[];
+    note?: string;
+  };
+  waveforms?: Record<
+    string,
+    { data: number[]; confidence: number[]; unit: string; note: string }
+  >;
+  vitals?: Record<
+    string,
+    { value: number; confidence: number; unit: string; note: string }
+  >;
+}
+
 export function toVitalLensResult(
-  wasmResult: any,
+  wasmResult: WasmResult,
   incrementalResult?: VitalLensResult
 ): VitalLensResult {
   const result: VitalLensResult = {
@@ -85,7 +114,12 @@ export function toVitalLensResult(
   }
 
   for (const [key, wf] of iterEntries(wasmResult.waveforms)) {
-    const waveform = wf as any;
+    const waveform = wf as {
+      data: number[];
+      confidence: number[];
+      unit: string;
+      note: string;
+    };
     result.waveforms[key] = {
       data: waveform.data,
       confidence: waveform.confidence,
@@ -95,7 +129,12 @@ export function toVitalLensResult(
   }
 
   for (const [key, v] of iterEntries(wasmResult.vitals)) {
-    const vital = v as any;
+    const vital = v as {
+      value?: number;
+      confidence: number;
+      unit: string;
+      note: string;
+    };
     if (vital.value !== undefined && vital.value !== null) {
       result.vitals[key] = {
         value: vital.value,

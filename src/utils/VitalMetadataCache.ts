@@ -1,20 +1,30 @@
 import { getCoreSync } from '../core/wasmProvider';
 
-export class VitalMetadataCache {
-  private static cache: Record<string, any> = {};
+export interface VitalMetadata {
+  id?: string;
+  shortName?: string;
+  short_name?: string;
+  displayName?: string;
+  display_name?: string;
+  unit?: string;
+  emoji?: string;
+  color?: string;
+}
 
-  public static getMeta(id: string): any {
+export class VitalMetadataCache {
+  private static cache: Record<string, VitalMetadata> = {};
+
+  public static getMeta(id: string): VitalMetadata | null {
     if (this.cache[id]) return this.cache[id];
     try {
       const core = getCoreSync();
-      // The exact property names will depend on your WASM bindgen (usually camelCase)
-      const meta = core.getVitalInfo(id);
+      const meta = core.getVitalInfo(id) as VitalMetadata;
       if (meta) {
         this.cache[id] = meta;
         return meta;
       }
-    } catch (e) {
-      // Core might not be initialized yet, or vital ID not found
+    } catch {
+      // ignore
     }
     return null;
   }

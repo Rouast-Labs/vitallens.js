@@ -15,7 +15,16 @@ import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 
 const playbackDotPlugin = {
   id: 'playbackDot',
-  afterDatasetsDraw(chart: Chart, args: { cancelable: boolean }, options: any) {
+  afterDatasetsDraw(
+    chart: Chart,
+    _args: { cancelable: boolean },
+    options: {
+      xValue?: number;
+      radius?: number;
+      lineWidth?: number;
+      strokeStyle?: string;
+    }
+  ) {
     const ctx = chart.ctx;
     const markerIndex = options.xValue;
     if (markerIndex === undefined || markerIndex === null) return;
@@ -27,7 +36,10 @@ const playbackDotPlugin = {
     const index = Math.round(markerIndex);
     if (index < 0 || index >= datasetMeta.data.length) return;
 
-    const point = datasetMeta.data[index] as any;
+    const point = datasetMeta.data[index] as unknown as {
+      x: number;
+      y: number;
+    };
     if (!point) return;
 
     const xPixel = point.x;
@@ -50,7 +62,7 @@ const overlayTitlePlugin = {
   id: 'overlayTitle',
   afterDraw(
     chart: Chart,
-    args: any,
+    args: unknown,
     options: { text: string; font?: string; color?: string }
   ) {
     if (!options || !options.text) return;
@@ -101,7 +113,7 @@ export class VitalLensWidget extends VitalLensBase {
   protected vitalsProgressElement!: HTMLElement;
   protected errorPopupElement!: HTMLElement;
 
-  protected charts: any = {};
+  protected charts: Record<string, Chart> = {};
   protected videoFileLoaded: File | null = null;
   protected currentMethod: Method = 'vitallens';
   protected mode: string = '';
@@ -269,15 +281,15 @@ export class VitalLensWidget extends VitalLensBase {
 
     const ppgMeta = VitalMetadataCache.getMeta('ppg_waveform');
     if (ppgMeta && this.charts.ppgChart) {
-      this.charts.ppgChart.options.plugins.overlayTitle.text =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const plugins = this.charts.ppgChart.options.plugins as any;
+      plugins.overlayTitle.text =
         ppgMeta.display_name || ppgMeta.displayName || 'PPG Waveform';
-      this.charts.ppgChart.options.plugins.overlayTitle.color =
-        ppgMeta.color || '#e62300';
+      plugins.overlayTitle.color = ppgMeta.color || '#e62300';
       this.charts.ppgChart.data.datasets[0].borderColor =
         ppgMeta.color || '#e62300';
-      if (this.charts.ppgChart.options.plugins.playbackDot) {
-        this.charts.ppgChart.options.plugins.playbackDot.strokeStyle =
-          ppgMeta.color || '#e62300';
+      if (plugins.playbackDot) {
+        plugins.playbackDot.strokeStyle = ppgMeta.color || '#e62300';
       }
       this.charts.ppgChart.update();
       this.style.setProperty('--ppg-color', ppgMeta.color || '#e62300');
@@ -285,15 +297,15 @@ export class VitalLensWidget extends VitalLensBase {
 
     const respMeta = VitalMetadataCache.getMeta('respiratory_waveform');
     if (respMeta && this.charts.respChart) {
-      this.charts.respChart.options.plugins.overlayTitle.text =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const plugins = this.charts.respChart.options.plugins as any;
+      plugins.overlayTitle.text =
         respMeta.display_name || respMeta.displayName || 'Respiratory Waveform';
-      this.charts.respChart.options.plugins.overlayTitle.color =
-        respMeta.color || '#007bff';
+      plugins.overlayTitle.color = respMeta.color || '#007bff';
       this.charts.respChart.data.datasets[0].borderColor =
         respMeta.color || '#007bff';
-      if (this.charts.respChart.options.plugins.playbackDot) {
-        this.charts.respChart.options.plugins.playbackDot.strokeStyle =
-          respMeta.color || '#007bff';
+      if (plugins.playbackDot) {
+        plugins.playbackDot.strokeStyle = respMeta.color || '#007bff';
       }
       this.charts.respChart.update();
       this.style.setProperty('--resp-color', respMeta.color || '#007bff');
@@ -384,7 +396,7 @@ export class VitalLensWidget extends VitalLensBase {
     }
 
     const { heart_rate, respiratory_rate, hrv_sdnn, hrv_rmssd } = vitals;
-    const getConf = (v: any) =>
+    const getConf = (v: { confidence?: number | number[] } | undefined) =>
       Array.isArray(v?.confidence)
         ? v.confidence[v.confidence.length - 1]
         : (v?.confidence ?? 0);
@@ -472,8 +484,8 @@ export class VitalLensWidget extends VitalLensBase {
         animation: false,
         scales: { x: { display: false }, y: { display: false } },
       },
-    }) as any;
-    chart.options.plugins.overlayTitle = {
+    });
+    (chart.options.plugins as Record<string, unknown>).overlayTitle = {
       text: label,
       font: 'bold 16px sans-serif',
       color: colorStr,
@@ -481,7 +493,7 @@ export class VitalLensWidget extends VitalLensBase {
     return chart;
   }
 
-  private updateChart(chart: any, data: number[]) {
+  private updateChart(chart: Chart, data: number[]) {
     chart.data.labels = Array.from({ length: data.length }, (_, i) => i);
     chart.data.datasets[0].data = data;
     chart.update();
@@ -578,13 +590,18 @@ export class VitalLensWidget extends VitalLensBase {
   }
 
   private enablePlaybackDotPlugin() {
-    this.charts.ppgChart.options.plugins.playbackDot = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ppgPlugins = this.charts.ppgChart.options.plugins as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const respPlugins = this.charts.respChart.options.plugins as any;
+
+    ppgPlugins.playbackDot = {
       xValue: 0,
       radius: 4,
       lineWidth: 2,
       strokeStyle: 'white',
     };
-    this.charts.respChart.options.plugins.playbackDot = {
+    respPlugins.playbackDot = {
       xValue: 0,
       radius: 4,
       lineWidth: 2,
@@ -595,10 +612,14 @@ export class VitalLensWidget extends VitalLensBase {
   }
 
   private disablePlaybackDotPlugin() {
-    if (this.charts.ppgChart.options.plugins.playbackDot)
-      delete this.charts.ppgChart.options.plugins.playbackDot;
-    if (this.charts.respChart.options.plugins.playbackDot)
-      delete this.charts.respChart.options.plugins.playbackDot;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ppgPlugins = this.charts.ppgChart.options.plugins as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const respPlugins = this.charts.respChart.options.plugins as any;
+
+    if (ppgPlugins.playbackDot) delete ppgPlugins.playbackDot;
+    if (respPlugins.playbackDot) delete respPlugins.playbackDot;
+
     this.charts.ppgChart.update();
     this.charts.respChart.update();
   }
@@ -747,7 +768,10 @@ export class VitalLensWidget extends VitalLensBase {
     this.showVideoLoader(message);
   }
 
-  protected async handleStreamReset(event: { message: string }): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected async handleStreamReset(_event: {
+    message: string;
+  }): Promise<void> {
     this.showError('Connection unstable. Reconnecting in 3 seconds...');
 
     if (this.mode === 'webcam' && this.vitalLensInstance) {
@@ -912,13 +936,16 @@ export class VitalLensWidget extends VitalLensBase {
           }
 
           // Move the playback dots
-          if (this.charts.ppgChart.options.plugins.playbackDot) {
-            this.charts.ppgChart.options.plugins.playbackDot.xValue =
-              closestIndex;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ppgPlugins = this.charts.ppgChart.options.plugins as any;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const respPlugins = this.charts.respChart.options.plugins as any;
+
+          if (ppgPlugins.playbackDot) {
+            ppgPlugins.playbackDot.xValue = closestIndex;
           }
-          if (this.charts.respChart.options.plugins.playbackDot) {
-            this.charts.respChart.options.plugins.playbackDot.xValue =
-              closestIndex;
+          if (respPlugins.playbackDot) {
+            respPlugins.playbackDot.xValue = closestIndex;
           }
           this.charts.ppgChart.update('none');
           this.charts.respChart.update('none');

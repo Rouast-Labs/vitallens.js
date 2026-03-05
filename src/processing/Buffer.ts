@@ -50,7 +50,7 @@ export abstract class Buffer {
     const consumedKeys = keys.slice(0, takeCount);
     const retainKeys = consumedKeys.slice(-keepCount);
 
-    const consumedFrames = consumedKeys.map(key => this.buffer.get(key)!);
+    const consumedFrames = consumedKeys.map((key) => this.buffer.get(key)!);
 
     return mergeFrames(
       consumedFrames,

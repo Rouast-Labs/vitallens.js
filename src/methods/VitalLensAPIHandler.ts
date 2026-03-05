@@ -151,6 +151,7 @@ export class VitalLensAPIHandler extends MethodHandler {
       throw new VitalLensAPIError(`Error ${response.statusCode}: ${message}`);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parsedResponse = response.body as any;
 
     const n = parsedResponse.n ?? framesChunk.getTimestamp().length;
@@ -162,12 +163,15 @@ export class VitalLensAPIHandler extends MethodHandler {
       number,
     ][];
 
-    const vitals: Record<string, any> = parsedResponse.vitals || {};
-    const waveforms: Record<string, any> = parsedResponse.waveforms || {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vitals: any = parsedResponse.vitals || {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const waveforms: any = parsedResponse.waveforms || {};
 
     // Backward compatibility for old API structure
     if (parsedResponse.vital_signs) {
       for (const [key, val] of Object.entries(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         parsedResponse.vital_signs as Record<string, any>
       )) {
         if (val.data !== undefined) {

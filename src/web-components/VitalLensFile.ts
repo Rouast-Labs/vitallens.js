@@ -10,7 +10,7 @@ export class VitalLensFile extends VitalLensBase {
 
   private startScreen!: HTMLElement;
   private processingScreen!: HTMLElement;
-  private resultScreen!: any; // Reference to vitallens-result
+  private resultScreen!: HTMLElement & { resultData: unknown };
   private errorScreen!: HTMLElement;
   private progressText!: HTMLElement;
   private errorText!: HTMLElement;
@@ -64,15 +64,20 @@ export class VitalLensFile extends VitalLensBase {
     try {
       await this.initVitalLensInstance({ waveformMode: 'global' });
 
-      this.vitalLensInstance!.addEventListener('fileProgress', (msg: any) => {
-        this.progressText.textContent = msg as string;
-      });
+      this.vitalLensInstance!.addEventListener(
+        'fileProgress',
+        (msg: unknown) => {
+          this.progressText.textContent = msg as string;
+        }
+      );
 
       const result = await this.vitalLensInstance!.processVideoFile(file);
       this.showResults(result);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      this.showFileError(err.message || 'An error occurred during processing.');
+      this.showFileError(
+        (err as Error).message || 'An error occurred during processing.'
+      );
     } finally {
       // Clear the input value so the same file can be selected again if needed
       this.fileInput.value = '';
@@ -105,7 +110,7 @@ export class VitalLensFile extends VitalLensBase {
   private showResults(result: VitalLensResult) {
     const vs = result.vitals;
     const wf = result.waveforms;
-    const getConf = (v: any) =>
+    const getConf = (v: { confidence?: number | number[] } | undefined) =>
       Array.isArray(v?.confidence)
         ? v.confidence[v.confidence.length - 1]
         : (v?.confidence ?? 0);
@@ -193,9 +198,8 @@ export class VitalLensFile extends VitalLensBase {
     this.transitionState('completed');
   }
 
-  protected updateUI(result: VitalLensResult): void {
-    // Unused in file mode: UI is updated completely inside showResults() once the batch finishes
-  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected updateUI(_result: VitalLensResult): void {}
 
   protected resetUI(): void {
     this.resetToIdle();
@@ -206,6 +210,6 @@ try {
   if (!customElements.get('vitallens-file')) {
     customElements.define('vitallens-file', VitalLensFile);
   }
-} catch (e) {
+} catch {
   console.warn('vitallens-file registration bypassed');
 }

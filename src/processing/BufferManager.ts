@@ -5,13 +5,44 @@ import { FrameBuffer } from './FrameBuffer';
 import { RGBBuffer } from './RGBBuffer';
 import { getCoreSync } from '../core/wasmProvider';
 
+interface BufferAction {
+  action: 'Create' | 'KeepAlive' | 'None';
+  matched_id?: string;
+}
+
+interface BufferCommand {
+  buffer_id: string;
+  take_count: number;
+  keep_count: number;
+}
+
+interface PollResult {
+  buffers_to_drop?: string[];
+  command?: BufferCommand;
+}
+
+interface BufferPlanner {
+  evaluateTarget(
+    rect: { x: number; y: number; width: number; height: number },
+    timestamp: number,
+    activeBuffers: unknown[]
+  ): BufferAction;
+  poll(
+    activeBuffers: unknown[],
+    currentTime: number,
+    mode: string,
+    hasState: boolean,
+    flush: boolean
+  ): PollResult;
+}
+
 export class BufferManager {
   private buffers: Map<
     string,
     { buffer: Buffer; createdAt: number; lastSeen: number; roi: ROI }
   >;
   private state: Float32Array | null = null;
-  private planner: any = null;
+  private planner: BufferPlanner | null = null;
 
   constructor() {
     this.buffers = new Map();
@@ -96,7 +127,7 @@ export class BufferManager {
     currentTime: number,
     mode: 'Stream' | 'File',
     flush: boolean = false
-  ): any {
+  ): BufferCommand | undefined | null {
     if (!this.planner) return null;
 
     const activeBuffers = Array.from(this.buffers.entries()).map(
@@ -139,7 +170,7 @@ export class BufferManager {
     }
   }
 
-  async consumeCommand(command: any): Promise<Frame | null> {
+  async consumeCommand(command: BufferCommand): Promise<Frame | null> {
     const target = this.buffers.get(command.buffer_id);
     if (!target) return null;
     return target.buffer.consume(command.take_count, command.keep_count);

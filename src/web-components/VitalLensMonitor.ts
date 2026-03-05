@@ -40,8 +40,8 @@ export class VitalLensMonitor extends VitalLensBase {
   private respSpinner!: HTMLElement;
 
   private waveformPlayer: WaveformPlayer;
-  private ppgChart: any;
-  private respChart: any;
+  private ppgChart!: Chart;
+  private respChart!: Chart;
 
   private ppgSampleCount = 0;
   private receivedVitals: Set<string> = new Set();
@@ -78,8 +78,8 @@ export class VitalLensMonitor extends VitalLensBase {
     this.respChart = this.createChart('#respCanvas', '#007bff');
 
     this.startScreen.addEventListener('start', () => this.startProcessing());
-    this.startScreen.addEventListener('modechange', (e: any) => {
-      this.currentMode = e.detail.mode;
+    this.startScreen.addEventListener('modechange', (e: Event) => {
+      this.currentMode = (e as CustomEvent).detail.mode;
     });
 
     this.shadowRoot!.querySelector('#stopBtn')!.addEventListener('click', () =>
@@ -129,20 +129,26 @@ export class VitalLensMonitor extends VitalLensBase {
 
       this.configureVitalMeta();
 
-      this.vitalLensInstance!.addEventListener('faceDetected', (face: any) => {
-        const isPresent = face !== null;
-        if (!this.isProcessingFlag) return;
+      this.vitalLensInstance!.addEventListener(
+        'faceDetected',
+        (face: unknown) => {
+          const isPresent = face !== null;
+          if (!this.isProcessingFlag) return;
 
-        this.isFaceCurrentlyDetected = isPresent;
-        if (!isPresent) {
-          // Changed to gracefully fallback to searching instead of fatal issue
-          this.transitionState('searching', 'Face the camera and hold still.');
-          this.vitalLensInstance?.reset();
-          this.clearMeasurements();
-        } else if (this.state === 'searching' || this.state === 'idle') {
-          this.transitionState('searching', 'Face detected, analyzing...');
+          this.isFaceCurrentlyDetected = isPresent;
+          if (!isPresent) {
+            // Changed to gracefully fallback to searching instead of fatal issue
+            this.transitionState(
+              'searching',
+              'Face the camera and hold still.'
+            );
+            this.vitalLensInstance?.reset();
+            this.clearMeasurements();
+          } else if (this.state === 'searching' || this.state === 'idle') {
+            this.transitionState('searching', 'Face detected, analyzing...');
+          }
         }
-      });
+      );
 
       await this.vitalLensInstance!.setVideoStream(this.stream, this.videoEl);
       this.vitalLensInstance!.startVideoStream();
@@ -193,7 +199,7 @@ export class VitalLensMonitor extends VitalLensBase {
     }
 
     const { heart_rate, respiratory_rate, hrv_sdnn, hrv_rmssd } = result.vitals;
-    const getConf = (v: any) =>
+    const getConf = (v: { confidence?: number | number[] } | undefined) =>
       Array.isArray(v?.confidence)
         ? v.confidence[v.confidence.length - 1]
         : (v?.confidence ?? 0);
@@ -440,7 +446,7 @@ export class VitalLensMonitor extends VitalLensBase {
     });
   }
 
-  private updateChart(chart: any, data: number[]) {
+  private updateChart(chart: Chart, data: number[]) {
     // Generate exactly enough labels for the current data length.
     // Chart.js will automatically stretch these to fill the chart horizontally.
     chart.data.labels = Array.from({ length: data.length }, (_, i) => i);
@@ -457,9 +463,13 @@ try {
   if (!customElements.get('vitallens-monitor')) {
     customElements.define('vitallens-monitor', VitalLensMonitor);
   }
-} catch (e) {
+} catch {
   console.warn('vitallens-monitor registration bypassed');
 }
-// if (!customElements.get('vitallens-vitals-monitor')) {
-//   customElements.define('vitallens-vitals-monitor', VitalLensMonitor);
-// }
+try {
+  if (!customElements.get('vitallens-vitals-monitor')) {
+    customElements.define('vitallens-vitals-monitor', VitalLensMonitor);
+  }
+} catch {
+  console.warn('vitallens-vitals-monitor registration bypassed');
+}
