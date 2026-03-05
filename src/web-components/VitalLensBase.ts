@@ -1,6 +1,15 @@
 import { VitalLens } from '../core/VitalLens.browser';
 import { VitalLensOptions, VitalLensResult, Vital } from '../types';
 
+export type SessionState =
+  | 'idle'
+  | 'searching'
+  | 'warmingUp'
+  | 'tracking'
+  | 'recovering'
+  | 'issue'
+  | 'completed';
+
 export abstract class VitalLensBase extends HTMLElement {
   protected vitalLensInstance?: VitalLens;
   protected apiKey: string | null = null;
@@ -8,6 +17,10 @@ export abstract class VitalLensBase extends HTMLElement {
   protected latestResult: VitalLensResult | null = null;
   protected isProcessingFlag = false;
   protected supportedVitals: Vital[] = [];
+
+  protected readonly VITAL_CONF_THRESHOLD = 0.8;
+  protected readonly FACE_CONF_THRESHOLD = 0.5;
+  protected readonly HRV_CONF_THRESHOLD = 0.7;
 
   constructor() {
     super();
@@ -113,6 +126,75 @@ export abstract class VitalLensBase extends HTMLElement {
         errorPopup.style.display = 'none';
       }, 10000);
     }
+  }
+
+  protected isFaceGood(
+    result: VitalLensResult,
+    videoWidth: number,
+    videoHeight: number
+  ): boolean {
+    if (!result.face?.coordinates || result.face.coordinates.length === 0)
+      return false;
+
+    const coords = result.face.coordinates[result.face.coordinates.length - 1];
+    const [x0, y0, x1, y1] = coords;
+
+    if (!videoWidth || !videoHeight) return false;
+
+    const cx = (x0 + x1) / 2 / videoWidth;
+    const cy = (y0 + y1) / 2 / videoHeight;
+    const w = (x1 - x0) / videoWidth;
+
+    return cx > 0.3 && cx < 0.7 && cy > 0.3 && cy < 0.7 && w > 0.15;
+  }
+
+  protected resolveFeedbackState(
+    currentState: SessionState,
+    result: VitalLensResult,
+    faceConfHistory: number[],
+    ppgConfHistory: number[],
+    fps: number,
+    videoWidth: number,
+    videoHeight: number,
+    hasEnoughData: boolean
+  ): { state: SessionState; message: string } {
+    const samplesInOneSecond = Math.round(fps);
+
+    const lastSecFaceConf = faceConfHistory.slice(-samplesInOneSecond);
+    const avgFaceConf = lastSecFaceConf.length
+      ? lastSecFaceConf.reduce((a, b) => a + b, 0) / lastSecFaceConf.length
+      : 0.0;
+
+    const lastSecPpgConf = ppgConfHistory.slice(-samplesInOneSecond);
+    const avgPpgConf = lastSecPpgConf.length
+      ? lastSecPpgConf.reduce((a, b) => a + b, 0) / lastSecPpgConf.length
+      : 0.0;
+
+    const isLowSignal =
+      avgPpgConf < this.VITAL_CONF_THRESHOLD ||
+      avgFaceConf < this.FACE_CONF_THRESHOLD;
+    const goodFace = this.isFaceGood(result, videoWidth, videoHeight);
+
+    if (currentState === 'searching' && goodFace) {
+      return { state: 'warmingUp', message: 'Calibrating... Hold still.' };
+    }
+
+    if (!goodFace) {
+      return { state: 'recovering', message: 'Adjust your position.' };
+    }
+
+    if (isLowSignal) {
+      return {
+        state: 'recovering',
+        message: 'Low confidence. Improve lighting and hold still.',
+      };
+    }
+
+    if (!hasEnoughData) {
+      return { state: 'warmingUp', message: 'Calibrating... Hold still.' };
+    }
+
+    return { state: 'tracking', message: 'Scanning...' };
   }
 
   public destroy(): void {

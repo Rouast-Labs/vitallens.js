@@ -40,7 +40,8 @@
   .status-searching .status-dot { background: #46a3db; animation: pulse 1s infinite alternate; }
   .status-warmingUp .status-dot { background: #a855f7; animation: pulse 1s infinite alternate; }
   .status-tracking .status-dot { background: #22c55e; }
-  .status-issue .status-dot { background: #f97316; }
+  .status-recovering .status-dot { background: #f97316; animation: pulse 1s infinite alternate; }
+  .status-issue .status-dot { background: #ef4444; }
   
   .controls { z-index: 2; }
   .btn-stop { background: rgba(255,255,255,0.15); border: none; color: white; font-size: 20px; width: 32px; height: 32px; border-radius: 16px; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); transition: background 0.2s;}
@@ -63,7 +64,7 @@
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
   .value-box { width: 85px; display: flex; flex-direction: column; justify-content: center; padding-left: 12px; transition: width 0.3s;}
-  .value-box.wide { width: 135px; }
+  .value-box.wide { width: 85px; }
     
   .main-val-row { display: flex; align-items: baseline; gap: 4px; }
   .main-title { font-size: 10px; font-weight: 600; color: #888; }
@@ -81,8 +82,6 @@
 
 <div class="layer" id="cameraLayer" style="display: none;">
   <video id="video" autoplay muted playsinline></video>
-  <canvas id="canvas" class="layer"></canvas>
-  
   <div class="top-bar">
     <a href="https://www.rouast.com/api" target="_blank" class="brand">
       <img id="logo" src="" alt="Logo">

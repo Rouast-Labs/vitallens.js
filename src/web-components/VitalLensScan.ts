@@ -1,27 +1,23 @@
-import { VitalLensBase } from './VitalLensBase';
+import { VitalLensBase, SessionState } from './VitalLensBase';
 import { VitalLensResult } from '../types';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './scan.html';
 import logoUrl from '../../assets/logo.svg';
 
-type ScanState = 'idle' | 'searching' | 'warmingUp' | 'tracking' | 'recovering' | 'issue' | 'completed';
-
 export class VitalLensScan extends VitalLensBase {
-  private state: ScanState = 'idle';
+  private state: SessionState = 'idle';
   private currentMode: 'eco' | 'standard' = 'eco';
-  
+
   private videoEl!: HTMLVideoElement;
   private startScreen!: HTMLElement;
-  private resultScreen!: any; // Reference to the vitallens-result component
+  private resultScreen!: any;
   private cameraLayer!: HTMLElement;
   private messageEl!: HTMLElement;
   private statusBadge!: HTMLElement;
   private statusText!: HTMLElement;
   private progressFg!: SVGPathElement;
   private apertureWrapper!: HTMLElement;
-  
-  private readonly VITAL_CONF_THRESHOLD = 0.8;
-  private readonly HRV_CONF_THRESHOLD = 0.7;
+
   private readonly SCAN_DURATION = 30.0;
   private readonly WARM_UP_DURATION = 3.0;
   private readonly RECOVERY_TIMEOUT = 10.0;
@@ -37,9 +33,8 @@ export class VitalLensScan extends VitalLensBase {
   private respConfHistory: number[] = [];
   private ppgHistory: number[] = [];
   private respHistory: number[] = [];
-  
+
   private stream: MediaStream | null = null;
-  private isFaceCurrentlyDetected = false;
 
   constructor() {
     super();
@@ -49,13 +44,15 @@ export class VitalLensScan extends VitalLensBase {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot!.querySelector<HTMLImageElement>('#logo')!.src = logoUrl;
-    
+
     this.startScreen.addEventListener('start', () => this.startProcessing());
     this.startScreen.addEventListener('modechange', (e: any) => {
       this.currentMode = e.detail.mode;
     });
 
-    this.shadowRoot!.querySelector('#stopBtn')!.addEventListener('click', () => this.resetToIdle());
+    this.shadowRoot!.querySelector('#stopBtn')!.addEventListener('click', () =>
+      this.resetToIdle()
+    );
     this.resultScreen.addEventListener('done', () => this.resetToIdle());
   }
 
@@ -87,35 +84,44 @@ export class VitalLensScan extends VitalLensBase {
     this.ppgHistory = [];
     this.respHistory = [];
     this.updateProgress(0);
-    
+
     this.isProcessingFlag = true;
     this.startScreen.style.display = 'none';
     this.resultScreen.style.display = 'none';
     this.cameraLayer.style.display = 'block';
-    
+
     this.transitionState('searching', 'Position your face in the oval');
-    
+
     const fps = this.currentMode === 'eco' ? 15 : 30;
-    
+
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user' } });
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: 'user' },
+      });
       this.videoEl.srcObject = this.stream;
-      
-      await this.initVitalLensInstance({ overrideFpsTarget: fps, waveformMode: 'incremental' });
-      
+
+      await this.initVitalLensInstance({
+        overrideFpsTarget: fps,
+        waveformMode: 'incremental',
+      });
+
       this.vitalLensInstance!.addEventListener('faceDetected', (face: any) => {
         const isPresent = face !== null;
         if (!this.isProcessingFlag) return;
-        
-        this.isFaceCurrentlyDetected = isPresent;
-        if (!isPresent && this.state !== 'searching' && this.state !== 'issue' && this.state !== 'completed') {
+
+        if (
+          !isPresent &&
+          this.state !== 'searching' &&
+          this.state !== 'issue' &&
+          this.state !== 'completed'
+        ) {
           this.handleIssue('Face lost.');
         }
       });
-      
+
       await this.vitalLensInstance!.setVideoStream(this.stream, this.videoEl);
       this.vitalLensInstance!.startVideoStream();
-      
     } catch (e) {
       console.error(e);
       this.showError('Could not access camera.');
@@ -125,7 +131,7 @@ export class VitalLensScan extends VitalLensBase {
 
   private stopCamera() {
     if (this.stream) {
-      this.stream.getTracks().forEach(t => t.stop());
+      this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;
     }
   }
@@ -134,32 +140,40 @@ export class VitalLensScan extends VitalLensBase {
     this.isProcessingFlag = false;
     this.vitalLensInstance?.stopVideoStream();
     this.stopCamera();
-    
+
     this.startScreen.style.display = 'block';
     this.cameraLayer.style.display = 'none';
     this.resultScreen.style.display = 'none';
-    
+
     this.updateProgress(0);
     this.transitionState('idle', '');
   }
 
-  private transitionState(newState: ScanState, msg: string) {
+  private transitionState(newState: SessionState, msg: string) {
     if (this.state !== newState) {
       this.statusBadge.className = `status-badge status-${newState}`;
-      const stateLabels: Record<ScanState, string> = {
-        idle: 'Idle', searching: 'Searching...', warmingUp: 'Calibrating...', 
-        tracking: 'Scanning', recovering: 'Adjust Position', issue: 'Issue', completed: 'Done'
+      const stateLabels: Record<SessionState, string> = {
+        idle: 'Idle',
+        searching: 'Searching',
+        warmingUp: 'Calibrating',
+        tracking: 'Scanning',
+        recovering: 'Recovering',
+        issue: 'Issue',
+        completed: 'Done',
       };
       this.statusText.textContent = stateLabels[newState];
       this.state = newState;
       this.stateStartTime = performance.now() / 1000;
       this.lastFrameTime = performance.now() / 1000;
-      
-      this.apertureWrapper.classList.toggle('is-scanning', newState === 'tracking' || newState === 'recovering');
+
+      this.apertureWrapper.classList.toggle(
+        'is-scanning',
+        newState === 'tracking' || newState === 'recovering'
+      );
     }
-    
+
     this.messageEl.textContent = msg;
-    
+
     if (newState === 'issue') {
       this.vitalLensInstance?.stopVideoStream();
       setTimeout(() => {
@@ -182,32 +196,21 @@ export class VitalLensScan extends VitalLensBase {
     }
   }
 
-  private isFaceGood(result: VitalLensResult): boolean {
-    if (!result.face || !result.face.coordinates || result.face.coordinates.length === 0) return false;
-    
-    const vw = this.videoEl.videoWidth;
-    const vh = this.videoEl.videoHeight;
-    if (!vw || !vh) return false;
-
-    const coords = result.face.coordinates[result.face.coordinates.length - 1];
-    const [x0, y0, x1, y1] = coords;
-    
-    // Normalize coordinates based on video dimensions
-    const cx = ((x0 + x1) / 2) / vw;
-    const cy = ((y0 + y1) / 2) / vh;
-    const w = (x1 - x0) / vw;
-    
-    return cx > 0.3 && cx < 0.7 && cy > 0.3 && cy < 0.7 && w > 0.15;
-  }
-
   protected updateUI(result: VitalLensResult): void {
-    if (!this.isProcessingFlag || this.state === 'idle' || this.state === 'completed' || this.state === 'issue') return;
+    if (
+      !this.isProcessingFlag ||
+      this.state === 'idle' ||
+      this.state === 'completed' ||
+      this.state === 'issue'
+    )
+      return;
 
     const framesInThisUpdate = result.time ? result.time.length : 1;
     this.totalFramesProcessed += framesInThisUpdate;
 
-    if (result.face?.confidence) this.faceConfHistory.push(...result.face.confidence);
-    
+    if (result.face?.confidence)
+      this.faceConfHistory.push(...result.face.confidence);
+
     if (result.waveforms?.ppg_waveform?.data) {
       this.ppgHistory.push(...result.waveforms.ppg_waveform.data);
     }
@@ -225,24 +228,36 @@ export class VitalLensScan extends VitalLensBase {
     }
 
     const fps = this.currentMode === 'eco' ? 15 : 30;
-    const samplesInOneSecond = Math.round(fps);
-
-    const lastSecFaceConf = this.faceConfHistory.slice(-samplesInOneSecond);
-    const avgFaceConfLastSec = lastSecFaceConf.length ? lastSecFaceConf.reduce((a, b) => a + b, 0) / lastSecFaceConf.length : 0.0;
-
-    const lastSecPpgConf = this.ppgConfHistory.slice(-samplesInOneSecond);
-    const avgPpgConfLastSec = lastSecPpgConf.length ? lastSecPpgConf.reduce((a, b) => a + b, 0) / lastSecPpgConf.length : 0.0;
-
-    const isLowSignal = avgPpgConfLastSec < 0.5 || avgFaceConfLastSec < 0.5;
-    const goodFace = this.isFaceGood(result);
-
     const now = performance.now() / 1000;
     const elapsedInState = now - this.stateStartTime;
 
+    // Define what "hasEnoughData" means for the Scan warmup phase
+    const hasEnoughDataForScan =
+      this.state === 'searching'
+        ? false
+        : this.state === 'warmingUp'
+          ? elapsedInState >= this.WARM_UP_DURATION
+          : true;
+
+    // Ask the base class to evaluate the data
+    const feedback = this.resolveFeedbackState(
+      this.state,
+      result,
+      this.faceConfHistory,
+      this.ppgConfHistory,
+      fps,
+      this.videoEl.videoWidth,
+      this.videoEl.videoHeight,
+      hasEnoughDataForScan
+    );
+
+    // Apply Scan-specific time accumulation
     if (this.state === 'tracking' || this.state === 'recovering') {
-      this.accumulatedScanTime += (now - this.lastFrameTime);
-      this.updateProgress(Math.min(this.accumulatedScanTime / this.SCAN_DURATION, 1.0));
-      
+      this.accumulatedScanTime += now - this.lastFrameTime;
+      this.updateProgress(
+        Math.min(this.accumulatedScanTime / this.SCAN_DURATION, 1.0)
+      );
+
       if (this.accumulatedScanTime >= this.SCAN_DURATION) {
         this.finishScan(result);
         return;
@@ -250,28 +265,15 @@ export class VitalLensScan extends VitalLensBase {
     }
     this.lastFrameTime = now;
 
-    switch (this.state) {
-      case 'searching':
-        if (goodFace) this.transitionState('warmingUp', 'Calibrating... Hold still.');
-        break;
-      case 'warmingUp':
-        if (elapsedInState >= this.WARM_UP_DURATION) this.transitionState('tracking', 'Scanning...');
-        break;
-      case 'tracking':
-        if (!goodFace) this.transitionState('recovering', 'Adjust position...');
-        else if (isLowSignal) this.transitionState('recovering', 'Improve lighting...');
-        break;
-      case 'recovering':
-        if (goodFace && !isLowSignal) {
-          this.transitionState('tracking', 'Scanning...');
-        } else if (elapsedInState >= this.RECOVERY_TIMEOUT) {
-          this.handleIssue('Could not recover conditions.');
-        } else {
-          const issueMsg = !goodFace ? 'Adjust position...' : 'Improve lighting...';
-          if (this.messageEl.textContent !== issueMsg) this.messageEl.textContent = issueMsg;
-        }
-        break;
+    // Apply Scan-specific failure timeout for recovery
+    if (this.state === 'recovering' && feedback.state === 'recovering') {
+      if (elapsedInState >= this.RECOVERY_TIMEOUT) {
+        this.handleIssue('Could not recover conditions.');
+        return;
+      }
     }
+
+    this.transitionState(feedback.state, feedback.message);
   }
 
   private finishScan(result: VitalLensResult) {
@@ -283,48 +285,91 @@ export class VitalLensScan extends VitalLensBase {
     this.cameraLayer.style.display = 'none';
     this.resultScreen.style.display = 'block';
 
-    const avgFace = this.faceConfHistory.length ? this.faceConfHistory.reduce((a, b) => a + b, 0) / this.faceConfHistory.length : 0;
-    const duration = this.totalFramesProcessed / (result.fps ?? (this.currentMode === 'eco' ? 15 : 30));
+    const avgFace = this.faceConfHistory.length
+      ? this.faceConfHistory.reduce((a, b) => a + b, 0) /
+        this.faceConfHistory.length
+      : 0;
+    const duration =
+      this.totalFramesProcessed /
+      (result.fps ?? (this.currentMode === 'eco' ? 15 : 30));
 
     const vs = result.vitals;
-    const getConf = (v: any) => Array.isArray(v?.confidence) ? v.confidence[v.confidence.length - 1] : (v?.confidence ?? 0);
+    const getConf = (v: any) =>
+      Array.isArray(v?.confidence)
+        ? v.confidence[v.confidence.length - 1]
+        : (v?.confidence ?? 0);
 
     const hrConf = getConf(vs.heart_rate);
     const rrConf = getConf(vs.respiratory_rate);
     const sdnnConf = getConf(vs.hrv_sdnn);
     const rmssdConf = getConf(vs.hrv_rmssd);
 
-    const buildVital = (id: string, value: number | null | undefined, conf: number, format: string, useShortTitle: boolean = false) => {
-      if (value == null) return null;
+    const buildVital = (
+      id: string,
+      value: number | null | undefined,
+      conf: number,
+      format: string,
+      useShortTitle: boolean = false
+    ) => {
       const meta = VitalMetadataCache.getMeta(id);
-      const title = useShortTitle ? (meta?.short_name || meta?.shortName || id) : (meta?.display_name || meta?.displayName || id);
+      const title = useShortTitle
+        ? meta?.short_name || meta?.shortName || id
+        : meta?.display_name || meta?.displayName || id;
       return {
         id,
         title,
-        value,
+        value: value ?? null,
         unit: (meta?.unit || '').toUpperCase(),
         format,
         confidence: conf,
-        emoji: meta?.emoji || ''
+        emoji: meta?.emoji || '',
       };
     };
 
     const primaryVitals = [
-      buildVital('heart_rate', hrConf >= this.VITAL_CONF_THRESHOLD ? vs.heart_rate?.value : null, hrConf, '%.0f', false),
-      buildVital('respiratory_rate', rrConf >= this.VITAL_CONF_THRESHOLD ? vs.respiratory_rate?.value : null, rrConf, '%.0f', false)
-    ].filter(Boolean) as any[];
+      buildVital(
+        'heart_rate',
+        hrConf >= this.VITAL_CONF_THRESHOLD ? vs.heart_rate?.value : null,
+        hrConf,
+        '%.0f',
+        false
+      ),
+      buildVital(
+        'respiratory_rate',
+        rrConf >= this.VITAL_CONF_THRESHOLD ? vs.respiratory_rate?.value : null,
+        rrConf,
+        '%.0f',
+        false
+      ),
+    ];
 
     const secondaryVitals = [
-      buildVital('hrv_sdnn', sdnnConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_sdnn?.value : null, sdnnConf, '%.0f', true),
-      buildVital('hrv_rmssd', rmssdConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_rmssd?.value : null, rmssdConf, '%.0f', true)
-    ].filter(Boolean) as any[];
+      buildVital(
+        'hrv_sdnn',
+        sdnnConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_sdnn?.value : null,
+        sdnnConf,
+        '%.0f',
+        true
+      ),
+      buildVital(
+        'hrv_rmssd',
+        rmssdConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_rmssd?.value : null,
+        rmssdConf,
+        '%.0f',
+        true
+      ),
+    ].filter((v) => v.value !== null);
 
     this.resultScreen.resultData = {
       primaryVitals,
       secondaryVitals,
-      stats: { duration, sampleCount: this.totalFramesProcessed, avgFaceConf: avgFace },
+      stats: {
+        duration,
+        sampleCount: this.totalFramesProcessed,
+        avgFaceConf: avgFace,
+      },
       ppgWaveform: this.ppgHistory,
-      respWaveform: this.respHistory
+      respWaveform: this.respHistory,
     };
   }
 
@@ -344,6 +389,10 @@ try {
 } catch (e) {
   console.warn('vitallens-scan registration bypassed');
 }
-// if (!customElements.get('vitallens-vitals-scan')) {
-//   customElements.define('vitallens-vitals-scan', VitalLensScan);
-// }
+try {
+  if (!customElements.get('vitallens-vitals-scan')) {
+    customElements.define('vitallens-vitals-scan', VitalLensScan);
+  }
+} catch (e) {
+  console.warn('vitallens-vitals-scan registration bypassed');
+}
