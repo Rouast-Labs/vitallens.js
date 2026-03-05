@@ -59,44 +59,43 @@ describe('VitalLensController Integration (Node)', () => {
     expect(result.face.confidence).toBeInstanceOf(Array);
     expect(result.face.confidence?.length).toBeGreaterThan(0);
 
-    // Check `vital_signs` properties
-    expect(result).toHaveProperty('vital_signs');
+    // Check `vitals`, `waveform` properties
+    expect(result).toHaveProperty('vitals');
+    expect(result).toHaveProperty('waveforms');
 
     // Heart rate validation
-    expect(result.vital_signs).toHaveProperty('heart_rate');
-    expect(result.vital_signs.heart_rate).toHaveProperty('value');
-    expect(result.vital_signs.heart_rate).toHaveProperty('confidence');
-    expect(typeof result.vital_signs.heart_rate!.value).toBe('number');
-    expect(result.vital_signs.heart_rate!.value).toBeGreaterThan(40);
-    expect(result.vital_signs.heart_rate!.value).toBeLessThan(220);
-    expect(result.vital_signs.heart_rate!.confidence).toBeGreaterThanOrEqual(0);
-    expect(result.vital_signs.heart_rate!.confidence).toBeLessThanOrEqual(1);
+    expect(result.vitals).toHaveProperty('heart_rate');
+    expect(result.vitals.heart_rate).toHaveProperty('value');
+    expect(result.vitals.heart_rate).toHaveProperty('confidence');
+    expect(typeof result.vitals.heart_rate!.value).toBe('number');
+    expect(result.vitals.heart_rate!.value).toBeGreaterThan(40);
+    expect(result.vitals.heart_rate!.value).toBeLessThan(220);
+    expect(result.vitals.heart_rate!.confidence).toBeGreaterThanOrEqual(0);
+    expect(result.vitals.heart_rate!.confidence).toBeLessThanOrEqual(1);
 
     // Respiratory rate validation
-    expect(result.vital_signs).toHaveProperty('respiratory_rate');
-    expect(result.vital_signs.respiratory_rate).toHaveProperty('value');
-    expect(result.vital_signs.respiratory_rate).toHaveProperty('confidence');
-    expect(typeof result.vital_signs.respiratory_rate!.value).toBe('number');
-    expect(result.vital_signs.respiratory_rate!.value).toBeGreaterThan(4);
-    expect(result.vital_signs.respiratory_rate!.value).toBeLessThan(40);
-    expect(
-      result.vital_signs.respiratory_rate!.confidence
-    ).toBeGreaterThanOrEqual(0);
-    expect(result.vital_signs.respiratory_rate!.confidence).toBeLessThanOrEqual(
-      1
+    expect(result.vitals).toHaveProperty('respiratory_rate');
+    expect(result.vitals.respiratory_rate).toHaveProperty('value');
+    expect(result.vitals.respiratory_rate).toHaveProperty('confidence');
+    expect(typeof result.vitals.respiratory_rate!.value).toBe('number');
+    expect(result.vitals.respiratory_rate!.value).toBeGreaterThan(4);
+    expect(result.vitals.respiratory_rate!.value).toBeLessThan(40);
+    expect(result.vitals.respiratory_rate!.confidence).toBeGreaterThanOrEqual(
+      0
     );
+    expect(result.vitals.respiratory_rate!.confidence).toBeLessThanOrEqual(1);
 
     // Ensure `ppg_waveform` and `respiratory_waveform` have data arrays
-    expect(result.vital_signs).toHaveProperty('ppg_waveform');
-    expect(result.vital_signs).toHaveProperty('respiratory_waveform');
-    expect(Array.isArray(result.vital_signs.ppg_waveform!.data)).toBe(true);
-    expect(Array.isArray(result.vital_signs.respiratory_waveform!.data)).toBe(
+    expect(result.waveforms).toHaveProperty('ppg_waveform');
+    expect(result.waveforms).toHaveProperty('respiratory_waveform');
+    expect(Array.isArray(result.waveforms.ppg_waveform!.data)).toBe(true);
+    expect(Array.isArray(result.waveforms.respiratory_waveform!.data)).toBe(
       true
     );
-    expect(result.vital_signs.ppg_waveform!.data.length).toBeGreaterThan(0);
-    expect(
-      result.vital_signs.respiratory_waveform!.data.length
-    ).toBeGreaterThan(0);
+    expect(result.waveforms.ppg_waveform!.data.length).toBeGreaterThan(0);
+    expect(result.waveforms.respiratory_waveform!.data.length).toBeGreaterThan(
+      0
+    );
 
     // Ensure `time` array is valid
     expect(result).toHaveProperty('time');

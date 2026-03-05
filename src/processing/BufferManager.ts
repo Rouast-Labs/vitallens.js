@@ -20,9 +20,11 @@ export class BufferManager {
   private ensurePlanner(methodConfig: MethodConfig) {
     if (!this.planner) {
       const core = getCoreSync();
+      const supportedVitals = methodConfig.supportedVitals || [];
       const sessionConfig = {
         model_name: methodConfig.method,
-        supported_vitals: methodConfig.supportedVitals,
+        supported_vitals: supportedVitals,
+        return_waveforms: supportedVitals.filter((v) => v.includes('waveform')),
         fps_target: methodConfig.fpsTarget,
         input_size: methodConfig.inputSize || 40,
         n_inputs: methodConfig.minWindowLengthState || 16,
