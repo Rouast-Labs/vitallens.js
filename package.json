@@ -70,8 +70,8 @@
     "dist/vitallens.browser.js",
     "dist/vitallens.cjs.js",
     "dist/vitallens.esm.js",
-    "dist/types/index.node.d.ts",
-    "dist/types/index.browser.d.ts",
+    "dist/types",
+    "dist/models",
     "LICENSE",
     "README.md"
   ],
