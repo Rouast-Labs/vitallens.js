@@ -16,13 +16,26 @@ export class FaceDetectorAsync extends FaceDetectorAsyncBase {
 
   protected async init(): Promise<void> {
     try {
-      const finalJsonUrl = this.jsonUrl || resolveAsset(modelJsonPath);
-      const finalBinUrl = this.binUrl || resolveAsset(modelBinPath);
+      let finalJsonUrl = this.jsonUrl || resolveAsset(modelJsonPath);
+      let finalBinUrl = this.binUrl || resolveAsset(modelBinPath);
 
-      const [jsonResponse, binResponse] = await Promise.all([
-        fetch(finalJsonUrl),
-        fetch(finalBinUrl),
-      ]);
+      let jsonResponse = await fetch(finalJsonUrl);
+
+      const contentType = jsonResponse.headers.get('content-type');
+      if (
+        !jsonResponse.ok ||
+        (contentType && contentType.includes('text/html'))
+      ) {
+        console.warn(
+          'Local model fetch failed (likely due to bundler). Falling back to CDN...'
+        );
+        finalJsonUrl = `https://cdn.jsdelivr.net/npm/vitallens/dist/${modelJsonPath}`;
+        finalBinUrl = `https://cdn.jsdelivr.net/npm/vitallens/dist/${modelBinPath}`;
+
+        jsonResponse = await fetch(finalJsonUrl);
+      }
+
+      const binResponse = await fetch(finalBinUrl);
 
       if (!jsonResponse.ok)
         throw new Error(
