@@ -1,7 +1,7 @@
 import { VitalLens } from '../core/VitalLens.browser';
 import { VitalLensOptions, VitalLensResult, Vital } from '../types';
 
-export abstract class VitalLensWidgetBase extends HTMLElement {
+export abstract class VitalLensBase extends HTMLElement {
   protected vitalLensInstance?: VitalLens;
   protected apiKey: string | null = null;
   protected proxyUrl: string | null = null;
@@ -50,7 +50,7 @@ export abstract class VitalLensWidgetBase extends HTMLElement {
       method: 'vitallens',
       apiKey: this.apiKey ?? undefined,
       proxyUrl: this.proxyUrl ?? undefined,
-      waveformMode: 'windowed',
+      waveformMode: 'incremental',
       ...options,
     };
 
@@ -63,7 +63,6 @@ export abstract class VitalLensWidgetBase extends HTMLElement {
         this.handleStreamReset(event as { message: string })
       );
 
-      // After a brief moment for initialization, check for supported vitals
       setTimeout(() => {
         if (this.vitalLensInstance) {
           this.supportedVitals = this.vitalLensInstance.getSupportedVitals();

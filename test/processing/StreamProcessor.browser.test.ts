@@ -35,7 +35,6 @@ describe('StreamProcessor (Browser)', () => {
   // Dummy stubs for parameters not used in these tests.
   const dummyFrameIterator = {} as any;
   const dummyMethodHandler = {} as any;
-  const dummyBufferedResultsConsumer = {} as any;
   const dummyOnPredict = vi.fn(async (result) => {});
   const dummyOnNoFace = vi.fn(async () => {});
   const dummyOnStreamReset = vi.fn();
@@ -100,7 +99,6 @@ describe('StreamProcessor (Browser)', () => {
       fakeBufferManager,
       mockFaceDetectionWorker,
       dummyMethodHandler,
-      dummyBufferedResultsConsumer,
       dummyOnPredict,
       dummyOnNoFace,
       dummyOnStreamReset,
@@ -117,7 +115,6 @@ describe('StreamProcessor (Browser)', () => {
         fakeBufferManager,
         null, // No face detection worker provided.
         dummyMethodHandler,
-        dummyBufferedResultsConsumer,
         dummyOnPredict,
         dummyOnNoFace,
         dummyOnStreamReset,

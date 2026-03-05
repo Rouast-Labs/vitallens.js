@@ -14,6 +14,7 @@ import {
   VitalLensAPIQuotaExceededError,
 } from '../utils/errors';
 import { IRestClient, ResolveModelResponse } from '../types/IRestClient';
+import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 
 const STREAM_RESET_BUFFER_THRESHOLD = 100; // Frames
 
@@ -70,20 +71,12 @@ export class VitalLensAPIHandler extends MethodHandler {
   private _parseAndSetConfig(response: ResolveModelResponse): void {
     const apiConfig = response.config;
 
-    // TODO: Get this from vitallens-core
-    const aliases: Record<string, string> = {
-      'ppg': 'ppg_waveform',
-      'resp': 'respiratory_waveform',
-      'hr': 'heart_rate',
-      'rr': 'respiratory_rate',
-      'sdnn': 'hrv_sdnn',
-      'rmssd': 'hrv_rmssd',
-      'lfhf': 'hrv_lfhf'
-    };
-
     const supportedVitals = (apiConfig.supported_vitals || [])
-      .map((code) => aliases[code] || code)
-      .filter(Boolean) as Vital[];
+      .map((code) => {
+        const meta = VitalMetadataCache.getMeta(code);
+        return (meta?.id || code) as Vital;
+      })
+      .filter(Boolean);
 
     this.config = {
       method: response.resolved_model as MethodConfig['method'],

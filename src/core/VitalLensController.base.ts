@@ -20,7 +20,6 @@ import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { FrameIteratorFactory } from '../processing/FrameIteratorFactory';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 import { VitalLensAPIKeyError } from '../utils/errors';
-import { BufferedResultsConsumer } from '../processing/BufferedResultsConsumer';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -78,7 +77,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
     methodHandler: MethodHandler,
-    bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>,
     onStreamReset: () => Promise<void>,
@@ -148,9 +146,6 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       );
     }
 
-    const bufferedResultsConsumer = new BufferedResultsConsumer(
-      (result: VitalLensResult) => this.dispatchEvent('vitals', result)
-    );
     const frameIterator = this.frameIteratorFactory.createStreamFrameIterator(
       stream,
       videoElement
@@ -163,18 +158,16 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       this.bufferManager,
       this.faceDetectionWorker,
       this.methodHandler,
-      bufferedResultsConsumer,
       async (incrementalResult) => {
         // onPredict - process and dispatch incremental result unless paused
         if (this.isProcessing()) {
-          // Buffer results; Produce one result for each frame and deliver with buffer offset.
-          const bufferedResults = await this.session!.produceBufferedResults(
+          const processedResult = await this.session!.processIncrementalResult(
             incrementalResult,
-            this.options.waveformMode || 'incremental'
+            this.options.waveformMode || 'incremental',
+            true // ensure it returns the result
           );
-          // Send the results to be delivered
-          if (bufferedResults && bufferedResults.length) {
-            bufferedResultsConsumer?.addResults(bufferedResults);
+          if (processedResult) {
+            this.dispatchEvent('vitals', processedResult);
           }
         }
       },

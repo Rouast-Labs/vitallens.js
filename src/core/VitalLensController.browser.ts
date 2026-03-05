@@ -13,7 +13,6 @@ import FFmpegWrapper from '../utils/FFmpegWrapper.browser';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.browser';
 import { createWorkerBlobURL } from '../utils/workerOps';
-import { BufferedResultsConsumer } from '../processing/BufferedResultsConsumer';
 import {
   FFMPEG_CORE_URL,
   FFMPEG_WASM_URL,
@@ -53,7 +52,6 @@ export class VitalLensController extends VitalLensControllerBase {
     bufferManager: BufferManager,
     faceDetectionWorker: IFaceDetectionWorker | null,
     methodHandler: MethodHandler,
-    bufferedResultsConsumer: BufferedResultsConsumer | null,
     onPredict: (result: VitalLensResult) => Promise<void>,
     onNoFace: () => Promise<void>,
     onStreamReset: () => Promise<void>,
@@ -71,7 +69,6 @@ export class VitalLensController extends VitalLensControllerBase {
       bufferManager,
       faceDetectionWorker,
       methodHandler,
-      bufferedResultsConsumer,
       onPredict,
       onNoFace,
       onStreamReset,

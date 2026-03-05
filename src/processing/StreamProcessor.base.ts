@@ -5,7 +5,6 @@ import { Frame } from './Frame';
 import { IFrameIterator } from '../types/IFrameIterator';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
 import { FDET_DEFAULT_FS_STREAM } from '../config/constants';
-import { BufferedResultsConsumer } from './BufferedResultsConsumer';
 
 /**
  * Manages the processing loop for live streams, including frame capture,
@@ -38,7 +37,6 @@ export abstract class StreamProcessorBase {
    * @param bufferManager - Manages frames for each ROI and method state.
    * @param faceDetectionWorker - Face detection worker (optional if global ROI is given).
    * @param methodHandler - Handles actual vital sign algorithm processing.
-   * @param bufferedResultsConsumer - The buffered results consumer.
    * @param onPredict - Callback invoked with each new VitalLensResult.
    * @param onNoFace - Callback invoked when face is lost.
    * @param onStreamReset - Callback invoked when stream is reset.
@@ -51,7 +49,6 @@ export abstract class StreamProcessorBase {
     protected bufferManager: BufferManager,
     protected faceDetectionWorker: IFaceDetectionWorker | null,
     methodHandler: MethodHandler,
-    private bufferedResultsConsumer: BufferedResultsConsumer | null,
     private onPredict: (result: VitalLensResult) => Promise<void>,
     protected onNoFace: () => Promise<void>,
     protected onStreamReset: () => Promise<void>,
@@ -223,9 +220,6 @@ export abstract class StreamProcessorBase {
     // Start capturing from frameIterator
     await this.frameIterator.start();
 
-    // Start the buffered results consumer if necessary
-    this.bufferedResultsConsumer?.start();
-
     // Start the async loop
     processFrames().catch((error) => {
       console.error('Error in stream processing loop:', error);
@@ -255,7 +249,6 @@ export abstract class StreamProcessorBase {
   stop(): void {
     this.isPaused = true;
     this.frameIterator.stop();
-    this.bufferedResultsConsumer?.stop();
     this.methodHandler.cleanup();
     this.bufferManager.cleanup();
   }

@@ -46,52 +46,28 @@ describe('Session', () => {
     vi.clearAllMocks();
   });
 
-  describe('produceBufferedResults', () => {
-    it('unrolls a batched result into individual frames for UI rendering', async () => {
-      const incrementalResult = { time: [1000, 1001] } as VitalLensResult;
-
-      // Mock the internal call to processIncrementalResult to bypass adapter/core logic
-      vi.spyOn(session, 'processIncrementalResult').mockResolvedValueOnce({
-        time: [1000, 1001],
-        face: {
-          coordinates: [
-            [0, 0, 1, 1],
-            [2, 2, 3, 3],
-          ],
-          confidence: [0.9, 0.8],
-        },
-        vital_signs: {
-          ppg_waveform: {
-            data: [0.5, 0.6],
-            confidence: [0.8, 0.85],
-            unit: 'unitless',
-            note: '',
-          },
-          heart_rate: { value: 60, confidence: 0.9, unit: 'bpm', note: '' },
-        },
-        message: 'Success',
-      });
-
-      const results = await session.produceBufferedResults(
-        incrementalResult,
-        'windowed'
+  describe('processIncrementalResult', () => {
+    it('returns null if the incremental result has an empty time array', async () => {
+      const result = await session.processIncrementalResult(
+        { time: [] } as unknown as VitalLensResult,
+        'incremental'
       );
+      expect(result).toBeNull();
+      expect(mockSessionInstance.processJs).not.toHaveBeenCalled();
+    });
 
-      expect(results).toHaveLength(2);
-
-      // Frame 1: Should have array values at index 0, and no scalar values
-      expect(results![0].time).toEqual([1000]);
-      expect(results![0].display_time).toBe(1001); // 1000 + bufferOffset (1)
-      expect(results![0].face.coordinates).toEqual([[0, 0, 1, 1]]);
-      expect(results![0].vital_signs.ppg_waveform?.data).toEqual([0.5]);
-      expect(results![0].vital_signs.heart_rate).toBeUndefined();
-
-      // Frame 2: Should have array values at index 1, and the scalar values attached
-      expect(results![1].time).toEqual([1001]);
-      expect(results![1].display_time).toBe(1002); // 1001 + bufferOffset (1)
-      expect(results![1].face.coordinates).toEqual([[2, 2, 3, 3]]);
-      expect(results![1].vital_signs.ppg_waveform?.data).toEqual([0.6]);
-      expect(results![1].vital_signs.heart_rate?.value).toBe(60);
+    it('returns null if returnResult flag is false, but still processes data', async () => {
+      mockSessionInstance.processJs.mockReturnValueOnce({
+        timestamp: [1000],
+        message: '',
+      });
+      const result = await session.processIncrementalResult(
+        { time: [1000] } as VitalLensResult,
+        'incremental',
+        false
+      );
+      expect(result).toBeNull();
+      expect(mockSessionInstance.processJs).toHaveBeenCalled();
     });
   });
 
@@ -147,6 +123,24 @@ describe('Session', () => {
       expect(session.getEmptyResult().message).toContain(
         'empty because no face was detected'
       );
+    });
+
+    it('fetches a global result correctly via getResult', async () => {
+      mockSessionInstance.processJs.mockReturnValueOnce({
+        timestamp: [1000, 1001],
+        message: 'Final global result',
+        vitals: {},
+        waveforms: {}
+      });
+
+      const result = await session.getResult();
+      
+      expect(mockSessionInstance.processJs).toHaveBeenCalledWith(
+        { timestamp: [], signals: {} },
+        'Global'
+      );
+      expect(result.time).toEqual([1000, 1001]);
+      expect(result.message).toBe('Final global result');
     });
   });
 });

@@ -36,7 +36,7 @@ export class Session {
 
     const reqMode = this.options.waveformMode || defaultWaveformMode;
     let wasmMode: unknown = 'Incremental';
-    if (reqMode === 'complete' || reqMode === 'global') {
+    if (reqMode === 'global') {
       wasmMode = 'Global';
     } else if (reqMode === 'windowed') {
       wasmMode = { Windowed: { seconds: 10.0 } };
@@ -48,68 +48,6 @@ export class Session {
       return toVitalLensResult(wasmResult, incrementalResult);
     }
     return null;
-  }
-
-  async produceBufferedResults(
-    incrementalResult: VitalLensResult,
-    defaultWaveformMode: string
-  ): Promise<Array<VitalLensResult> | null> {
-    const processedResult = await this.processIncrementalResult(
-      incrementalResult,
-      defaultWaveformMode,
-      true
-    );
-
-    if (!processedResult) return null;
-
-    const results: VitalLensResult[] = [];
-    const nFrames = processedResult.time?.length || 0;
-    if (nFrames === 0) return null;
-
-    for (let i = 0; i < nFrames; i++) {
-      const singleResult: VitalLensResult = {
-        face: {
-          coordinates: processedResult.face?.coordinates?.[i]
-            ? [processedResult.face.coordinates[i]]
-            : [],
-          confidence:
-            processedResult.face?.confidence?.[i] !== undefined
-              ? [processedResult.face.confidence[i]]
-              : [],
-          note: processedResult.face?.note,
-        },
-        vital_signs: {},
-        time: [processedResult.time![i]],
-        message: processedResult.message || '',
-        display_time:
-          processedResult.time![i] + (this.methodConfig.bufferOffset || 0),
-      };
-
-      for (const [key, value] of Object.entries(processedResult.vital_signs)) {
-        if (
-          value.data &&
-          value.data[i] !== undefined &&
-          Array.isArray(value.confidence) &&
-          value.confidence[i] !== undefined
-        ) {
-          singleResult.vital_signs[key] = {
-            data: [value.data[i]],
-            confidence: [value.confidence[i] as number],
-            unit: value.unit,
-            note: value.note,
-          };
-        } else if (value.value !== undefined && i === nFrames - 1) {
-          singleResult.vital_signs[key] = {
-            value: value.value,
-            confidence: value.confidence,
-            unit: value.unit,
-            note: value.note,
-          };
-        }
-      }
-      results.push(singleResult);
-    }
-    return results;
   }
 
   async getResult(): Promise<VitalLensResult> {

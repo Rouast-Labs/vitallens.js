@@ -29,7 +29,7 @@ You can choose from several rPPG methods to control how inference is performed:
 | `method` | `string` | The rPPG method to be used for inference (see options above). | `'vitallens'` |
 | `apiKey` | `string` | Your API Key. Required if `method` starts with `vitallens`. | `undefined` |
 | `proxyUrl` | `string` | URL to a backend proxy to hide your API Key (Recommended for production). | `undefined` |
-| `waveformMode` | `string` | How waveforms are returned: `"incremental"`, `"windowed"`, or `"complete"`. | `'windowed'` |
+| `waveformMode` | `string` | How waveforms are returned: `"incremental"`, `"windowed"`, or `"global"`. | `'windowed'` |
 | `fDetFs` | `number` | Face detection frequency in Hz (Live stream only). | `1.0` |
 
 ---
