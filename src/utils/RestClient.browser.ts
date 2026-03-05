@@ -60,7 +60,9 @@ export class RestClient extends RestClientBase {
       }
       return (await response.json()) as ResolveModelResponse;
     } catch (error) {
-      throw new Error(`Model resolution request failed: ${error}`);
+      throw new Error(`Model resolution request failed: ${error}`, {
+        cause: error,
+      });
     }
   }
 
@@ -112,7 +114,7 @@ export class RestClient extends RestClientBase {
 
       return this.handleResponse(response);
     } catch (error) {
-      throw new Error(`POST request failed: ${error}`);
+      throw new Error(`POST request failed: ${error}`, { cause: error });
     }
   }
 
