@@ -47,19 +47,34 @@ export class VitalLensAPIHandler extends MethodHandler {
   async init(): Promise<void> {
     if (this.ready) return;
 
+    const key = this.options.apiKey;
+    const isPlaceholder = key === 'YOUR_API_KEY' || key === 'YOUR_API_KEY_HERE';
+
+    if (!this.options.proxyUrl && (!key || isPlaceholder)) {
+      throw new VitalLensAPIKeyError(
+        'Invalid or missing API Key. Please replace "YOUR_API_KEY" with your actual key, or configure a proxyUrl.'
+      );
+    }
+
     try {
       const response = await this.client.resolveModel(this.requestedModelName);
       this._parseAndSetConfig(response);
       this.ready = true;
     } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
       if (
-        error instanceof Error &&
-        (error.message.includes('401') || error.message.includes('403'))
+        msg.includes('401') ||
+        msg.includes('403') ||
+        msg.includes('Failed to fetch') ||
+        msg.includes('invalid')
       ) {
-        throw new VitalLensAPIKeyError(error.message);
+        throw new VitalLensAPIKeyError(
+          `Invalid API Key or CORS failure: ${msg}`
+        );
       }
       throw new VitalLensAPIError(
-        `Failed to initialize VitalLensAPIHandler: ${error}`
+        `Failed to initialize VitalLensAPIHandler: ${msg}`,
+        { cause: error }
       );
     }
   }

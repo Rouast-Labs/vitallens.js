@@ -154,8 +154,13 @@ export class VitalLensMonitor extends VitalLensBase {
       this.vitalLensInstance!.startVideoStream();
     } catch (e) {
       console.error(e);
-      this.showError('Could not access camera.');
+      const errorMsg = e instanceof Error ? e.message : String(e);
       this.stopProcessing();
+      if (errorMsg.includes('API Key') || errorMsg.includes('VitalLensAPI')) {
+        this.showError(errorMsg);
+      } else {
+        this.showError('Could not access camera. Please check permissions.');
+      }
     }
   }
 
@@ -459,17 +464,15 @@ export class VitalLensMonitor extends VitalLensBase {
   }
 }
 
-try {
-  if (!customElements.get('vitallens-monitor')) {
-    customElements.define('vitallens-monitor', VitalLensMonitor);
+const register = (tagName: string, klass: CustomElementConstructor) => {
+  if (!customElements.get(tagName)) {
+    customElements.define(tagName, klass);
   }
-} catch {
-  console.warn('vitallens-monitor registration bypassed');
-}
+};
+
 try {
-  if (!customElements.get('vitallens-vitals-monitor')) {
-    customElements.define('vitallens-vitals-monitor', VitalLensMonitor);
-  }
+  register('vitallens-monitor', VitalLensMonitor);
+  register('vitallens-vitals-monitor', VitalLensMonitor);
 } catch {
-  console.warn('vitallens-vitals-monitor registration bypassed');
+  // Silent: Probably duplicate registration
 }

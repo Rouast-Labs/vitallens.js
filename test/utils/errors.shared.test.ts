@@ -14,6 +14,14 @@ describe('VitalLensAPIError classes', () => {
       expect(error.name).toBe('VitalLensAPIError');
       expect(error.message).toBe('An error occurred');
     });
+
+    it('should correctly store the cause if provided', () => {
+      const originalError = new Error('Network failure');
+      const error = new VitalLensAPIError('An error occurred', {
+        cause: originalError,
+      });
+      expect(error.cause).toBe(originalError);
+    });
   });
 
   describe('VitalLensAPIKeyError', () => {
@@ -23,6 +31,14 @@ describe('VitalLensAPIError classes', () => {
       expect(error).toBeInstanceOf(VitalLensAPIKeyError);
       expect(error.name).toBe('VitalLensAPIKeyError');
       expect(error.message).toMatch(/A valid API key or proxy URL is required/);
+    });
+
+    it('should correctly store the cause if provided', () => {
+      const originalError = new Error('403 Forbidden');
+      const error = new VitalLensAPIKeyError('Custom message', {
+        cause: originalError,
+      });
+      expect(error.cause).toBe(originalError);
     });
   });
 
@@ -35,6 +51,14 @@ describe('VitalLensAPIError classes', () => {
       expect(error.message).toMatch(
         /The quota or rate limit associated with your API key may have been exceeded/
       );
+    });
+
+    it('should correctly store the cause if provided', () => {
+      const originalError = new Error('Rate limit hit');
+      const error = new VitalLensAPIQuotaExceededError(undefined, {
+        cause: originalError,
+      });
+      expect(error.cause).toBe(originalError);
     });
   });
 });

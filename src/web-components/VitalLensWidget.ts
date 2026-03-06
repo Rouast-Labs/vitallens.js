@@ -585,7 +585,13 @@ export class VitalLensWidget extends VitalLensBase {
       };
     } catch (e) {
       console.error(e);
-      this.showError('Could not access webcam. Please check permissions.');
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      if (errorMsg.includes('API Key') || errorMsg.includes('VitalLensAPI')) {
+        this.showError(errorMsg);
+      } else {
+        this.showError('Could not access webcam. Please check permissions.');
+      }
+      throw e;
     }
   }
 

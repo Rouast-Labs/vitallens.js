@@ -20,11 +20,12 @@ Select a target below and run the command. Replace `YOUR_KEY` with your actual A
 
 | Category | Description | Command |
 | --- | --- | --- |
-| **Web Component** | **Vitals Scan:** A 30-second guided health check wizard. | `API_KEY=YOUR_KEY npm run start:vitals-scan` |
-| **Web Component** | **Vitals Monitor:** Continuous, always-on dashboard widget. | `API_KEY=YOUR_KEY npm run start:vitals-monitor` |
-| **Web Component** | **Unified Widget:** Advanced tool for switching methods/files. | `API_KEY=YOUR_KEY npm run start:browser-widget` |
-| **Core API** | **Minimal Webcam:** Raw `VitalLens` class with custom HTML. | `API_KEY=YOUR_KEY npm run start:browser-webcam-minimal` |
-| **Node.js** | **File Processing:** Analyze a video file server-side. | `API_KEY=YOUR_KEY npm run start:node-file` |
+| **Web Component** | **Vitals Scan:** A 30-second guided health check wizard. | `API_KEY=YOUR_KEY npm run start:scan` |
+| **Web Component** | **Vitals Monitor:** Continuous monitor. | `API_KEY=YOUR_KEY npm run start:monitor` |
+| **Web Component** | **File Processing:** Analyze a video file. | `API_KEY=YOUR_KEY npm run start:file` |
+| **Web Component** | **Advanced Widget:** Advanced tool for switching methods/files. | `API_KEY=YOUR_KEY npm run start:widget` |
+| **Core API** | **Minimal Webcam:** Raw `VitalLens` class with custom HTML. | `API_KEY=YOUR_KEY npm run start:webcam-minimal` |
+| **Node.js** | **File Processing:** Analyze a video file server-side. | `API_KEY=YOUR_KEY npm run start:file-node` |
 
 ---
 
