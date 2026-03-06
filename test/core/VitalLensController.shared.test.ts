@@ -156,16 +156,6 @@ describe('VitalLensControllerBase', () => {
       expect(methodHandlerWithRest).toBeDefined();
     });
 
-    test('should throw an error if method is vitallens and apiKey is missing', () => {
-      const optionsWithoutApiKey: VitalLensOptions = {
-        method: 'vitallens',
-        requestMode: 'rest',
-      };
-      expect(() =>
-        controller['createMethodHandler'](optionsWithoutApiKey)
-      ).toThrow(/A valid API key or proxy URL is required/);
-    });
-
     test('should create a MethodHandler without requiring an apiKey for non-vitallens methods', () => {
       const optionsForOtherMethod: VitalLensOptions = { method: 'pos' };
       const methodHandler = controller['createMethodHandler'](

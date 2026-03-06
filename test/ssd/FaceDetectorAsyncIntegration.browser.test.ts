@@ -35,8 +35,9 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
             ok: true,
             status: 200,
             statusText: 'OK',
+            headers: { get: () => 'application/json' },
             json: async () => JSON.parse(data),
-          } as Response;
+          } as unknown as Response;
         }
         if (url.includes('mock-model.bin')) {
           const data = fs.readFileSync(
@@ -49,8 +50,9 @@ describe('FaceDetectorAsync (Browser) Integration Test', () => {
             ok: true,
             status: 200,
             statusText: 'OK',
+            headers: { get: () => 'application/octet-stream' },
             arrayBuffer: async () => data.buffer,
-          } as Response;
+          } as unknown as Response;
         }
         throw new Error(`Unexpected fetch URL: ${url}`);
       }

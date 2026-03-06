@@ -211,5 +211,5 @@ try {
     customElements.define('vitallens-file', VitalLensFile);
   }
 } catch {
-  console.warn('vitallens-file registration bypassed');
+  // Silent: Duplicate registration
 }

@@ -19,7 +19,6 @@ import { IFrameIterator } from '../types/IFrameIterator';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { FrameIteratorFactory } from '../processing/FrameIteratorFactory';
 import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
-import { VitalLensAPIKeyError } from '../utils/errors';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -94,14 +93,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * @returns The method handler instance.
    */
   protected createMethodHandler(options: VitalLensOptions): MethodHandler {
-    if (
-      options.method.startsWith('vitallens') &&
-      !options.apiKey &&
-      !options.proxyUrl
-    ) {
-      throw new VitalLensAPIKeyError();
-    }
-    const requestMode = options.requestMode || 'rest'; // Default to REST
+    const requestMode = options.requestMode || 'rest';
     const dependencies = {
       restClient:
         options.method.startsWith('vitallens') && requestMode === 'rest'
