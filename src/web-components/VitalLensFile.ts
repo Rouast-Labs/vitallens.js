@@ -32,7 +32,19 @@ export class VitalLensFile extends VitalLensBase {
     this.resultScreen.addEventListener('done', () => this.resetToIdle());
     this.retryBtn.addEventListener('click', () => this.resetToIdle());
 
-    // Explicitly initialize the UI state
+    this.startScreen.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    this.startScreen.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const dragEvent = e as DragEvent;
+      if (dragEvent.dataTransfer?.files?.length) {
+        this.fileInput.files = dragEvent.dataTransfer.files;
+        this.fileInput.dispatchEvent(new Event('change'));
+      }
+    });
+
     this.transitionState('idle');
   }
 
@@ -101,6 +113,11 @@ export class VitalLensFile extends VitalLensBase {
 
   private resetToIdle() {
     this.transitionState('idle');
+    if (this.resultScreen && 'destroyCharts' in this.resultScreen) {
+      (
+        this.resultScreen as unknown as { destroyCharts: () => void }
+      ).destroyCharts();
+    }
     if (this.vitalLensInstance) {
       this.vitalLensInstance.close();
       this.vitalLensInstance = undefined;
@@ -186,6 +203,12 @@ export class VitalLensFile extends VitalLensBase {
         true
       ),
     ].filter((v) => v.value !== null);
+
+    if (this.resultScreen && 'destroyCharts' in this.resultScreen) {
+      (
+        this.resultScreen as unknown as { destroyCharts: () => void }
+      ).destroyCharts();
+    }
 
     this.resultScreen.resultData = {
       primaryVitals,

@@ -31,10 +31,24 @@ export interface ResolvedVital {
 export class VitalLensResult extends HTMLElement {
   private showDetails = false;
 
+  private ppgChart: Chart | null = null;
+  private respChart: Chart | null = null;
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
     this.shadowRoot!.innerHTML = template;
+  }
+
+  public destroyCharts(): void {
+    if (this.ppgChart) {
+      this.ppgChart.destroy();
+      this.ppgChart = null;
+    }
+    if (this.respChart) {
+      this.respChart.destroy();
+      this.respChart = null;
+    }
   }
 
   connectedCallback() {
@@ -74,6 +88,8 @@ export class VitalLensResult extends HTMLElement {
     ppgWaveform?: number[];
     respWaveform?: number[];
   }) {
+    this.destroyCharts();
+
     this.renderGrid('#primaryGrid', data.primaryVitals);
     this.renderGrid('#secondaryGrid', data.secondaryVitals);
 
@@ -85,7 +101,7 @@ export class VitalLensResult extends HTMLElement {
 
     if (data.ppgWaveform && data.ppgWaveform.length > 0) {
       const meta = VitalMetadataCache.getMeta('ppg_waveform');
-      this.renderStaticChart(
+      this.ppgChart = this.renderStaticChart(
         '#ppgBox',
         '#ppgCanvas',
         data.ppgWaveform,
@@ -94,7 +110,7 @@ export class VitalLensResult extends HTMLElement {
     }
     if (data.respWaveform && data.respWaveform.length > 0) {
       const meta = VitalMetadataCache.getMeta('respiratory_waveform');
-      this.renderStaticChart(
+      this.respChart = this.renderStaticChart(
         '#respBox',
         '#respCanvas',
         data.respWaveform,
@@ -137,14 +153,14 @@ export class VitalLensResult extends HTMLElement {
     canvasSelector: string,
     data: number[],
     color: string
-  ) {
+  ): Chart {
     const colorStr = color.startsWith('#') ? color : `rgba(${color}, 1)`;
     const box = this.shadowRoot!.querySelector<HTMLElement>(boxSelector)!;
     const canvas =
       this.shadowRoot!.querySelector<HTMLCanvasElement>(canvasSelector)!;
     box.style.display = 'block';
 
-    new Chart(canvas.getContext('2d')!, {
+    return new Chart(canvas.getContext('2d')!, {
       type: 'line',
       data: {
         labels: data.map((_, i) => i),
