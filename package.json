@@ -2,7 +2,7 @@
   "name": "vitallens",
   "version": "0.4.2-beta.0",
   "description": "VitalLens: Estimate vital signs such as heart rate and respiratory rate from face video.",
-  "main": "./dist/vitallens.cjs.js",
+  "main": "./dist/vitallens.cjs.cjs",
   "module": "./dist/vitallens.esm.js",
   "browser": "./dist/vitallens.browser.js",
   "exports": {
@@ -14,7 +14,7 @@
       "node": {
         "types": "./dist/types/index.node.d.ts",
         "import": "./dist/vitallens.esm.js",
-        "require": "./dist/vitallens.cjs.js"
+        "require": "./dist/vitallens.cjs.cjs" 
       }
     }
   },
@@ -68,7 +68,7 @@
   "homepage": "https://www.rouast.com/",
   "files": [
     "dist/vitallens.browser.js",
-    "dist/vitallens.cjs.js",
+    "dist/vitallens.cjs.cjs", 
     "dist/vitallens.esm.js",
     "dist/types",
     "dist/models",

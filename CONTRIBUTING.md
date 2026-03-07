@@ -91,35 +91,54 @@ The artifacts will be generated in the `dist/` directory.
 
 ## Releases
 
-Releases are automated via GitHub Actions and triggered by git tags. All release activities should be performed on the `main` branch.
+Releases are automated via GitHub Actions and triggered by git tags.
 
 ### 1. Prerelease (Beta)
 
 Use this to test new features or major changes on the CDN/NPM without affecting stable users.
 
-1. Merge your changes from `dev` to `main`.
-2. Switch to `main` and pull: `git switch main && git pull`.
-3. Create the beta version: `npm version 0.x.x-beta.x`.
-4. Push with tags: `git push origin main --follow-tags`.
+1. Get your changes into `main` (e.g., merge your `dev` PR on GitHub).
+2. Switch to `main` locally and pull the latest:
+  ```bash
+  git switch main
+  git pull origin main
+  ```
+3. Bump the version:
+  ```bash
+  npm version prerelease --preid=beta
+  ```
+4. Push the version commit and the new tag directly to `main`:
+  ```bash
+  git push origin main --follow-tags
+  ```
 
 The CI will automatically publish to NPM with the `@beta` tag.
 
 ### 2. Production Release
 
-1. Merge `dev` (or your beta fixes) to `main`.
-2. Switch to `main` and pull: `git switch main && git pull`.
-3. Create the stable version: `npm version patch` (or `minor`/`major`).
-4. Push with tags: `git push origin main --follow-tags`.
+1. Get your final changes into `main`.
+2. Switch to `main` locally and pull the latest:
+  ```bash
+  git switch main
+  git pull origin main
+  ```
+3. Bump the version:
+  ```bash
+  npm version patch # or minor/major
+  ```
+4. Push the version commit and the new tag directly to `main`:
+  ```bash
+  git push origin main --follow-tags
+  ```
 
 The CI will publish this as the `latest` stable release.
 
 ### 3. Syncing back to Dev
 
-After a release, ensure the version bump and tags are pulled back into your development branch:
+After any release, ensure the version bump commit and tags are merged back into your development branch:
 
 ```bash
 git switch dev
-git fetch origin
-git pull --ff-only origin main
+git merge main
 git push origin dev
 ```
