@@ -8,13 +8,11 @@ import url from '@rollup/plugin-url';
 import terser from '@rollup/plugin-terser';
 import json from '@rollup/plugin-json';
 import alias from '@rollup/plugin-alias';
-import replace from '@rollup/plugin-replace';
 import { builtinModules } from 'module';
 import { string } from 'rollup-plugin-string';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const bundleDir = path.resolve(__dirname, 'dist');
 
 function onwarn(warning, defaultHandler) {
   if (warning.code === 'THIS_IS_UNDEFINED') return;
@@ -22,7 +20,14 @@ function onwarn(warning, defaultHandler) {
   defaultHandler(warning);
 }
 
-const nodeExternals = ['@tensorflow/tfjs-node', ...builtinModules];
+const pkg = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')
+);
+const nodeExternals = [
+  ...builtinModules,
+  ...Object.keys(pkg.dependencies || {}),
+  ...Object.keys(pkg.peerDependencies || {}),
+];
 
 const ffmpegWorkerBundleConfig = {
   input: 'src/ffmpeg-worker-entry.js',
