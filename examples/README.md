@@ -159,10 +159,7 @@ Use this for a guided, one-time measurement (e.g., in a telemedicine waiting roo
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
 
-<vitallens-vitals-scan 
-    api-key="YOUR_API_KEY"
-    default-mode="standard">
-</vitallens-vitals-scan>
+<vitallens-scan api-key="YOUR_API_KEY"></vitallens-scan>
 ```
 
 ### Web Component: Dashboard Monitor (`vitals-monitor`)
@@ -172,10 +169,7 @@ Use this for continuous monitoring in a fitness dashboard or wellness app. It ha
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
 
-<vitallens-vitals-monitor 
-    api-key="YOUR_API_KEY"
-    default-mode="eco">
-</vitallens-vitals-monitor>
+<vitallens-monitor api-key="YOUR_API_KEY"></vitallens-monitor>
 ```
 
 ### Web Component: Advanced Tool (`widget`)

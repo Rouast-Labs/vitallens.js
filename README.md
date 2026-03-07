@@ -58,7 +58,7 @@ The fastest way to add vitals scanning to your app.
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
 
-<vitallens-vitals-scan api-key="YOUR_API_KEY"></vitallens-vitals-scan>
+<vitallens-scan api-key="YOUR_API_KEY"></vitallens-scan>
 ```
 
 ### Using the Core API (Node.js or Browser)
