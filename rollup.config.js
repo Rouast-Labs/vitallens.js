@@ -162,7 +162,7 @@ const nodeCjsConfig = {
   input: 'src/index.node.ts',
   external: nodeExternals,
   output: {
-    file: 'dist/vitallens.cjs.js',
+    file: 'dist/vitallens.cjs.cjs',
     format: 'cjs',
     inlineDynamicImports: true,
   },
