@@ -74,8 +74,8 @@ export class VitalLensMonitor extends VitalLensBase {
     super.connectedCallback();
     this.shadowRoot!.querySelector<HTMLImageElement>('#logo')!.src = logoUrl;
 
-    this.ppgChart = this.createChart('#ppgCanvas', '#e62300');
-    this.respChart = this.createChart('#respCanvas', '#007bff');
+    this.ppgChart = this.createChart('#ppgCanvas', '#E62100');
+    this.respChart = this.createChart('#respCanvas', '#00A3FC');
 
     this.startScreen.addEventListener('start', () => this.startProcessing());
     this.startScreen.addEventListener('modechange', (e: Event) => {
@@ -390,7 +390,7 @@ export class VitalLensMonitor extends VitalLensBase {
     if (ppgMeta) {
       this.shadowRoot!.querySelector('#ppgChartLabel')!.textContent =
         ppgMeta.display_name || ppgMeta.displayName || 'PPG Waveform';
-      this.ppgChart.data.datasets[0].borderColor = ppgMeta.color || '#e62300';
+      this.ppgChart.data.datasets[0].borderColor = ppgMeta.color || '#E62100';
       this.ppgChart.update();
     }
 
@@ -399,7 +399,7 @@ export class VitalLensMonitor extends VitalLensBase {
     if (respMeta) {
       this.shadowRoot!.querySelector('#respChartLabel')!.textContent =
         respMeta.display_name || respMeta.displayName || 'Respiratory Waveform';
-      this.respChart.data.datasets[0].borderColor = respMeta.color || '#007bff';
+      this.respChart.data.datasets[0].borderColor = respMeta.color || '#00A3FC';
       this.respChart.update();
     }
   }

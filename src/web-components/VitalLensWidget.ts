@@ -160,12 +160,12 @@ export class VitalLensWidget extends VitalLensBase {
     this.charts.ppgChart = this.createChart(
       'ppgChart',
       'PPG Waveform',
-      '#e62300'
+      '#E62100'
     );
     this.charts.respChart = this.createChart(
       'respChart',
       'Respiratory Waveform',
-      '#007bff'
+      '#00A3FC'
     );
     this.bindEvents();
     window.addEventListener('resize', this._handleResizeBound);
@@ -285,14 +285,14 @@ export class VitalLensWidget extends VitalLensBase {
       const plugins = this.charts.ppgChart.options.plugins as any;
       plugins.overlayTitle.text =
         ppgMeta.display_name || ppgMeta.displayName || 'PPG Waveform';
-      plugins.overlayTitle.color = ppgMeta.color || '#e62300';
+      plugins.overlayTitle.color = ppgMeta.color || '#E62100';
       this.charts.ppgChart.data.datasets[0].borderColor =
-        ppgMeta.color || '#e62300';
+        ppgMeta.color || '#E62100';
       if (plugins.playbackDot) {
-        plugins.playbackDot.strokeStyle = ppgMeta.color || '#e62300';
+        plugins.playbackDot.strokeStyle = ppgMeta.color || '#E62100';
       }
       this.charts.ppgChart.update();
-      this.style.setProperty('--ppg-color', ppgMeta.color || '#e62300');
+      this.style.setProperty('--ppg-color', ppgMeta.color || '#E62100');
     }
 
     const respMeta = VitalMetadataCache.getMeta('respiratory_waveform');
@@ -301,14 +301,14 @@ export class VitalLensWidget extends VitalLensBase {
       const plugins = this.charts.respChart.options.plugins as any;
       plugins.overlayTitle.text =
         respMeta.display_name || respMeta.displayName || 'Respiratory Waveform';
-      plugins.overlayTitle.color = respMeta.color || '#007bff';
+      plugins.overlayTitle.color = respMeta.color || '#00A3FC';
       this.charts.respChart.data.datasets[0].borderColor =
-        respMeta.color || '#007bff';
+        respMeta.color || '#00A3FC';
       if (plugins.playbackDot) {
-        plugins.playbackDot.strokeStyle = respMeta.color || '#007bff';
+        plugins.playbackDot.strokeStyle = respMeta.color || '#00A3FC';
       }
       this.charts.respChart.update();
-      this.style.setProperty('--resp-color', respMeta.color || '#007bff');
+      this.style.setProperty('--resp-color', respMeta.color || '#00A3FC');
     }
   }
 
