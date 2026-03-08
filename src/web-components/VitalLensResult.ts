@@ -105,7 +105,7 @@ export class VitalLensResult extends HTMLElement {
         '#ppgBox',
         '#ppgCanvas',
         data.ppgWaveform,
-        meta?.color || '#e62300'
+        meta?.color || '#E62100'
       );
     }
     if (data.respWaveform && data.respWaveform.length > 0) {
@@ -114,7 +114,7 @@ export class VitalLensResult extends HTMLElement {
         '#respBox',
         '#respCanvas',
         data.respWaveform,
-        meta?.color || '#007bff'
+        meta?.color || '#00A3FC'
       );
     }
   }

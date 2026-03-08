@@ -10,9 +10,9 @@
     color: #ffffff;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     box-sizing: border-box;
-    --ppg-color: #e62300;       /* Main Red for HR */
+    --ppg-color: #E62100;       /* Main Red for HR */
     --ppg-color-dark: #b01b00;  /* Darker Red for HR unit */
-    --resp-color: #007bff;      /* Main Blue for RR */
+    --resp-color: #00A3FC;      /* Main Blue for RR */
     --resp-color-dark: #0056b3; /* Darker Blue for RR unit */
   }
   /* Navbar area */
@@ -133,7 +133,7 @@
       justify-content: flex-start;
       align-items: baseline;
       font-size: 14px;
-      color: #e62300; 
+      color: #E62100; 
       gap: 6px;
   }
   .hrv-stat:not(:last-child) {
@@ -204,7 +204,7 @@
   /* Other styles */
   #video-container video, #video-container canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
   #video-container canvas { pointer-events: none; }
-  #dropZone { position: absolute; top: 8px; left: 8px; width: calc(100% - 16px); height: calc(100% - 16px); border: 2px dashed #007bff; border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; color: #007bff; background: rgba(0, 0, 0, 0.8); cursor: pointer; box-sizing: border-box; padding: 20px; z-index: 3; display: none; }
+  #dropZone { position: absolute; top: 8px; left: 8px; width: calc(100% - 16px); height: calc(100% - 16px); border: 2px dashed #00A3FC; border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; color: #00A3FC; background: rgba(0, 0, 0, 0.8); cursor: pointer; box-sizing: border-box; padding: 20px; z-index: 3; display: none; }
   #dropZone.hover { background: rgba(0, 123, 255, 0.2); }
   .spinner { position: absolute; z-index: 3; display: none; top: 50%; left: 50%; width: 40px; height: 40px; transform: translate(-50%, -50%); border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #fff; border-radius: 50%; animation: spin 1s linear infinite; }
   @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
@@ -215,7 +215,7 @@
   /* Tooltip Styles */
   .tooltip { position: relative; display: inline-block; cursor: pointer; }
   .tooltip .tooltip-label, .tooltip .tooltip-icon { vertical-align: middle; }
-  .tooltip .tooltip-icon { background: #007bff; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; margin-left: 4px; font-weight: bold; }
+  .tooltip .tooltip-icon { background: #00A3FC; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; margin-left: 4px; font-weight: bold; }
   .tooltip .tooltip-content { visibility: hidden; opacity: 0; position: absolute; z-index: 10; bottom: 125%; left: 50%; transform: translateX(-50%); background-color: #333; color: #fff; padding: 10px; border-radius: 6px; width: max-content; max-width: 300px; text-align: left; transition: opacity 0.3s, visibility 0.3s; }
   .tooltip:hover .tooltip-content { visibility: visible; opacity: 1; }
   .tooltip .tooltip-content ul { margin: 0; padding: 0 0 0 20px; list-style: disc; }
