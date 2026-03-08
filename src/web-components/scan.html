@@ -50,7 +50,19 @@
 
   /* Cutout Overlay */
   .aperture-wrapper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 5; }
-  .aperture { position: relative; width: 360px; height: 480px; border-radius: 50%; box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; transition: box-shadow 0.3s; }
+  .aperture { 
+    position: relative; 
+    width: 85%; 
+    max-width: 360px; 
+    max-height: 65%; 
+    aspect-ratio: 3 / 4; 
+    border-radius: 50%; 
+    box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.85); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    transition: box-shadow 0.3s; 
+  }
   .is-scanning .aperture { box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.95); }
   
   #progress-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; } 
@@ -84,7 +96,7 @@
   
   <div class="aperture-wrapper" id="apertureWrapper">
     <div class="aperture">
-      <svg id="progress-svg" viewBox="0 0 300 400">
+      <svg id="progress-svg" viewBox="0 0 300 400" preserveAspectRatio="none">
         <path id="progress-fg" class="ring-stroke" d="M 150 5 A 145 195 0 1 1 150 395 A 145 195 0 1 1 150 5" pathLength="100" />
       </svg>
     </div>
