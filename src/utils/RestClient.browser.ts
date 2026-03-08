@@ -43,7 +43,7 @@ export class RestClient extends RestClientBase {
     }
 
     const headers = {
-      ...(this.proxyUrl ? {} : { 'x-api-key': this.apiKey }),
+      ...(this.apiKey ? { 'x-api-key': this.apiKey } : {}),
     };
 
     try {
@@ -84,7 +84,7 @@ export class RestClient extends RestClientBase {
 
       const headers_ = {
         ...headers,
-        ...(this.proxyUrl ? {} : { 'x-api-key': this.apiKey }),
+        ...(this.apiKey ? { 'x-api-key': this.apiKey } : {}),
         ...(isBinary
           ? { 'Content-Type': 'application/octet-stream' }
           : { 'Content-Type': 'application/json' }),
