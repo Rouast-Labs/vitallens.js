@@ -42,7 +42,9 @@ export function getCore(): Promise<typeof VitalLensCore> {
 
     const callableInitFn = initFn as InitFunction;
 
-    initPromise = callableInitFn({ module_or_path: wasmUri }).then(() => {
+    initPromise = callableInitFn({
+      module_or_path: wasmUri as unknown as string,
+    }).then(() => {
       resolvedCore = VitalLensCore;
       return VitalLensCore;
     });
