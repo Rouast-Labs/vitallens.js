@@ -183,20 +183,6 @@ export class VitalLensAPIHandler extends MethodHandler {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const waveforms: any = parsedResponse.waveforms || {};
 
-    // Backward compatibility for old API structure
-    if (parsedResponse.vital_signs) {
-      for (const [key, val] of Object.entries(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parsedResponse.vital_signs as Record<string, any>
-      )) {
-        if (val.data !== undefined) {
-          waveforms[key] = val;
-        } else if (val.value !== undefined) {
-          vitals[key] = val;
-        }
-      }
-    }
-
     if (Object.keys(vitals).length > 0 || Object.keys(waveforms).length > 0) {
       return {
         face: {
