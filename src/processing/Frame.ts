@@ -389,9 +389,7 @@ export class Frame {
    * @returns The typed array class required for this frame's dtype.
    */
   private getTypedArrayClass():
-    | typeof Uint8Array
-    | typeof Float32Array
-    | typeof Int32Array {
+    typeof Uint8Array | typeof Float32Array | typeof Int32Array {
     switch (this.dtype) {
       case 'uint8':
         return Uint8Array;
