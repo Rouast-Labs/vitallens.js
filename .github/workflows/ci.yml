@@ -8,6 +8,7 @@ on:
 
 jobs:
   linux:
+    if: github.event_name != 'pull_request' || github.head_ref != 'dev'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -52,6 +53,7 @@ jobs:
         run: npm test
 
   windows:
+    if: github.event_name != 'pull_request' || github.head_ref != 'dev'
     runs-on: windows-latest
     strategy:
       matrix:
