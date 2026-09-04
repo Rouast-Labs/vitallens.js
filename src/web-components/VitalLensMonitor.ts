@@ -349,7 +349,7 @@ export class VitalLensMonitor extends VitalLensBase {
     const hrMeta = VitalMetadataCache.getMeta('heart_rate');
     if (hrMeta) {
       this.shadowRoot!.querySelector('#hrTitle')!.textContent =
-        hrMeta.shortName || hrMeta.short_name || 'HR';
+        hrMeta.short_name || 'HR';
       this.shadowRoot!.querySelector('#hrUnit')!.textContent = (
         hrMeta.unit || 'BPM'
       ).toUpperCase();
@@ -359,7 +359,7 @@ export class VitalLensMonitor extends VitalLensBase {
     const rrMeta = VitalMetadataCache.getMeta('respiratory_rate');
     if (rrMeta) {
       this.shadowRoot!.querySelector('#rrTitle')!.textContent =
-        rrMeta.shortName || rrMeta.short_name || 'RR';
+        rrMeta.short_name || 'RR';
       this.shadowRoot!.querySelector('#rrUnit')!.textContent = (
         rrMeta.unit || 'RPM'
       ).toUpperCase();
@@ -369,7 +369,7 @@ export class VitalLensMonitor extends VitalLensBase {
     const sdnnMeta = VitalMetadataCache.getMeta('hrv_sdnn');
     if (sdnnMeta) {
       this.shadowRoot!.querySelector('#sdnnTitle')!.textContent =
-        sdnnMeta.shortName || sdnnMeta.short_name || 'SDNN';
+        sdnnMeta.short_name || 'SDNN';
       this.shadowRoot!.querySelector('#sdnnUnit')!.textContent = (
         sdnnMeta.unit || 'ms'
       ).toLowerCase();
@@ -379,7 +379,7 @@ export class VitalLensMonitor extends VitalLensBase {
     const rmssdMeta = VitalMetadataCache.getMeta('hrv_rmssd');
     if (rmssdMeta) {
       this.shadowRoot!.querySelector('#rmssdTitle')!.textContent =
-        rmssdMeta.shortName || rmssdMeta.short_name || 'RMSSD';
+        rmssdMeta.short_name || 'RMSSD';
       this.shadowRoot!.querySelector('#rmssdUnit')!.textContent = (
         rmssdMeta.unit || 'ms'
       ).toLowerCase();
@@ -389,7 +389,7 @@ export class VitalLensMonitor extends VitalLensBase {
     const ppgMeta = VitalMetadataCache.getMeta('ppg_waveform');
     if (ppgMeta) {
       this.shadowRoot!.querySelector('#ppgChartLabel')!.textContent =
-        ppgMeta.display_name || ppgMeta.displayName || 'PPG Waveform';
+        ppgMeta.display_name || 'PPG Waveform';
       this.ppgChart.data.datasets[0].borderColor = ppgMeta.color || '#E62100';
       this.ppgChart.update();
     }
@@ -398,7 +398,7 @@ export class VitalLensMonitor extends VitalLensBase {
     const respMeta = VitalMetadataCache.getMeta('respiratory_waveform');
     if (respMeta) {
       this.shadowRoot!.querySelector('#respChartLabel')!.textContent =
-        respMeta.display_name || respMeta.displayName || 'Respiratory Waveform';
+        respMeta.display_name || 'Respiratory Waveform';
       this.respChart.data.datasets[0].borderColor = respMeta.color || '#00A3FC';
       this.respChart.update();
     }
