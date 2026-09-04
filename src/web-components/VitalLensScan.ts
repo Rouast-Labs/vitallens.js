@@ -321,8 +321,8 @@ export class VitalLensScan extends VitalLensBase {
     ) => {
       const meta = VitalMetadataCache.getMeta(id);
       const title = useShortTitle
-        ? meta?.short_name || meta?.shortName || id
-        : meta?.display_name || meta?.displayName || id;
+        ? meta?.short_name || id
+        : meta?.display_name || id;
       return {
         id,
         title,

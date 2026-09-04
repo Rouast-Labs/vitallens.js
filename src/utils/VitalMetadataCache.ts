@@ -2,13 +2,15 @@ import { getCoreSync } from '../core/wasmProvider';
 
 export interface VitalMetadata {
   id?: string;
-  shortName?: string;
   short_name?: string;
-  displayName?: string;
   display_name?: string;
   unit?: string;
   emoji?: string;
   color?: string;
+  min_value?: number;
+  max_value?: number;
+  min_window_seconds?: number;
+  preferred_window_seconds?: number;
 }
 
 export class VitalMetadataCache {

@@ -243,14 +243,14 @@ export class VitalLensWidget extends VitalLensBase {
     if (hrMeta) {
       const el = this.shadowRoot!.querySelector('#ppgStats .label');
       if (el)
-        el.innerHTML = `${hrMeta.short_name || hrMeta.shortName || 'HR'} <span class="unit">${(hrMeta.unit || 'bpm').toLowerCase()}</span>`;
+        el.innerHTML = `${hrMeta.short_name || 'HR'} <span class="unit">${(hrMeta.unit || 'bpm').toLowerCase()}</span>`;
     }
 
     const rrMeta = VitalMetadataCache.getMeta('respiratory_rate');
     if (rrMeta) {
       const el = this.shadowRoot!.querySelector('#respStats .label');
       if (el)
-        el.innerHTML = `${rrMeta.short_name || rrMeta.shortName || 'RR'} <span class="unit">${(rrMeta.unit || 'bpm').toLowerCase()}</span>`;
+        el.innerHTML = `${rrMeta.short_name || 'RR'} <span class="unit">${(rrMeta.unit || 'bpm').toLowerCase()}</span>`;
     }
 
     const sdnnMeta = VitalMetadataCache.getMeta('hrv_sdnn');
@@ -258,8 +258,7 @@ export class VitalLensWidget extends VitalLensBase {
       const el = this.shadowRoot!.querySelector(
         '.hrv-stat:nth-child(1) .hrv-label'
       );
-      if (el)
-        el.textContent = sdnnMeta.short_name || sdnnMeta.shortName || 'SDNN';
+      if (el) el.textContent = sdnnMeta.short_name || 'SDNN';
       const unitEl = this.shadowRoot!.querySelector(
         '.hrv-stat:nth-child(1) .hrv-unit'
       );
@@ -271,8 +270,7 @@ export class VitalLensWidget extends VitalLensBase {
       const el = this.shadowRoot!.querySelector(
         '.hrv-stat:nth-child(2) .hrv-label'
       );
-      if (el)
-        el.textContent = rmssdMeta.short_name || rmssdMeta.shortName || 'RMSSD';
+      if (el) el.textContent = rmssdMeta.short_name || 'RMSSD';
       const unitEl = this.shadowRoot!.querySelector(
         '.hrv-stat:nth-child(2) .hrv-unit'
       );
@@ -283,8 +281,7 @@ export class VitalLensWidget extends VitalLensBase {
     if (ppgMeta && this.charts.ppgChart) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const plugins = this.charts.ppgChart.options.plugins as any;
-      plugins.overlayTitle.text =
-        ppgMeta.display_name || ppgMeta.displayName || 'PPG Waveform';
+      plugins.overlayTitle.text = ppgMeta.display_name || 'PPG Waveform';
       plugins.overlayTitle.color = ppgMeta.color || '#E62100';
       this.charts.ppgChart.data.datasets[0].borderColor =
         ppgMeta.color || '#E62100';
@@ -300,7 +297,7 @@ export class VitalLensWidget extends VitalLensBase {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const plugins = this.charts.respChart.options.plugins as any;
       plugins.overlayTitle.text =
-        respMeta.display_name || respMeta.displayName || 'Respiratory Waveform';
+        respMeta.display_name || 'Respiratory Waveform';
       plugins.overlayTitle.color = respMeta.color || '#00A3FC';
       this.charts.respChart.data.datasets[0].borderColor =
         respMeta.color || '#00A3FC';
