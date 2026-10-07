@@ -106,6 +106,8 @@ describe('FaceDetectorAsync shared tests', () => {
   });
 
   it('should initialize the model from memory', async () => {
+    // Load within the test: mock call history from beforeAll is cleared per test.
+    await new TestFaceDetectorAsync(1, 0.5, 0.3).load();
     expect(tf.io.fromMemory).toHaveBeenCalledWith(
       expect.objectContaining({
         modelTopology: expect.any(Object),
