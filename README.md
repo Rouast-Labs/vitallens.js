@@ -49,6 +49,8 @@ npm install vitallens
 yarn add vitallens
 ```
 
+Server-side use requires Node.js 22 or later.
+
 ## Quickstart
 
 ### Using Web Components (Browser)
@@ -78,22 +80,10 @@ const vl = new VitalLens({
 const result = await vl.processVideoFile(myFile);
 console.log("Heart Rate:", result.vitals.heart_rate.value);
 ```
-### Using with Next.js
 
-`vitallens` needs the browser (camera, workers, WebAssembly), so load it on demand in a client component rather than at module level:
+### Using with Next.js and other bundlers
 
-```jsx
-'use client';
-import { useEffect, useState } from 'react';
-
-export default function Vitals() {
-  const [ready, setReady] = useState(false);
-  useEffect(() => { import('vitallens').then(() => setReady(true)); }, []);
-  return ready ? <vitallens-scan api-key="YOUR_API_KEY" /> : null;
-}
-```
-
-Works with both Turbopack and webpack. See [`examples/nextjs`](examples/nextjs) for a runnable app.
+`vitallens` works with Next.js (Turbopack and webpack). Load it on demand in a client component with `import('vitallens')` rather than at module level. See the Next.js recipe in the examples for a full component.
 <!-- mkdocs-end -->
 
 ## Documentation

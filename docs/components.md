@@ -10,6 +10,8 @@ Ensure you have imported the browser bundle:
 <script type="module" src="https://cdn.jsdelivr.net/npm/vitallens/dist/vitallens.browser.js"></script>
 ```
 
+When using a bundler or framework such as Next.js, load the package on demand in client-side code with `import('vitallens')`, which also registers the components. See the Next.js recipe in the examples.
+
 All components share the same core attributes for authentication:
 
 | Attribute | Description |
