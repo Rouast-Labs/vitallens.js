@@ -17,7 +17,8 @@ export default function VitalsDemo() {
   return (
     <vitallens-widget
       api-key={process.env.NEXT_PUBLIC_VITALLENS_API_KEY}
-      style={{ display: 'block', maxWidth: 960, margin: '0 auto' }}
+      // Don't set `display` here: the widget lays itself out as a flex column.
+      style={{ maxWidth: 960, margin: '0 auto' }}
     />
   );
 }
