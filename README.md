@@ -78,6 +78,22 @@ const vl = new VitalLens({
 const result = await vl.processVideoFile(myFile);
 console.log("Heart Rate:", result.vitals.heart_rate.value);
 ```
+### Using with Next.js
+
+`vitallens` needs the browser (camera, workers, WebAssembly), so load it on demand in a client component rather than at module level:
+
+```jsx
+'use client';
+import { useEffect, useState } from 'react';
+
+export default function Vitals() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { import('vitallens').then(() => setReady(true)); }, []);
+  return ready ? <vitallens-scan api-key="YOUR_API_KEY" /> : null;
+}
+```
+
+Works with both Turbopack and webpack. See [`examples/nextjs`](examples/nextjs) for a runnable app.
 <!-- mkdocs-end -->
 
 ## Documentation

@@ -29,6 +29,22 @@ const nodeExternals = [
   ...Object.keys(pkg.peerDependencies || {}),
 ];
 
+// Bundlers (webpack, Turbopack) statically resolve `new URL(x, import.meta.url)`
+// and fail on the dead fallbacks inlined from ffmpeg and vitallens-core, whose
+// real URLs are always passed explicitly. Rebase them onto the page URL.
+const maskBundlerUrlPatterns = {
+  name: 'mask-bundler-url-patterns',
+  renderChunk(code) {
+    return {
+      code: code.replace(
+        /new URL\(([^,()]+?),\s*import\.meta\.url\)/g,
+        'new URL($1,self.location.href)'
+      ),
+      map: null,
+    };
+  },
+};
+
 const ffmpegWorkerBundleConfig = {
   input: 'src/ffmpeg-worker-entry.js',
   output: {
@@ -235,6 +251,7 @@ const browserConfig = {
       preferBuiltins: false,
     }),
     commonjs(),
+    maskBundlerUrlPatterns,
     terser(),
   ],
 };

@@ -1,3 +1,4 @@
+import { SafeHTMLElement } from './SafeHTMLElement';
 import { VitalLens } from '../core/VitalLens.browser';
 import { VitalLensOptions, VitalLensResult, Vital } from '../types';
 
@@ -10,7 +11,7 @@ export type SessionState =
   | 'issue'
   | 'completed';
 
-export abstract class VitalLensBase extends HTMLElement {
+export abstract class VitalLensBase extends SafeHTMLElement {
   protected vitalLensInstance?: VitalLens;
   protected apiKey: string | null = null;
   protected proxyUrl: string | null = null;

@@ -16,6 +16,10 @@
         "import": "./dist/vitallens.esm.js",
         "require": "./dist/vitallens.cjs.cjs"
       }
+    },
+    "./browser": {
+      "types": "./dist/types/index.browser.d.ts",
+      "default": "./dist/vitallens.browser.js"
     }
   },
   "type": "module",

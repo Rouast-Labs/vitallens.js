@@ -1,3 +1,4 @@
+import { canDefineElements } from './SafeHTMLElement';
 import { VitalLensBase } from './VitalLensBase';
 import { VitalLensResult } from '../types';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
@@ -230,7 +231,7 @@ export class VitalLensFile extends VitalLensBase {
 }
 
 try {
-  if (!customElements.get('vitallens-file')) {
+  if (canDefineElements && !customElements.get('vitallens-file')) {
     customElements.define('vitallens-file', VitalLensFile);
   }
 } catch {

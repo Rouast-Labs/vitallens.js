@@ -1,3 +1,4 @@
+import { canDefineElements } from './SafeHTMLElement';
 import { VitalLensBase, SessionState } from './VitalLensBase';
 import { Method, VitalLensOptions, VitalLensResult } from '../types';
 import widget from './widget.html';
@@ -1019,4 +1020,6 @@ export class VitalLensWidget extends VitalLensBase {
   }
 }
 
-customElements.define('vitallens-widget', VitalLensWidget);
+if (canDefineElements) {
+  customElements.define('vitallens-widget', VitalLensWidget);
+}
