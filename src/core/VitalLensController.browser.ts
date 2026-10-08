@@ -31,7 +31,12 @@ export class VitalLensController extends VitalLensControllerBase {
 
     let baseURL = window.location.href;
     try {
-      if (typeof import.meta !== 'undefined' && import.meta.url) {
+      // Bundlers may replace import.meta.url with a meaningless file:// URL.
+      if (
+        import.meta.url &&
+        (!import.meta.url.startsWith('file:') ||
+          window.location.protocol === 'file:')
+      ) {
         baseURL = import.meta.url;
       }
     } catch {

@@ -20,7 +20,7 @@ function getBaseDir(): string {
   let currentDir: string;
   if (typeof __dirname !== 'undefined') {
     currentDir = __dirname;
-  } else if (typeof import.meta !== 'undefined' && import.meta.url) {
+  } else if (import.meta.url) {
     currentDir = path.dirname(fileURLToPath(import.meta.url));
   } else {
     currentDir = process.cwd();

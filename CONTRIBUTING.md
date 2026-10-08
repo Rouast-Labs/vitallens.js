@@ -4,7 +4,7 @@ Thank you for your interest in contributing! This guide will help you set up you
 
 ## Development setup
 
-We recommend using **Node 20 or higher** to ensure compatibility with our build tools and testing suite.
+We recommend using **Node 22 or higher** to ensure compatibility with our build tools and testing suite.
 
 ### Clone and install
 

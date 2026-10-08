@@ -49,6 +49,8 @@ npm install vitallens
 yarn add vitallens
 ```
 
+Server-side use requires Node.js 22 or later.
+
 ## Quickstart
 
 ### Using Web Components (Browser)
@@ -78,6 +80,10 @@ const vl = new VitalLens({
 const result = await vl.processVideoFile(myFile);
 console.log("Heart Rate:", result.vitals.heart_rate.value);
 ```
+
+### Using with Next.js and other bundlers
+
+`vitallens` works with Next.js (Turbopack and webpack). Load it on demand in a client component with `import('vitallens')` rather than at module level. See the Next.js recipe in the examples for a full component.
 <!-- mkdocs-end -->
 
 ## Documentation

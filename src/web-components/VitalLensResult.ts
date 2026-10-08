@@ -1,3 +1,5 @@
+import { canDefineElements } from './SafeHTMLElement';
+import { SafeHTMLElement } from './SafeHTMLElement';
 import template from './result.html';
 import logoUrl from '../../assets/logo.svg';
 import {
@@ -28,7 +30,7 @@ export interface ResolvedVital {
   emoji: string;
 }
 
-export class VitalLensResult extends HTMLElement {
+export class VitalLensResult extends SafeHTMLElement {
   private showDetails = false;
 
   private ppgChart: Chart | null = null;
@@ -184,4 +186,6 @@ export class VitalLensResult extends HTMLElement {
     });
   }
 }
-customElements.define('vitallens-result', VitalLensResult);
+if (canDefineElements) {
+  customElements.define('vitallens-result', VitalLensResult);
+}

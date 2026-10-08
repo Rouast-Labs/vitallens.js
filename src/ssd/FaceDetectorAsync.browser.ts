@@ -19,10 +19,15 @@ export class FaceDetectorAsync extends FaceDetectorAsyncBase {
       let finalJsonUrl = this.jsonUrl || resolveAsset(modelJsonPath);
       let finalBinUrl = this.binUrl || resolveAsset(modelBinPath);
 
-      let jsonResponse = await fetch(finalJsonUrl);
+      // fetch rejects (rather than returning !ok) for unusable URLs such as the
+      // placeholder file:// URLs some bundlers substitute for import.meta.url.
+      let jsonResponse: Response | null = await fetch(finalJsonUrl).catch(
+        () => null
+      );
 
-      const contentType = jsonResponse.headers.get('content-type');
+      const contentType = jsonResponse?.headers.get('content-type');
       if (
+        !jsonResponse ||
         !jsonResponse.ok ||
         (contentType && contentType.includes('text/html'))
       ) {

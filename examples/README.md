@@ -25,6 +25,7 @@ Select a target below and run the command. Replace `YOUR_KEY` with your actual A
 | **Web Component** | **File Processing:** Analyze a video file. | `API_KEY=YOUR_KEY npm run start:file` |
 | **Web Component** | **Advanced Widget:** Advanced tool for switching methods/files. | `API_KEY=YOUR_KEY npm run start:widget` |
 | **Core API** | **Minimal Webcam:** Raw `VitalLens` class with custom HTML. | `API_KEY=YOUR_KEY npm run start:webcam-minimal` |
+| **Next.js** | **All web components** in a Next.js (App Router) app. | `cd examples/nextjs && npm install && NEXT_PUBLIC_VITALLENS_API_KEY=YOUR_KEY npm run dev` |
 | **Node.js** | **File Processing:** Analyze a video file server-side. | `API_KEY=YOUR_KEY npm run start:file-node` |
 
 ---
@@ -151,6 +152,27 @@ async function run() {
 
 run();
 ```
+
+### Next.js (App Router)
+
+`vitallens` needs the browser (camera, workers, WebAssembly), so load it on demand in a client component rather than at module level. Importing it also registers the `<vitallens-*>` web components. This works with both Turbopack and webpack.
+
+```jsx
+'use client';
+import { useEffect, useState } from 'react';
+
+export default function Vitals() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    import('vitallens').then(() => setReady(true));
+  }, []);
+
+  return ready ? <vitallens-scan api-key="YOUR_API_KEY" /> : null;
+}
+```
+
+Don't set `display` on the elements; they lay themselves out. A runnable app that switches between all components is in `examples/nextjs`.
 
 ### Web Component: Health Check Wizard (`vitals-scan`)
 

@@ -1,3 +1,4 @@
+import { canDefineElements } from './SafeHTMLElement';
 import { VitalLensBase, SessionState } from './VitalLensBase';
 import { VitalLensResult } from '../types';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
@@ -465,7 +466,7 @@ export class VitalLensMonitor extends VitalLensBase {
 }
 
 const register = (tagName: string, klass: CustomElementConstructor) => {
-  if (!customElements.get(tagName)) {
+  if (canDefineElements && !customElements.get(tagName)) {
     customElements.define(tagName, klass);
   }
 };

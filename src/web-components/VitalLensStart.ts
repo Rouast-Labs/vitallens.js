@@ -1,7 +1,9 @@
+import { canDefineElements } from './SafeHTMLElement';
+import { SafeHTMLElement } from './SafeHTMLElement';
 import template from './start.html';
 import logoUrl from '../../assets/logo.svg';
 
-export class VitalLensStart extends HTMLElement {
+export class VitalLensStart extends SafeHTMLElement {
   private mode: 'eco' | 'standard' = 'eco';
 
   constructor() {
@@ -69,4 +71,6 @@ export class VitalLensStart extends HTMLElement {
       : 'High accuracy, for fast connections';
   }
 }
-customElements.define('vitallens-start', VitalLensStart);
+if (canDefineElements) {
+  customElements.define('vitallens-start', VitalLensStart);
+}
