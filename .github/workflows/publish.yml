@@ -8,6 +8,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -24,6 +27,10 @@ jobs:
       - name: Build project
         run: npm run build
 
+      # Trusted publishing (OIDC) requires npm >= 11.5.1; Node 22 ships npm 10.
+      - name: Update npm
+        run: npm install -g npm@^11.5.1
+
       - name: Publish to NPM
         run: |
           if [[ "${{ github.ref_name }}" == *"beta"* ]]; then
@@ -31,8 +38,6 @@ jobs:
           else
             npm publish
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   release:
     if: "!contains(github.ref_name, 'beta')"
