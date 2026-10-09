@@ -100,6 +100,7 @@ export class VitalLensAPIHandler extends MethodHandler {
       inputSize: apiConfig.input_size,
       minWindowLengthState: apiConfig.n_inputs,
       minWindowLength: 16,
+      // TODO: 900 assumes 40x40 inputs. Use computeBufferConfig(...).file_max from vitallens-core (input_size aware, ~625 at 48x48). Also update the (n_frames, 40, 40, 3) docstrings below.
       maxWindowLength: 900,
       requiresState: true,
       bufferOffset: 1.5,
