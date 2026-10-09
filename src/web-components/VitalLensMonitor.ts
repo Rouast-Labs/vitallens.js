@@ -120,6 +120,12 @@ export class VitalLensMonitor extends VitalLensBase {
     this.waveformPlayer.setFps(fps);
 
     try {
+      // TODO: Camera control for rPPG stability (auto exposure/white balance shifts are global
+      //   brightness/colour changes far larger than the pulse signal). Best effort only - support
+      //   is limited (some Chrome cameras; not Safari): request frameRate (30, or 15 for eco), and
+      //   after ~1-2 s with a face in view, check track.getCapabilities() and applyConstraints({
+      //   exposureMode: 'manual', whiteBalanceMode: 'manual' }), ignoring rejections. Re-converge
+      //   if ROI brightness drifts. Same applies to VitalLensWidget/VitalLensScan getUserMedia calls.
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { facingMode: 'user' },
