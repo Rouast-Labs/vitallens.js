@@ -118,6 +118,8 @@ export abstract class StreamProcessorBase {
         }
 
         // Throttle to target FPS
+        // TODO: Replace setTimeout polling with requestVideoFrameCallback-driven frames (see TODO in
+        //   StreamFrameIterator.next) and throttle by frame capture timestamps instead.
         if (currentTime - this.lastProcessedTime < 1 / this.targetFps) {
           await new Promise((resolve) =>
             setTimeout(

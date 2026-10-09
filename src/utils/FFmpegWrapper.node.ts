@@ -3,6 +3,8 @@ import { VideoInput, VideoProbeResult, VideoProcessingOptions } from '../types';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+// TODO: fluent-ffmpeg is deprecated (repo archived). Replace with direct ffmpeg/ffprobe child_process
+//   calls or a maintained wrapper.
 import ffmpeg from 'fluent-ffmpeg';
 
 export default class FFmpegWrapper extends FFmpegWrapperBase {

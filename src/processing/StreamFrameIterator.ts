@@ -71,6 +71,12 @@ export class StreamFrameIterator extends FrameIteratorBase {
       return null;
     }
 
+    // TODO: Frames are grabbed by polling the <video> element on a setTimeout (see
+    //   StreamProcessor.base.ts) and stamped with performance.now() at grab time. This can read the
+    //   same camera frame twice (zero temporal diff -> looks like no pulse) or skip frames, adds
+    //   timestamp jitter (hurts HRV peak timing), and timers are throttled in background tabs.
+    //   Switch to requestVideoFrameCallback: one callback per new frame, use metadata.captureTime
+    //   (fallback mediaTime) as the timestamp, presentedFrames to detect drops.
     const tensor = tf.tidy(() => {
       return tf.browser.fromPixels(this.videoElement!);
     });
