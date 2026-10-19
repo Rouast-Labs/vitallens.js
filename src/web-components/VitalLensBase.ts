@@ -132,8 +132,15 @@ export abstract class VitalLensBase extends SafeHTMLElement {
 
   /** Shows a notice that is not overwritten by face detection messages for a few seconds. */
   protected showNotice(el: HTMLElement, message: string): void {
-    this.noticeUntil = performance.now() + 4000;
+    this.noticeUntil = performance.now() + 5000;
     el.textContent = message;
+  }
+
+  /**
+   * Sets a status message unless a notice is being shown. Issues always show.
+   */
+  protected setMessage(el: HTMLElement, message: string, force = false): void {
+    if (force || !this.isNoticeActive()) el.textContent = message;
   }
 
   protected isNoticeActive(): boolean {
@@ -239,7 +246,7 @@ export abstract class VitalLensBase extends SafeHTMLElement {
       return {
         state: 'recovering',
         message:
-          'Low confidence. Use steady light, move closer, and hold still.',
+          'Low confidence.\nUse steady light, move closer, and hold still.',
       };
     }
 

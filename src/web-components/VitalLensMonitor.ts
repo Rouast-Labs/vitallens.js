@@ -369,9 +369,9 @@ export class VitalLensMonitor extends VitalLensBase {
         100,
         Math.round((this.ppgSampleCount / requiredSamples) * 100)
       );
-      this.messageEl.textContent = `Calibrating signals... (${prog}%)`;
+      this.setMessage(this.messageEl, `Calibrating signals... (${prog}%)`);
     } else {
-      this.messageEl.textContent = msg;
+      this.setMessage(this.messageEl, msg, newState === 'issue');
     }
   }
 
