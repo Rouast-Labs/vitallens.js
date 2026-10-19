@@ -23,6 +23,8 @@ export const SLOW_FIRST_RESULT_MS = 8000;
 export const SLOW_API_REQUEST_MS = 3000;
 // Slow connection detection for stream requests (see ConnectionMonitor).
 export const SLOW_CONNECTION_MEDIAN_MS = 1000;
+// A single request this slow already counts: the stream resets at 100 queued frames (3.3 s at 30 fps).
+export const SLOW_CONNECTION_SINGLE_MS = 2000;
 export const SLOW_CONNECTION_MAX_FRAMES = 50;
 export const SLOW_CONNECTION_WINDOW = 5;
 export const SLOW_CONNECTION_MIN_SAMPLES = 3;

@@ -1,5 +1,6 @@
 import {
   SLOW_CONNECTION_MEDIAN_MS,
+  SLOW_CONNECTION_SINGLE_MS,
   SLOW_CONNECTION_MAX_FRAMES,
   SLOW_CONNECTION_WINDOW,
   SLOW_CONNECTION_MIN_SAMPLES,
@@ -8,6 +9,8 @@ import {
 export interface ConnectionMonitorOptions {
   /** Median request duration (ms) above which the connection counts as slow. */
   medianMs: number;
+  /** Duration (ms) of a single request above which the connection counts as slow. */
+  singleMs: number;
   /** Frames in a single request above which the connection counts as slow. */
   maxFrames: number;
   /** Number of most recent requests the median is taken over. */
@@ -23,6 +26,7 @@ export interface SlowConnectionInfo {
 
 const DEFAULTS: ConnectionMonitorOptions = {
   medianMs: SLOW_CONNECTION_MEDIAN_MS,
+  singleMs: SLOW_CONNECTION_SINGLE_MS,
   maxFrames: SLOW_CONNECTION_MAX_FRAMES,
   window: SLOW_CONNECTION_WINDOW,
   minSamples: SLOW_CONNECTION_MIN_SAMPLES,
@@ -55,10 +59,17 @@ export class ConnectionMonitor {
     this.samples++;
     this.durations.push(ms);
     if (this.durations.length > this.options.window) this.durations.shift();
-    if (this.samples < this.options.minSamples) return;
 
+    // One very slow request or a long queue is decisive on its own: the stream
+    // resets once too many frames are queued, so waiting for more samples is too late.
     const medianMs = this.median();
-    if (medianMs > this.options.medianMs || frames > this.options.maxFrames) {
+    const decisive =
+      ms > this.options.singleMs || frames > this.options.maxFrames;
+    if (
+      decisive ||
+      (this.samples >= this.options.minSamples &&
+        medianMs > this.options.medianMs)
+    ) {
       this.fired = true;
       this.onSlow({ medianMs, frames });
     }
