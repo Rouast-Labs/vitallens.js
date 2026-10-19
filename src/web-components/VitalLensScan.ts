@@ -1,6 +1,7 @@
 import { canDefineElements } from './SafeHTMLElement';
 import { VitalLensBase, SessionState } from './VitalLensBase';
 import { VitalLensResult } from '../types';
+import { SetupTracker } from './SetupTracker';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './scan.html';
 import logoUrl from '../../assets/logo.svg';
@@ -22,6 +23,12 @@ export class VitalLensScan extends VitalLensBase {
   private readonly SCAN_DURATION = 30.0;
   private readonly WARM_UP_DURATION = 3.0;
   private readonly RECOVERY_TIMEOUT = 10.0;
+
+  private readonly MSG_LOOKING =
+    'Looking for your face… Position it in the oval';
+  private readonly MSG_FACE_FOUND = 'Face found. Hold still, connecting…';
+  private readonly MSG_START_FAILED =
+    'Could not start face detection. Please reload.';
 
   private accumulatedScanTime = 0;
   private stateStartTime = 0;
@@ -91,7 +98,7 @@ export class VitalLensScan extends VitalLensBase {
     this.resultScreen.style.display = 'none';
     this.cameraLayer.style.display = 'block';
 
-    this.transitionState('searching', 'Position your face in the oval');
+    this.transitionState('initializing', 'Starting camera…');
 
     const fps = this.currentMode === 'eco' ? 15 : 30;
 
@@ -101,11 +108,27 @@ export class VitalLensScan extends VitalLensBase {
         video: { facingMode: 'user' },
       });
       this.videoEl.srcObject = this.stream;
+      this.transitionState('initializing', 'Loading models…');
 
       await this.initVitalLensInstance({
         overrideFpsTarget: fps,
         waveformMode: 'incremental',
       });
+
+      const setup = new SetupTracker(
+        this.vitalLensInstance!,
+        () => {
+          if (this.isProcessingFlag && this.state === 'initializing') {
+            this.transitionState('searching', this.MSG_LOOKING);
+          }
+        },
+        (reason) => {
+          console.warn(`Scan could not start: ${reason}`);
+          if (this.isProcessingFlag) {
+            this.transitionState('issue', this.MSG_START_FAILED);
+          }
+        }
+      );
 
       this.vitalLensInstance!.addEventListener(
         'faceDetected',
@@ -113,9 +136,16 @@ export class VitalLensScan extends VitalLensBase {
           const isPresent = face !== null;
           if (!this.isProcessingFlag) return;
 
+          if (this.state === 'searching') {
+            this.messageEl.textContent = isPresent
+              ? this.MSG_FACE_FOUND
+              : this.MSG_LOOKING;
+            return;
+          }
+
           if (
             !isPresent &&
-            this.state !== 'searching' &&
+            this.state !== 'initializing' &&
             this.state !== 'issue' &&
             this.state !== 'completed'
           ) {
@@ -126,6 +156,7 @@ export class VitalLensScan extends VitalLensBase {
 
       await this.vitalLensInstance!.setVideoStream(this.stream, this.videoEl);
       this.vitalLensInstance!.startVideoStream();
+      setup.markStreamReady();
     } catch (e) {
       console.error(e);
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -163,6 +194,7 @@ export class VitalLensScan extends VitalLensBase {
       this.statusBadge.className = `status-badge status-${newState}`;
       const stateLabels: Record<SessionState, string> = {
         idle: 'Idle',
+        initializing: 'Starting',
         searching: 'Searching',
         warmingUp: 'Calibrating',
         tracking: 'Scanning',
@@ -209,6 +241,7 @@ export class VitalLensScan extends VitalLensBase {
     if (
       !this.isProcessingFlag ||
       this.state === 'idle' ||
+      this.state === 'initializing' ||
       this.state === 'completed' ||
       this.state === 'issue'
     )

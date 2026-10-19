@@ -42,6 +42,7 @@ export interface VitalLensOptions {
   overrideFpsTarget?: number;
   globalRoi?: ROI;
   fDetFs?: number;
+  debug?: boolean;
 }
 
 /**

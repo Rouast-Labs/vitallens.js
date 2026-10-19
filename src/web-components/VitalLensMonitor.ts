@@ -1,5 +1,6 @@
 import { canDefineElements } from './SafeHTMLElement';
 import { VitalLensBase, SessionState } from './VitalLensBase';
+import { SetupTracker } from './SetupTracker';
 import { VitalLensResult } from '../types';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './monitor.html';
@@ -114,7 +115,7 @@ export class VitalLensMonitor extends VitalLensBase {
     this.cameraLayer.style.display = 'block';
 
     this.bottomPanel.classList.add('visible');
-    this.transitionState('searching', 'Face the camera and hold still.');
+    this.transitionState('initializing', 'Starting camera…');
 
     const fps = this.currentMode === 'eco' ? 15 : 30;
     this.waveformPlayer.setFps(fps);
@@ -131,8 +132,27 @@ export class VitalLensMonitor extends VitalLensBase {
         video: { facingMode: 'user' },
       });
       this.videoEl.srcObject = this.stream;
+      this.transitionState('initializing', 'Loading models…');
 
       await this.initVitalLensInstance({ overrideFpsTarget: fps });
+
+      const setup = new SetupTracker(
+        this.vitalLensInstance!,
+        () => {
+          if (this.isProcessingFlag && this.state === 'initializing') {
+            this.transitionState(
+              'searching',
+              'Face the camera and hold still.'
+            );
+          }
+        },
+        (reason) => {
+          console.warn(`Monitor could not start: ${reason}`);
+          if (!this.isProcessingFlag) return;
+          this.stopProcessing();
+          this.showError('Could not start face detection. Please reload.');
+        }
+      );
 
       this.configureVitalMeta();
 
@@ -140,7 +160,7 @@ export class VitalLensMonitor extends VitalLensBase {
         'faceDetected',
         (face: unknown) => {
           const isPresent = face !== null;
-          if (!this.isProcessingFlag) return;
+          if (!this.isProcessingFlag || this.state === 'initializing') return;
 
           this.isFaceCurrentlyDetected = isPresent;
           if (!isPresent) {
@@ -159,6 +179,7 @@ export class VitalLensMonitor extends VitalLensBase {
 
       await this.vitalLensInstance!.setVideoStream(this.stream, this.videoEl);
       this.vitalLensInstance!.startVideoStream();
+      setup.markStreamReady();
     } catch (e) {
       console.error(e);
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -296,6 +317,7 @@ export class VitalLensMonitor extends VitalLensBase {
       this.statusBadge.className = `status-badge status-${newState}`;
       const stateLabels: Record<SessionState, string> = {
         idle: 'Idle',
+        initializing: 'Starting',
         searching: 'Searching',
         warmingUp: 'Calibrating',
         tracking: 'Tracking',

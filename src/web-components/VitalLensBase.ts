@@ -4,6 +4,7 @@ import { VitalLensOptions, VitalLensResult, Vital } from '../types';
 
 export type SessionState =
   | 'idle'
+  | 'initializing'
   | 'searching'
   | 'warmingUp'
   | 'tracking'
@@ -65,6 +66,7 @@ export abstract class VitalLensBase extends SafeHTMLElement {
       apiKey: this.apiKey ?? undefined,
       proxyUrl: this.proxyUrl ?? undefined,
       waveformMode: 'incremental',
+      debug: this.hasAttribute('debug'),
       ...options,
     };
 

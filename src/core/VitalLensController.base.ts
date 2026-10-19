@@ -18,7 +18,18 @@ import { IStreamProcessor } from '../types/IStreamProcessor';
 import { IFrameIterator } from '../types/IFrameIterator';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { FrameIteratorFactory } from '../processing/FrameIteratorFactory';
-import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
+import { StageTimer } from '../utils/StageTimer';
+import {
+  SLOW_WORKER_READY_MS,
+  SLOW_DETECTION_MS,
+  SLOW_FIRST_FACE_MS,
+  SLOW_FIRST_RESULT_MS,
+  SLOW_API_REQUEST_MS,
+} from '../config/constants';
+import {
+  IFaceDetectionWorker,
+  DetectorHooks,
+} from '../types/IFaceDetectionWorker';
 
 /**
  * Base class for VitalLensController, managing frame processing, buffering,
@@ -31,12 +42,15 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   protected methodHandler: MethodHandler;
   protected methodConfig: MethodConfig;
   protected faceDetectionWorker: IFaceDetectionWorker | null = null;
+  protected detectorReady = false;
+  protected stageTimer: StageTimer;
   protected ffmpeg: IFFmpegWrapper | null = null;
   protected session: Session | null = null;
   protected eventListeners: { [event: string]: ((data: unknown) => void)[] } =
     {};
 
   constructor(protected options: VitalLensOptions) {
+    this.stageTimer = new StageTimer(options.debug ?? false);
     this.methodConfig = METHODS_CONFIG[this.options.method];
     this.bufferManager = new BufferManager();
     this.methodHandler = this.createMethodHandler(options);
@@ -45,7 +59,42 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     );
     if (options.globalRoi === undefined) {
       this.faceDetectionWorker = this.createFaceDetectionWorker();
+      this.watchWorkerReady(this.faceDetectionWorker);
     }
+  }
+
+  /**
+   * Warns about slow start-up stages. Only applies to live streams.
+   */
+  private watchStreamStartup(): void {
+    if (!this.faceDetectionWorker) return;
+    this.stageTimer.watch('workerReady', SLOW_WORKER_READY_MS);
+    this.stageTimer.watch('firstFace', SLOW_FIRST_FACE_MS);
+  }
+
+  /**
+   * Listens for the worker's ready message (model loaded, or load failed).
+   * @param worker - The face detection worker to watch.
+   */
+  private watchWorkerReady(worker: IFaceDetectionWorker): void {
+    worker.addEventListener?.('message', ((ev: MessageEvent) => {
+      if (ev.data?.type !== 'ready' || worker !== this.faceDetectionWorker)
+        return;
+      if (ev.data.error) {
+        console.warn(`Face detection model failed to load: ${ev.data.error}`);
+        this.dispatchEvent('status', {
+          stage: 'detectorFailed',
+          reason: `model load failed: ${ev.data.error}`,
+        });
+        return;
+      }
+      this.detectorReady = true;
+      this.stageTimer.mark('workerReady');
+      this.dispatchEvent('status', {
+        stage: 'workerReady',
+        loadMs: ev.data.loadMs,
+      });
+    }) as EventListener);
   }
 
   /**
@@ -84,7 +133,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
         coordinates: [number, number, number, number];
         confidence: number;
       } | null
-    ) => void
+    ) => void,
+    detectorHooks?: DetectorHooks
   ): IStreamProcessor;
 
   /**
@@ -143,6 +193,8 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
       videoElement
     );
 
+    this.stageTimer.mark('modelsReady');
+    this.watchStreamStartup();
     this.streamProcessor = this.createStreamProcessor(
       this.options,
       () => this.methodHandler.getConfig(),
@@ -159,6 +211,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
             true // ensure it returns the result
           );
           if (processedResult) {
+            this.stageTimer.mark('firstResult', 'firstFace');
             this.dispatchEvent('vitals', processedResult);
           }
         }
@@ -176,7 +229,31 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
         });
       },
       (face) => {
+        if (face && this.stageTimer.mark('firstFace') !== null) {
+          this.stageTimer.watch(
+            'firstResult',
+            SLOW_FIRST_RESULT_MS,
+            'firstFace'
+          );
+        }
         this.dispatchEvent('faceDetected', face);
+      },
+      {
+        isReady: () => this.detectorReady,
+        recreateWorker: () => {
+          this.detectorReady = false;
+          const worker = this.createFaceDetectionWorker();
+          this.faceDetectionWorker = worker;
+          this.watchWorkerReady(worker);
+          return worker;
+        },
+        onStatus: (status) => this.dispatchEvent('status', status),
+        report: (stage, ms) =>
+          this.stageTimer.report(
+            stage === 'detection' ? 'face detection' : 'API request',
+            ms,
+            stage === 'detection' ? SLOW_DETECTION_MS : SLOW_API_REQUEST_MS
+          ),
       }
     );
   }
@@ -195,7 +272,13 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    */
   startVideoStream(): void {
     if (!this.isProcessing()) {
-      this.streamProcessor!.start();
+      this.streamProcessor!.start().catch((error) => {
+        console.warn('Could not start video stream:', error);
+        this.dispatchEvent('status', {
+          stage: 'startFailed',
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      });
     }
   }
 
@@ -348,6 +431,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
    * Stop worker and dispose of all resources
    */
   async dispose(): Promise<void> {
+    this.stageTimer.dispose();
     // Terminate the face detection worker if it exists.
     if (this.faceDetectionWorker) {
       await this.faceDetectionWorker.terminate();

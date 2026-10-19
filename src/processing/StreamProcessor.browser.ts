@@ -49,12 +49,24 @@ export class StreamProcessor extends StreamProcessorBase {
   protected handleFaceDetectionResult(event: MessageEvent): void {
     const { id, detections, probeInfo, timestamp, error } = event.data;
 
-    this.lastFaceDetectionTime = timestamp;
     this.isDetecting = false;
 
     if (error) {
       console.error(`Face detection error (id: ${id}):`, error);
+      // Error replies carry no timestamp. Use the current time to keep the 1 Hz retry cadence.
+      this.lastFaceDetectionTime = performance.now() / 1000;
+      this.registerDetectionError();
       return;
+    }
+
+    this.lastFaceDetectionTime = timestamp;
+    this.registerDetectionSuccess();
+    // The first reply waits for the model to load, so it is not a round trip.
+    if (id > 0 && typeof timestamp === 'number') {
+      this.detectorHooks?.report?.(
+        'detection',
+        performance.now() - timestamp * 1000
+      );
     }
 
     const hasValidDetection =

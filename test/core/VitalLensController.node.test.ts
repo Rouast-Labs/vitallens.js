@@ -148,7 +148,8 @@ describe('VitalLensController (Node)', () => {
         dummyOnPredict,
         dummyOnNoFace,
         dummyOnStreamReset,
-        dummyOnFaceDetected
+        dummyOnFaceDetected,
+        undefined // detectorHooks
       );
       expect(streamProcessor).toBeInstanceOf(StreamProcessor);
     });
