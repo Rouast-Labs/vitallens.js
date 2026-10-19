@@ -5,10 +5,11 @@ import { SetupTracker } from './SetupTracker';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './scan.html';
 import logoUrl from '../../assets/logo.svg';
+import { DEFAULT_PERFORMANCE_MODE, PerformanceMode } from '../config/constants';
 
 export class VitalLensScan extends VitalLensBase {
   private state: SessionState = 'idle';
-  private currentMode: 'eco' | 'standard' = 'eco';
+  private currentMode: PerformanceMode = DEFAULT_PERFORMANCE_MODE;
 
   private videoEl!: HTMLVideoElement;
   private startScreen!: HTMLElement;

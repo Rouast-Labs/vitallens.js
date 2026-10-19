@@ -23,3 +23,8 @@ export const SLOW_FIRST_RESULT_MS = 8000;
 export const SLOW_API_REQUEST_MS = 3000;
 
 export const COMPRESSION_MODE: CompressionMode = 'gzip';
+
+/** Performance mode of the UI components: 'eco' samples at 15 fps, 'standard' at 30 fps. */
+export type PerformanceMode = 'eco' | 'standard';
+/** Mode the UI components start in. */
+export const DEFAULT_PERFORMANCE_MODE: PerformanceMode = 'standard';

@@ -2,9 +2,10 @@ import { canDefineElements } from './SafeHTMLElement';
 import { SafeHTMLElement } from './SafeHTMLElement';
 import template from './start.html';
 import logoUrl from '../../assets/logo.svg';
+import { DEFAULT_PERFORMANCE_MODE, PerformanceMode } from '../config/constants';
 
 export class VitalLensStart extends SafeHTMLElement {
-  private mode: 'eco' | 'standard' = 'eco';
+  private mode: PerformanceMode = DEFAULT_PERFORMANCE_MODE;
 
   constructor() {
     super();
