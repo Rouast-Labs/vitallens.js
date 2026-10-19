@@ -5,10 +5,12 @@ import { VitalLensResult } from '../types';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './monitor.html';
 import logoUrl from '../../assets/logo.svg';
+import { CameraSettingsLock } from '../utils/cameraLock';
 import {
   DEFAULT_PERFORMANCE_MODE,
   FPS_ECO,
   PerformanceMode,
+  CAMERA_LOCK_DELAY_MS,
 } from '../config/constants';
 import {
   Chart,
@@ -53,6 +55,7 @@ export class VitalLensMonitor extends VitalLensBase {
   private ppgSampleCount = 0;
   private receivedVitals: Set<string> = new Set();
   private stream: MediaStream | null = null;
+  private cameraLock: CameraSettingsLock | null = null;
   private isFaceCurrentlyDetected = false;
 
   private ppgConfHistory: number[] = [];
@@ -126,17 +129,20 @@ export class VitalLensMonitor extends VitalLensBase {
     this.waveformPlayer.setFps(fps);
 
     try {
-      // TODO: Camera control for rPPG stability (auto exposure/white balance shifts are global
-      //   brightness/colour changes far larger than the pulse signal). Best effort only - support
-      //   is limited (some Chrome cameras; not Safari): request frameRate (30, or 15 for eco), and
-      //   after ~1-2 s with a face in view, check track.getCapabilities() and applyConstraints({
-      //   exposureMode: 'manual', whiteBalanceMode: 'manual' }), ignoring rejections. Re-converge
-      //   if ROI brightness drifts. Same applies to VitalLensWidget/VitalLensScan getUserMedia calls.
+      // TODO: Camera control for rPPG stability, remaining parts. Exposure and white balance are
+      //   locked once a face is in view (see CameraSettingsLock). Still open: request frameRate
+      //   (30, or 15 for eco), and re-converge if ROI brightness drifts while locked. The same
+      //   applies to the VitalLensWidget and VitalLensScan getUserMedia calls.
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { facingMode: 'user' },
       });
       this.videoEl.srcObject = this.stream;
+      // Keep exposure and white balance fixed while measuring, once a face is in view
+      this.cameraLock = new CameraSettingsLock(
+        this.stream.getVideoTracks()[0],
+        CAMERA_LOCK_DELAY_MS
+      );
       this.transitionState('initializing', 'Loading models…');
 
       await this.initVitalLensInstance({ overrideFpsTarget: fps });
@@ -165,6 +171,7 @@ export class VitalLensMonitor extends VitalLensBase {
         'faceDetected',
         (face: unknown) => {
           const isPresent = face !== null;
+          this.cameraLock?.onFace(isPresent);
           if (!this.isProcessingFlag || this.state === 'initializing') return;
 
           this.isFaceCurrentlyDetected = isPresent;
@@ -228,6 +235,8 @@ export class VitalLensMonitor extends VitalLensBase {
   private stopProcessing() {
     this.isProcessingFlag = false;
     this.vitalLensInstance?.stopVideoStream();
+    this.cameraLock?.dispose();
+    this.cameraLock = null;
     if (this.stream) {
       this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;

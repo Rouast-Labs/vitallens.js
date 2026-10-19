@@ -5,10 +5,12 @@ import { SetupTracker } from './SetupTracker';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './scan.html';
 import logoUrl from '../../assets/logo.svg';
+import { CameraSettingsLock } from '../utils/cameraLock';
 import {
   DEFAULT_PERFORMANCE_MODE,
   FPS_ECO,
   PerformanceMode,
+  CAMERA_LOCK_DELAY_MS,
 } from '../config/constants';
 
 export class VitalLensScan extends VitalLensBase {
@@ -48,6 +50,7 @@ export class VitalLensScan extends VitalLensBase {
   private respHistory: number[] = [];
 
   private stream: MediaStream | null = null;
+  private cameraLock: CameraSettingsLock | null = null;
 
   constructor() {
     super();
@@ -138,6 +141,11 @@ export class VitalLensScan extends VitalLensBase {
         video: { facingMode: 'user' },
       });
       this.videoEl.srcObject = this.stream;
+      // Keep exposure and white balance fixed while measuring, once a face is in view
+      this.cameraLock = new CameraSettingsLock(
+        this.stream.getVideoTracks()[0],
+        CAMERA_LOCK_DELAY_MS
+      );
       this.transitionState('initializing', 'Loading models…');
 
       await this.initVitalLensInstance({
@@ -164,6 +172,7 @@ export class VitalLensScan extends VitalLensBase {
         'faceDetected',
         (face: unknown) => {
           const isPresent = face !== null;
+          this.cameraLock?.onFace(isPresent);
           if (!this.isProcessingFlag) return;
 
           if (this.state === 'searching') {
@@ -203,6 +212,8 @@ export class VitalLensScan extends VitalLensBase {
   }
 
   private stopCamera() {
+    this.cameraLock?.dispose();
+    this.cameraLock = null;
     if (this.stream) {
       this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;

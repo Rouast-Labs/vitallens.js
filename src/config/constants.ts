@@ -36,6 +36,9 @@ export const FPS_STANDARD = 30;
 // unsettled at first. Internal setting, not exposed to users.
 export const HRV_SKIP_SECONDS = 3;
 
+// How long a face must be present before the camera's exposure and white balance are locked (ms).
+export const CAMERA_LOCK_DELAY_MS = 1500;
+
 export const COMPRESSION_MODE: CompressionMode = 'gzip';
 
 /** Performance mode of the UI components: 'eco' samples at 15 fps, 'standard' at 30 fps. */
