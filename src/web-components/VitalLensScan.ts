@@ -246,7 +246,7 @@ export class VitalLensScan extends VitalLensBase {
       );
     }
 
-    this.setMessage(this.messageEl, msg, newState === 'issue');
+    this.setMessage(this.messageEl, msg, newState === 'issue', newState);
 
     if (newState === 'issue') {
       this.vitalLensInstance?.stopVideoStream();

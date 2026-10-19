@@ -1,5 +1,6 @@
 import { SafeHTMLElement } from './SafeHTMLElement';
 import { VitalLens } from '../core/VitalLens.browser';
+import { MessageHold } from './MessageHold';
 import { VitalLensOptions, VitalLensResult, Vital } from '../types';
 
 export type SessionState =
@@ -23,6 +24,7 @@ export abstract class VitalLensBase extends SafeHTMLElement {
   protected autoFallbackDone = false;
   // While set, status messages from face detection don't overwrite a notice.
   private noticeUntil = 0;
+  private messageHold?: MessageHold;
 
   protected readonly MSG_SLOW_CONNECTION =
     'Slow connection. Switched to Eco mode.';
@@ -133,14 +135,32 @@ export abstract class VitalLensBase extends SafeHTMLElement {
   /** Shows a notice that is not overwritten by face detection messages for a few seconds. */
   protected showNotice(el: HTMLElement, message: string): void {
     this.noticeUntil = performance.now() + 5000;
+    this.messageHold?.release();
     el.textContent = message;
   }
 
   /**
    * Sets a status message unless a notice is being shown. Issues always show.
    */
-  protected setMessage(el: HTMLElement, message: string, force = false): void {
-    if (force || !this.isNoticeActive()) el.textContent = message;
+  protected setMessage(
+    el: HTMLElement,
+    message: string,
+    force = false,
+    state?: SessionState
+  ): void {
+    // Problem hints stay up long enough to read, even if the problem is gone.
+    this.messageHold ??= new MessageHold((text, forced) => {
+      if (forced || !this.isNoticeActive()) el.textContent = text;
+    });
+    this.messageHold.show(message, {
+      force,
+      hold: state === 'recovering',
+      immediate:
+        state === 'idle' ||
+        state === 'initializing' ||
+        state === 'completed' ||
+        state === 'issue',
+    });
   }
 
   protected isNoticeActive(): boolean {
@@ -258,6 +278,7 @@ export abstract class VitalLensBase extends SafeHTMLElement {
   }
 
   public destroy(): void {
+    this.messageHold?.release();
     if (this.vitalLensInstance) {
       this.vitalLensInstance
         .close()
