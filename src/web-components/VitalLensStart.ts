@@ -54,6 +54,12 @@ export class VitalLensStart extends SafeHTMLElement {
     this.updateModeUI();
   }
 
+  /** Sets the mode without emitting a `modechange` event. */
+  setMode(mode: PerformanceMode): void {
+    this.mode = mode;
+    this.updateModeUI();
+  }
+
   private updateModeUI() {
     const isEco = this.mode === 'eco';
     this.shadowRoot!.querySelector('#ecoIcon')!.classList.toggle(

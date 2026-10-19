@@ -5,7 +5,11 @@ import { SetupTracker } from './SetupTracker';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './scan.html';
 import logoUrl from '../../assets/logo.svg';
-import { DEFAULT_PERFORMANCE_MODE, PerformanceMode } from '../config/constants';
+import {
+  DEFAULT_PERFORMANCE_MODE,
+  FPS_ECO,
+  PerformanceMode,
+} from '../config/constants';
 
 export class VitalLensScan extends VitalLensBase {
   private state: SessionState = 'idle';
@@ -83,7 +87,7 @@ export class VitalLensScan extends VitalLensBase {
     this.apertureWrapper = this.shadowRoot!.querySelector('#apertureWrapper')!;
   }
 
-  private async startProcessing() {
+  private resetScanData() {
     this.strikeCount = 0;
     this.accumulatedScanTime = 0;
     this.totalFramesProcessed = 0;
@@ -93,6 +97,31 @@ export class VitalLensScan extends VitalLensBase {
     this.ppgHistory = [];
     this.respHistory = [];
     this.updateProgress(0);
+  }
+
+  /**
+   * Falls back to eco mode (15 fps) because the connection is too slow for
+   * standard mode. The scan starts over, as frame rates cannot be mixed.
+   */
+  private async fallBackToEco() {
+    console.warn('Slow connection detected. Falling back to eco mode.');
+    this.currentMode = 'eco';
+    (this.startScreen as { setMode?: (m: PerformanceMode) => void }).setMode?.(
+      'eco'
+    );
+    this.resetScanData();
+    this.transitionState('searching', this.MSG_LOOKING);
+    this.showNotice(this.messageEl, this.MSG_SLOW_CONNECTION);
+    try {
+      await this.restartStreamAt(FPS_ECO, this.stream!, this.videoEl);
+    } catch (e) {
+      console.warn('Could not restart the scan at eco mode:', e);
+      this.transitionState('issue', this.MSG_START_FAILED);
+    }
+  }
+
+  private async startProcessing() {
+    this.resetScanData();
 
     this.isProcessingFlag = true;
     this.startScreen.style.display = 'none';
@@ -138,6 +167,7 @@ export class VitalLensScan extends VitalLensBase {
           if (!this.isProcessingFlag) return;
 
           if (this.state === 'searching') {
+            if (this.isNoticeActive()) return;
             this.messageEl.textContent = isPresent
               ? this.MSG_FACE_FOUND
               : this.MSG_LOOKING;
@@ -154,6 +184,8 @@ export class VitalLensScan extends VitalLensBase {
           }
         }
       );
+
+      this.listenForSlowConnection(() => this.fallBackToEco());
 
       await this.vitalLensInstance!.setVideoStream(this.stream, this.videoEl);
       this.vitalLensInstance!.startVideoStream();

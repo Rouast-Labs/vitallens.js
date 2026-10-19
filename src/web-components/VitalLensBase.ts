@@ -19,6 +19,13 @@ export abstract class VitalLensBase extends SafeHTMLElement {
   protected latestResult: VitalLensResult | null = null;
   protected isProcessingFlag = false;
   protected supportedVitals: Vital[] = [];
+  // The slow connection fallback happens at most once per component.
+  protected autoFallbackDone = false;
+  // While set, status messages from face detection don't overwrite a notice.
+  private noticeUntil = 0;
+
+  protected readonly MSG_SLOW_CONNECTION =
+    'Slow connection. Switched to Eco mode.';
 
   protected readonly VITAL_CONF_THRESHOLD = 0.8;
   protected readonly FACE_CONF_THRESHOLD = 0.5;
@@ -89,6 +96,46 @@ export abstract class VitalLensBase extends SafeHTMLElement {
       console.error(e);
       this.showError((e as Error).message);
     }
+  }
+
+  /**
+   * Calls `onSlow` when the connection is too slow for the standard frame rate.
+   * Fires at most once per component, as falling back is only done once.
+   * @param onSlow - Called when the stream should fall back to eco mode.
+   */
+  protected listenForSlowConnection(onSlow: () => void): void {
+    this.vitalLensInstance?.addEventListener('status', (status) => {
+      const stage = (status as { stage?: string }).stage;
+      if (stage !== 'slowConnection') return;
+      if (!this.isProcessingFlag || this.autoFallbackDone) return;
+      this.autoFallbackDone = true;
+      onSlow();
+    });
+  }
+
+  /**
+   * Restarts the live stream at another frame rate. Clears all measurements.
+   * The camera stream, the face detector and the resolved model are kept.
+   */
+  protected async restartStreamAt(
+    fps: number,
+    stream: MediaStream,
+    videoEl: HTMLVideoElement
+  ): Promise<void> {
+    const instance = this.vitalLensInstance!;
+    instance.setFpsTarget(fps);
+    await instance.setVideoStream(stream, videoEl);
+    instance.startVideoStream();
+  }
+
+  /** Shows a notice that is not overwritten by face detection messages for a few seconds. */
+  protected showNotice(el: HTMLElement, message: string): void {
+    this.noticeUntil = performance.now() + 4000;
+    el.textContent = message;
+  }
+
+  protected isNoticeActive(): boolean {
+    return performance.now() < this.noticeUntil;
   }
 
   private handleVitalLensResults(result: VitalLensResult): void {
@@ -189,7 +236,8 @@ export abstract class VitalLensBase extends SafeHTMLElement {
     if (isLowSignal) {
       return {
         state: 'recovering',
-        message: 'Low confidence. Use steady light, move closer, and hold still.',
+        message:
+          'Low confidence. Use steady light, move closer, and hold still.',
       };
     }
 

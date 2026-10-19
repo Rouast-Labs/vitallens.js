@@ -5,7 +5,11 @@ import { VitalLensResult } from '../types';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './monitor.html';
 import logoUrl from '../../assets/logo.svg';
-import { DEFAULT_PERFORMANCE_MODE, PerformanceMode } from '../config/constants';
+import {
+  DEFAULT_PERFORMANCE_MODE,
+  FPS_ECO,
+  PerformanceMode,
+} from '../config/constants';
 import {
   Chart,
   LineController,
@@ -174,9 +178,13 @@ export class VitalLensMonitor extends VitalLensBase {
             this.clearMeasurements();
           } else if (this.state === 'searching' || this.state === 'idle') {
             this.transitionState('searching', 'Face detected, analyzing...');
+            if (this.isNoticeActive())
+              this.messageEl.textContent = this.MSG_SLOW_CONNECTION;
           }
         }
       );
+
+      this.listenForSlowConnection(() => this.fallBackToEco());
 
       await this.vitalLensInstance!.setVideoStream(this.stream, this.videoEl);
       this.vitalLensInstance!.startVideoStream();
@@ -190,6 +198,30 @@ export class VitalLensMonitor extends VitalLensBase {
       } else {
         this.showError('Could not access camera. Please check permissions.');
       }
+    }
+  }
+
+  /**
+   * Falls back to eco mode (15 fps) because the connection is too slow for
+   * standard mode. Measurements start over, as frame rates cannot be mixed.
+   */
+  private async fallBackToEco() {
+    console.warn('Slow connection detected. Falling back to eco mode.');
+    this.currentMode = 'eco';
+    (this.startScreen as { setMode?: (m: PerformanceMode) => void }).setMode?.(
+      'eco'
+    );
+    this.waveformPlayer.setFps(FPS_ECO);
+    this.clearMeasurements();
+    this.isFaceCurrentlyDetected = false;
+    this.transitionState('searching', 'Face the camera and hold still.');
+    this.showNotice(this.messageEl, this.MSG_SLOW_CONNECTION);
+    try {
+      await this.restartStreamAt(FPS_ECO, this.stream!, this.videoEl);
+    } catch (e) {
+      console.warn('Could not restart the monitor at eco mode:', e);
+      this.stopProcessing();
+      this.showError('Could not restart the connection. Please try again.');
     }
   }
 
