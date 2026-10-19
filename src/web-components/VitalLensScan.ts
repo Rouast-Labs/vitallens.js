@@ -1,13 +1,21 @@
 import { canDefineElements } from './SafeHTMLElement';
 import { VitalLensBase, SessionState } from './VitalLensBase';
 import { VitalLensResult } from '../types';
+import { SetupTracker } from './SetupTracker';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './scan.html';
 import logoUrl from '../../assets/logo.svg';
+import { CameraSettingsLock } from '../utils/cameraLock';
+import {
+  DEFAULT_PERFORMANCE_MODE,
+  FPS_ECO,
+  PerformanceMode,
+  CAMERA_LOCK_DELAY_MS,
+} from '../config/constants';
 
 export class VitalLensScan extends VitalLensBase {
   private state: SessionState = 'idle';
-  private currentMode: 'eco' | 'standard' = 'eco';
+  private currentMode: PerformanceMode = DEFAULT_PERFORMANCE_MODE;
 
   private videoEl!: HTMLVideoElement;
   private startScreen!: HTMLElement;
@@ -23,6 +31,12 @@ export class VitalLensScan extends VitalLensBase {
   private readonly WARM_UP_DURATION = 3.0;
   private readonly RECOVERY_TIMEOUT = 10.0;
 
+  private readonly MSG_LOOKING =
+    'Looking for your face… Position it in the oval';
+  private readonly MSG_FACE_FOUND = 'Face found. Hold still, connecting…';
+  private readonly MSG_START_FAILED =
+    'Could not start face detection. Please reload.';
+
   private accumulatedScanTime = 0;
   private stateStartTime = 0;
   private lastFrameTime = 0;
@@ -36,6 +50,7 @@ export class VitalLensScan extends VitalLensBase {
   private respHistory: number[] = [];
 
   private stream: MediaStream | null = null;
+  private cameraLock: CameraSettingsLock | null = null;
 
   constructor() {
     super();
@@ -75,7 +90,7 @@ export class VitalLensScan extends VitalLensBase {
     this.apertureWrapper = this.shadowRoot!.querySelector('#apertureWrapper')!;
   }
 
-  private async startProcessing() {
+  private resetScanData() {
     this.strikeCount = 0;
     this.accumulatedScanTime = 0;
     this.totalFramesProcessed = 0;
@@ -85,13 +100,38 @@ export class VitalLensScan extends VitalLensBase {
     this.ppgHistory = [];
     this.respHistory = [];
     this.updateProgress(0);
+  }
+
+  /**
+   * Falls back to eco mode (15 fps) because the connection is too slow for
+   * standard mode. The scan starts over, as frame rates cannot be mixed.
+   */
+  private async fallBackToEco() {
+    console.warn('Slow connection detected. Falling back to eco mode.');
+    this.currentMode = 'eco';
+    (this.startScreen as { setMode?: (m: PerformanceMode) => void }).setMode?.(
+      'eco'
+    );
+    this.resetScanData();
+    this.transitionState('searching', this.MSG_LOOKING);
+    this.showNotice(this.messageEl, this.MSG_SLOW_CONNECTION);
+    try {
+      await this.restartStreamAt(FPS_ECO, this.stream!, this.videoEl);
+    } catch (e) {
+      console.warn('Could not restart the scan at eco mode:', e);
+      this.transitionState('issue', this.MSG_START_FAILED);
+    }
+  }
+
+  private async startProcessing() {
+    this.resetScanData();
 
     this.isProcessingFlag = true;
     this.startScreen.style.display = 'none';
     this.resultScreen.style.display = 'none';
     this.cameraLayer.style.display = 'block';
 
-    this.transitionState('searching', 'Position your face in the oval');
+    this.transitionState('initializing', 'Starting camera…');
 
     const fps = this.currentMode === 'eco' ? 15 : 30;
 
@@ -101,21 +141,51 @@ export class VitalLensScan extends VitalLensBase {
         video: { facingMode: 'user' },
       });
       this.videoEl.srcObject = this.stream;
+      // Keep exposure and white balance fixed while measuring, once a face is in view
+      this.cameraLock = new CameraSettingsLock(
+        this.stream.getVideoTracks()[0],
+        CAMERA_LOCK_DELAY_MS
+      );
+      this.transitionState('initializing', 'Loading models…');
 
       await this.initVitalLensInstance({
         overrideFpsTarget: fps,
         waveformMode: 'incremental',
       });
 
+      const setup = new SetupTracker(
+        this.vitalLensInstance!,
+        () => {
+          if (this.isProcessingFlag && this.state === 'initializing') {
+            this.transitionState('searching', this.MSG_LOOKING);
+          }
+        },
+        (reason) => {
+          console.warn(`Scan could not start: ${reason}`);
+          if (this.isProcessingFlag) {
+            this.transitionState('issue', this.MSG_START_FAILED);
+          }
+        }
+      );
+
       this.vitalLensInstance!.addEventListener(
         'faceDetected',
         (face: unknown) => {
           const isPresent = face !== null;
+          this.cameraLock?.onFace(isPresent);
           if (!this.isProcessingFlag) return;
+
+          if (this.state === 'searching') {
+            if (this.isNoticeActive()) return;
+            this.messageEl.textContent = isPresent
+              ? this.MSG_FACE_FOUND
+              : this.MSG_LOOKING;
+            return;
+          }
 
           if (
             !isPresent &&
-            this.state !== 'searching' &&
+            this.state !== 'initializing' &&
             this.state !== 'issue' &&
             this.state !== 'completed'
           ) {
@@ -124,8 +194,11 @@ export class VitalLensScan extends VitalLensBase {
         }
       );
 
+      this.listenForSlowConnection(() => this.fallBackToEco());
+
       await this.vitalLensInstance!.setVideoStream(this.stream, this.videoEl);
       this.vitalLensInstance!.startVideoStream();
+      setup.markStreamReady();
     } catch (e) {
       console.error(e);
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -139,6 +212,8 @@ export class VitalLensScan extends VitalLensBase {
   }
 
   private stopCamera() {
+    this.cameraLock?.dispose();
+    this.cameraLock = null;
     if (this.stream) {
       this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;
@@ -163,6 +238,7 @@ export class VitalLensScan extends VitalLensBase {
       this.statusBadge.className = `status-badge status-${newState}`;
       const stateLabels: Record<SessionState, string> = {
         idle: 'Idle',
+        initializing: 'Starting',
         searching: 'Searching',
         warmingUp: 'Calibrating',
         tracking: 'Scanning',
@@ -181,7 +257,7 @@ export class VitalLensScan extends VitalLensBase {
       );
     }
 
-    this.messageEl.textContent = msg;
+    this.setMessage(this.messageEl, msg, newState === 'issue', newState);
 
     if (newState === 'issue') {
       this.vitalLensInstance?.stopVideoStream();
@@ -209,6 +285,7 @@ export class VitalLensScan extends VitalLensBase {
     if (
       !this.isProcessingFlag ||
       this.state === 'idle' ||
+      this.state === 'initializing' ||
       this.state === 'completed' ||
       this.state === 'issue'
     )
@@ -355,14 +432,14 @@ export class VitalLensScan extends VitalLensBase {
     const secondaryVitals = [
       buildVital(
         'hrv_sdnn',
-        sdnnConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_sdnn?.value : null,
+        this.isHrvConfident(sdnnConf, hrConf) ? vs.hrv_sdnn?.value : null,
         sdnnConf,
         '%.0f',
         true
       ),
       buildVital(
         'hrv_rmssd',
-        rmssdConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_rmssd?.value : null,
+        this.isHrvConfident(rmssdConf, hrConf) ? vs.hrv_rmssd?.value : null,
         rmssdConf,
         '%.0f',
         true

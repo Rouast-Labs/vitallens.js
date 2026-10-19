@@ -61,6 +61,12 @@ export class FrameBuffer extends Buffer {
       );
 
       // Resize the cropped tensor if inputSize is specified
+      // TODO: resizeBilinear has no antialiasing - at large downscale factors (e.g. ~300px -> 40px)
+      //   it samples ~4 source px per output px, discarding the spatial averaging that lifts the
+      //   pulse above sensor noise, and mismatching training (ffmpeg bicubic) / Python (box) / iOS
+      //   (vImage). Use area/box averaging instead, e.g. bilinear to an integer multiple of
+      //   inputSize then tf.avgPool, or a shared box-downsample in vitallens-core (WASM).
+      //   Verify first: same recording via Python vs JS, compare confidence/SNR.
       const resized = this.methodConfig.inputSize
         ? tf.image.resizeBilinear(cropped as tf.Tensor3D, [
             this.methodConfig.inputSize!,

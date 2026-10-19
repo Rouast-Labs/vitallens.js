@@ -1,9 +1,12 @@
 import { SafeHTMLElement } from './SafeHTMLElement';
 import { VitalLens } from '../core/VitalLens.browser';
+import { MessageHold } from './MessageHold';
 import { VitalLensOptions, VitalLensResult, Vital } from '../types';
+import { isHrvShown } from '../utils/vitalGating';
 
 export type SessionState =
   | 'idle'
+  | 'initializing'
   | 'searching'
   | 'warmingUp'
   | 'tracking'
@@ -18,10 +21,18 @@ export abstract class VitalLensBase extends SafeHTMLElement {
   protected latestResult: VitalLensResult | null = null;
   protected isProcessingFlag = false;
   protected supportedVitals: Vital[] = [];
+  // The slow connection fallback happens at most once per scan or monitoring session.
+  protected autoFallbackDone = false;
+  // While set, status messages from face detection don't overwrite a notice.
+  private noticeUntil = 0;
+  private messageHold?: MessageHold;
+
+  protected readonly MSG_SLOW_CONNECTION =
+    'Slow connection. Switched to Eco mode.';
 
   protected readonly VITAL_CONF_THRESHOLD = 0.8;
   protected readonly FACE_CONF_THRESHOLD = 0.5;
-  protected readonly HRV_CONF_THRESHOLD = 0.7;
+  protected readonly HRV_CONF_THRESHOLD = 0.8;
 
   constructor() {
     super();
@@ -65,6 +76,7 @@ export abstract class VitalLensBase extends SafeHTMLElement {
       apiKey: this.apiKey ?? undefined,
       proxyUrl: this.proxyUrl ?? undefined,
       waveformMode: 'incremental',
+      debug: this.hasAttribute('debug'),
       ...options,
     };
 
@@ -87,6 +99,73 @@ export abstract class VitalLensBase extends SafeHTMLElement {
       console.error(e);
       this.showError((e as Error).message);
     }
+  }
+
+  /**
+   * Calls `onSlow` when the connection is too slow for the standard frame rate.
+   * Fires at most once per session. Call it once per started session, so that a
+   * user who switches back to standard mode is checked again.
+   * @param onSlow - Called when the stream should fall back to eco mode.
+   */
+  protected listenForSlowConnection(onSlow: () => void): void {
+    this.autoFallbackDone = false;
+    this.vitalLensInstance?.addEventListener('status', (status) => {
+      const stage = (status as { stage?: string }).stage;
+      if (stage !== 'slowConnection') return;
+      if (!this.isProcessingFlag || this.autoFallbackDone) return;
+      this.autoFallbackDone = true;
+      onSlow();
+    });
+  }
+
+  /**
+   * Restarts the live stream at another frame rate. Clears all measurements.
+   * The camera stream, the face detector and the resolved model are kept.
+   */
+  protected async restartStreamAt(
+    fps: number,
+    stream: MediaStream,
+    videoEl: HTMLVideoElement
+  ): Promise<void> {
+    const instance = this.vitalLensInstance!;
+    instance.setFpsTarget(fps);
+    await instance.setVideoStream(stream, videoEl);
+    instance.startVideoStream();
+  }
+
+  /** Shows a notice that is not overwritten by face detection messages for a few seconds. */
+  protected showNotice(el: HTMLElement, message: string): void {
+    this.noticeUntil = performance.now() + 5000;
+    this.messageHold?.release();
+    el.textContent = message;
+  }
+
+  /**
+   * Sets a status message unless a notice is being shown. Issues always show.
+   */
+  protected setMessage(
+    el: HTMLElement,
+    message: string,
+    force = false,
+    state?: SessionState
+  ): void {
+    // Problem hints stay up long enough to read, even if the problem is gone.
+    this.messageHold ??= new MessageHold((text, forced) => {
+      if (forced || !this.isNoticeActive()) el.textContent = text;
+    });
+    this.messageHold.show(message, {
+      force,
+      hold: state === 'recovering',
+      immediate:
+        state === 'idle' ||
+        state === 'initializing' ||
+        state === 'completed' ||
+        state === 'issue',
+    });
+  }
+
+  protected isNoticeActive(): boolean {
+    return performance.now() < this.noticeUntil;
   }
 
   private handleVitalLensResults(result: VitalLensResult): void {
@@ -127,6 +206,18 @@ export abstract class VitalLensBase extends SafeHTMLElement {
         errorPopup.style.display = 'none';
       }, 10000);
     }
+  }
+
+  /**
+   * Whether an HRV metric may be shown: it must be confident itself, and so must heart rate.
+   */
+  protected isHrvConfident(hrvConf: number, hrConf: number): boolean {
+    return isHrvShown(
+      hrvConf,
+      hrConf,
+      this.HRV_CONF_THRESHOLD,
+      this.VITAL_CONF_THRESHOLD
+    );
   }
 
   protected isFaceGood(
@@ -187,7 +278,8 @@ export abstract class VitalLensBase extends SafeHTMLElement {
     if (isLowSignal) {
       return {
         state: 'recovering',
-        message: 'Low confidence. Improve lighting and hold still.',
+        message:
+          'Low confidence.\nUse steady light, move closer, and hold still.',
       };
     }
 
@@ -199,6 +291,7 @@ export abstract class VitalLensBase extends SafeHTMLElement {
   }
 
   public destroy(): void {
+    this.messageHold?.release();
     if (this.vitalLensInstance) {
       this.vitalLensInstance
         .close()

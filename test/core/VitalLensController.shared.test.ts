@@ -175,7 +175,7 @@ describe('VitalLensControllerBase', () => {
     test('should start the video stream if not already processing', () => {
       mockStreamProcessor = {
         isProcessing: vi.fn().mockReturnValue(false),
-        start: vi.fn(),
+        start: vi.fn().mockResolvedValue(undefined),
         setInferenceEnabled: vi.fn(),
         reset: vi.fn(),
         stop: vi.fn(),

@@ -184,7 +184,12 @@ describe('VitalLensController (Browser)', () => {
         expect.any(Function), // onPredict
         expect.any(Function), // onNoFace
         expect.any(Function), // onStreamReset
-        expect.any(Function) // onFaceDetected
+        expect.any(Function), // onFaceDetected
+        expect.objectContaining({
+          isReady: expect.any(Function),
+          recreateWorker: expect.any(Function),
+          onStatus: expect.any(Function),
+        }) // detectorHooks
       );
     });
   });

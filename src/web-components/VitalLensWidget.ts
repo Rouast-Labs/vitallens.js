@@ -414,19 +414,21 @@ export class VitalLensWidget extends VitalLensBase {
       this.VITAL_CONF_THRESHOLD,
       0
     );
+    // HRV is only shown together with a confident heart rate
+    const hrConfident = getConf(heart_rate) >= this.VITAL_CONF_THRESHOLD;
     this.updateNumericValue(
       'hrv-sdnn',
-      hrv_sdnn?.value,
+      hrConfident ? hrv_sdnn?.value : undefined,
       getConf(hrv_sdnn),
       this.HRV_CONF_THRESHOLD,
-      1
+      0
     );
     this.updateNumericValue(
       'hrv-rmssd',
-      hrv_rmssd?.value,
+      hrConfident ? hrv_rmssd?.value : undefined,
       getConf(hrv_rmssd),
       this.HRV_CONF_THRESHOLD,
-      1
+      0
     );
 
     this.updateFpsValue(fps);

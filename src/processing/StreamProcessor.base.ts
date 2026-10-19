@@ -3,8 +3,17 @@ import { BufferManager } from './BufferManager';
 import { MethodHandler } from '../methods/MethodHandler';
 import { Frame } from './Frame';
 import { IFrameIterator } from '../types/IFrameIterator';
-import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
-import { FDET_DEFAULT_FS_STREAM } from '../config/constants';
+import {
+  IFaceDetectionWorker,
+  DetectorHooks,
+} from '../types/IFaceDetectionWorker';
+import {
+  FDET_DEFAULT_FS_STREAM,
+  FDET_WATCHDOG_TIMEOUT,
+  FDET_WATCHDOG_TIMEOUT_NOT_READY,
+  FDET_WATCHDOG_MAX_RESTARTS,
+  FDET_MAX_CONSECUTIVE_ERRORS,
+} from '../config/constants';
 
 /**
  * Manages the processing loop for live streams, including frame capture,
@@ -21,6 +30,14 @@ export abstract class StreamProcessorBase {
   private lastProcessedTime: number = 0; // In seconds
   protected lastFaceDetectionTime: number = 0; // In seconds
   private methodHandler: MethodHandler;
+  private detectStartedAt: number | null = null; // Watchdog clock, in seconds
+  private detectPendingSince: number | null = null;
+  private notReadyWarned = false;
+  private restartCount = 0;
+  private consecutiveErrors = 0;
+  private detectorFailed = false;
+  // Incremented on stop and reset, so late responses of older requests are dropped
+  private generation = 0;
 
   protected get methodConfig(): MethodConfig {
     return this.getConfig();
@@ -57,18 +74,106 @@ export abstract class StreamProcessorBase {
         coordinates: [number, number, number, number];
         confidence: number;
       } | null
-    ) => void
+    ) => void,
+    protected detectorHooks?: DetectorHooks
   ) {
     this.methodHandler = methodHandler;
     this.fDetFs = this.options.fDetFs ?? FDET_DEFAULT_FS_STREAM;
+    this.bindWorker();
+  }
 
-    if (this.faceDetectionWorker) {
-      this.faceDetectionWorker.onmessage =
-        this.handleFaceDetectionResult.bind(this);
-      this.faceDetectionWorker.onerror = (error) => {
-        console.error('Face detection worker error:', error);
-      };
+  /**
+   * Attaches message and error handlers to the current face detection worker.
+   */
+  private bindWorker(): void {
+    if (!this.faceDetectionWorker) return;
+    this.faceDetectionWorker.onmessage = (event: MessageEvent) => {
+      // Lifecycle messages are handled by the controller.
+      if (event.data?.type === 'ready') return;
+      this.handleFaceDetectionResult(event);
+    };
+    this.faceDetectionWorker.onerror = (error) => {
+      console.error('Face detection worker error:', error);
+    };
+  }
+
+  /**
+   * Counts a failed detection. Marks the detector as failed after repeated errors.
+   */
+  protected registerDetectionError(): void {
+    this.consecutiveErrors++;
+    if (this.consecutiveErrors >= FDET_MAX_CONSECUTIVE_ERRORS) {
+      this.failDetector('repeated detection errors');
     }
+  }
+
+  /**
+   * Resets the count of consecutive detection errors.
+   */
+  protected registerDetectionSuccess(): void {
+    this.consecutiveErrors = 0;
+  }
+
+  private failDetector(reason: string): void {
+    if (this.detectorFailed) return;
+    this.detectorFailed = true;
+    console.warn(`Face detection failed: ${reason}`);
+    this.detectorHooks?.onStatus({ stage: 'detectorFailed', reason });
+  }
+
+  /**
+   * Restarts the worker if a detection has been pending for too long.
+   * Before the worker reports ready the clock is paused (model load may be slow).
+   * @param now - Current time in seconds.
+   */
+  private checkDetectionWatchdog(now: number): void {
+    if (!this.faceDetectionWorker || !this.detectorHooks) return;
+    if (!this.isDetecting) {
+      this.detectStartedAt = null;
+      this.detectPendingSince = null;
+      return;
+    }
+    this.detectPendingSince ??= now;
+    if (!this.detectorHooks.isReady()) {
+      this.detectStartedAt = now;
+      if (
+        !this.notReadyWarned &&
+        now - this.detectPendingSince > FDET_WATCHDOG_TIMEOUT_NOT_READY
+      ) {
+        this.notReadyWarned = true;
+        console.warn(
+          `Face detection worker not ready after ${FDET_WATCHDOG_TIMEOUT_NOT_READY}s.`
+        );
+      }
+      return;
+    }
+    this.detectStartedAt ??= now;
+    if (now - this.detectStartedAt > FDET_WATCHDOG_TIMEOUT) {
+      this.restartDetector(`no detection result for ${FDET_WATCHDOG_TIMEOUT}s`);
+    }
+  }
+
+  private restartDetector(reason: string): void {
+    if (this.restartCount >= FDET_WATCHDOG_MAX_RESTARTS) {
+      this.failDetector(`${reason}; restart limit reached`);
+      return;
+    }
+    this.restartCount++;
+    console.warn(
+      `Restarting face detection worker (${this.restartCount}/${FDET_WATCHDOG_MAX_RESTARTS}): ${reason}`
+    );
+    void this.faceDetectionWorker!.terminate();
+    this.faceDetectionWorker = this.detectorHooks!.recreateWorker();
+    this.bindWorker();
+    this.isDetecting = false;
+    this.detectStartedAt = null;
+    this.detectPendingSince = null;
+    this.notReadyWarned = false;
+    this.detectorHooks!.onStatus({
+      stage: 'workerRestart',
+      attempt: this.restartCount,
+      reason,
+    });
   }
 
   /**
@@ -112,12 +217,16 @@ export abstract class StreamProcessorBase {
           }
         }
 
+        this.checkDetectionWatchdog(currentTime);
+
         if (this.pendingRoi) {
           this.roi = this.pendingRoi;
           this.pendingRoi = null;
         }
 
         // Throttle to target FPS
+        // TODO: Replace setTimeout polling with requestVideoFrameCallback-driven frames (see TODO in
+        //   StreamFrameIterator.next) and throttle by frame capture timestamps instead.
         if (currentTime - this.lastProcessedTime < 1 / this.targetFps) {
           await new Promise((resolve) =>
             setTimeout(
@@ -165,6 +274,8 @@ export abstract class StreamProcessorBase {
                 }
                 const currentState = this.bufferManager.getState();
                 const bufferSize = command.take_count;
+                const requestStart = performance.now();
+                const generation = this.generation;
                 this.methodHandler
                   .process(
                     mergedFrame,
@@ -172,18 +283,14 @@ export abstract class StreamProcessorBase {
                     currentState as Float32Array,
                     bufferSize
                   )
-                  .then((incrementalResult) => {
-                    if (incrementalResult) {
-                      if (incrementalResult.state) {
-                        this.bufferManager.setState(
-                          new Float32Array(incrementalResult.state.data)
-                        );
-                      } else {
-                        this.bufferManager.resetState();
-                      }
-                      this.onPredict(incrementalResult);
-                    }
-                  })
+                  .then((incrementalResult) =>
+                    this.handlePrediction(
+                      incrementalResult,
+                      generation,
+                      performance.now() - requestStart,
+                      bufferSize
+                    )
+                  )
                   .catch((error) => {
                     console.error('Error during prediction:', error);
                     if (error.message.includes('Resetting stream')) {
@@ -203,6 +310,7 @@ export abstract class StreamProcessorBase {
 
           if (
             this.faceDetectionWorker &&
+            !this.detectorFailed &&
             !this.isDetecting &&
             currentTime - this.lastFaceDetectionTime > 1 / this.fDetFs
           ) {
@@ -236,6 +344,34 @@ export abstract class StreamProcessorBase {
   protected abstract handleFaceDetectionResult(event: MessageEvent): void;
 
   /**
+   * Applies the response of a stream request: stores the model state and passes
+   * the result on. Responses to requests sent before the last stop or reset are
+   * dropped, so their (stale) model state cannot leak into the new stream.
+   * @param incrementalResult - The response, if any.
+   * @param generation - Generation at the time the request was sent.
+   * @param ms - Request duration in milliseconds.
+   * @param frames - Number of frames sent with the request.
+   */
+  protected handlePrediction(
+    incrementalResult: VitalLensResult | undefined,
+    generation: number,
+    ms: number,
+    frames: number
+  ): void {
+    if (generation !== this.generation) return;
+    this.detectorHooks?.report?.('apiRequest', ms, frames);
+    if (!incrementalResult) return;
+    if (incrementalResult.state) {
+      this.bufferManager.setState(
+        new Float32Array(incrementalResult.state.data)
+      );
+    } else {
+      this.bufferManager.resetState();
+    }
+    this.onPredict(incrementalResult);
+  }
+
+  /**
    * Returns `true` we are actively processing
    * @returns Returns `true` we are actively processing
    */
@@ -248,6 +384,7 @@ export abstract class StreamProcessorBase {
    */
   stop(): void {
     this.isPaused = true;
+    this.generation++;
     this.frameIterator.stop();
     this.methodHandler.cleanup();
     this.bufferManager.cleanup();
@@ -257,6 +394,7 @@ export abstract class StreamProcessorBase {
    * Clears the ROI and buffers.
    */
   reset(): void {
+    this.generation++;
     this.roi = null;
     this.pendingRoi = null;
     this.bufferManager.cleanup();

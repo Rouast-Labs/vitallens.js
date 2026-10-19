@@ -12,7 +12,10 @@ import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import FFmpegWrapper from '../utils/FFmpegWrapper.node';
 import { Worker } from 'worker_threads';
 import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.node';
-import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
+import {
+  IFaceDetectionWorker,
+  DetectorHooks,
+} from '../types/IFaceDetectionWorker';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -67,7 +70,8 @@ export class VitalLensController extends VitalLensControllerBase {
         coordinates: [number, number, number, number];
         confidence: number;
       } | null
-    ) => void
+    ) => void,
+    detectorHooks?: DetectorHooks
   ): IStreamProcessor {
     return new StreamProcessor(
       options,
@@ -79,7 +83,8 @@ export class VitalLensController extends VitalLensControllerBase {
       onPredict,
       onNoFace,
       onStreamReset,
-      onFaceDetected
+      onFaceDetected,
+      detectorHooks
     );
   }
 }

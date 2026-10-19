@@ -33,9 +33,18 @@ self.onmessage = async (event: MessageEvent) => {
           finalJsonUrl,
           finalBinUrl
         );
+        const loadStart = performance.now();
         await faceDetector.load();
+        self.postMessage({
+          type: 'ready',
+          loadMs: Math.round(performance.now() - loadStart),
+        });
       } catch (err) {
         console.error('Worker init error:', err);
+        self.postMessage({
+          type: 'ready',
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     })();
     await initPromise;

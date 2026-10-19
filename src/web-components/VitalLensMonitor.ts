@@ -1,9 +1,17 @@
 import { canDefineElements } from './SafeHTMLElement';
 import { VitalLensBase, SessionState } from './VitalLensBase';
+import { SetupTracker } from './SetupTracker';
 import { VitalLensResult } from '../types';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
 import template from './monitor.html';
 import logoUrl from '../../assets/logo.svg';
+import { CameraSettingsLock } from '../utils/cameraLock';
+import {
+  DEFAULT_PERFORMANCE_MODE,
+  FPS_ECO,
+  PerformanceMode,
+  CAMERA_LOCK_DELAY_MS,
+} from '../config/constants';
 import {
   Chart,
   LineController,
@@ -24,7 +32,7 @@ Chart.register(
 
 export class VitalLensMonitor extends VitalLensBase {
   private state: SessionState = 'idle';
-  private currentMode: 'eco' | 'standard' = 'eco';
+  private currentMode: PerformanceMode = DEFAULT_PERFORMANCE_MODE;
 
   private videoEl!: HTMLVideoElement;
   private startScreen!: HTMLElement;
@@ -47,6 +55,7 @@ export class VitalLensMonitor extends VitalLensBase {
   private ppgSampleCount = 0;
   private receivedVitals: Set<string> = new Set();
   private stream: MediaStream | null = null;
+  private cameraLock: CameraSettingsLock | null = null;
   private isFaceCurrentlyDetected = false;
 
   private ppgConfHistory: number[] = [];
@@ -114,19 +123,47 @@ export class VitalLensMonitor extends VitalLensBase {
     this.cameraLayer.style.display = 'block';
 
     this.bottomPanel.classList.add('visible');
-    this.transitionState('searching', 'Face the camera and hold still.');
+    this.transitionState('initializing', 'Starting camera…');
 
     const fps = this.currentMode === 'eco' ? 15 : 30;
     this.waveformPlayer.setFps(fps);
 
     try {
+      // TODO: Camera control for rPPG stability, remaining parts. Exposure and white balance are
+      //   locked once a face is in view (see CameraSettingsLock). Still open: request frameRate
+      //   (30, or 15 for eco), and re-converge if ROI brightness drifts while locked. The same
+      //   applies to the VitalLensWidget and VitalLensScan getUserMedia calls.
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { facingMode: 'user' },
       });
       this.videoEl.srcObject = this.stream;
+      // Keep exposure and white balance fixed while measuring, once a face is in view
+      this.cameraLock = new CameraSettingsLock(
+        this.stream.getVideoTracks()[0],
+        CAMERA_LOCK_DELAY_MS
+      );
+      this.transitionState('initializing', 'Loading models…');
 
       await this.initVitalLensInstance({ overrideFpsTarget: fps });
+
+      const setup = new SetupTracker(
+        this.vitalLensInstance!,
+        () => {
+          if (this.isProcessingFlag && this.state === 'initializing') {
+            this.transitionState(
+              'searching',
+              'Face the camera and hold still.'
+            );
+          }
+        },
+        (reason) => {
+          console.warn(`Monitor could not start: ${reason}`);
+          if (!this.isProcessingFlag) return;
+          this.stopProcessing();
+          this.showError('Could not start face detection. Please reload.');
+        }
+      );
 
       this.configureVitalMeta();
 
@@ -134,7 +171,8 @@ export class VitalLensMonitor extends VitalLensBase {
         'faceDetected',
         (face: unknown) => {
           const isPresent = face !== null;
-          if (!this.isProcessingFlag) return;
+          this.cameraLock?.onFace(isPresent);
+          if (!this.isProcessingFlag || this.state === 'initializing') return;
 
           this.isFaceCurrentlyDetected = isPresent;
           if (!isPresent) {
@@ -147,12 +185,17 @@ export class VitalLensMonitor extends VitalLensBase {
             this.clearMeasurements();
           } else if (this.state === 'searching' || this.state === 'idle') {
             this.transitionState('searching', 'Face detected, analyzing...');
+            if (this.isNoticeActive())
+              this.messageEl.textContent = this.MSG_SLOW_CONNECTION;
           }
         }
       );
 
+      this.listenForSlowConnection(() => this.fallBackToEco());
+
       await this.vitalLensInstance!.setVideoStream(this.stream, this.videoEl);
       this.vitalLensInstance!.startVideoStream();
+      setup.markStreamReady();
     } catch (e) {
       console.error(e);
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -165,9 +208,35 @@ export class VitalLensMonitor extends VitalLensBase {
     }
   }
 
+  /**
+   * Falls back to eco mode (15 fps) because the connection is too slow for
+   * standard mode. Measurements start over, as frame rates cannot be mixed.
+   */
+  private async fallBackToEco() {
+    console.warn('Slow connection detected. Falling back to eco mode.');
+    this.currentMode = 'eco';
+    (this.startScreen as { setMode?: (m: PerformanceMode) => void }).setMode?.(
+      'eco'
+    );
+    this.waveformPlayer.setFps(FPS_ECO);
+    this.clearMeasurements();
+    this.isFaceCurrentlyDetected = false;
+    this.transitionState('searching', 'Face the camera and hold still.');
+    this.showNotice(this.messageEl, this.MSG_SLOW_CONNECTION);
+    try {
+      await this.restartStreamAt(FPS_ECO, this.stream!, this.videoEl);
+    } catch (e) {
+      console.warn('Could not restart the monitor at eco mode:', e);
+      this.stopProcessing();
+      this.showError('Could not restart the connection. Please try again.');
+    }
+  }
+
   private stopProcessing() {
     this.isProcessingFlag = false;
     this.vitalLensInstance?.stopVideoStream();
+    this.cameraLock?.dispose();
+    this.cameraLock = null;
     if (this.stream) {
       this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;
@@ -230,14 +299,14 @@ export class VitalLensMonitor extends VitalLensBase {
     this.updateValue(
       'sdnnVal',
       hrv_sdnn?.value,
-      sdnnConf >= this.HRV_CONF_THRESHOLD,
-      1
+      this.isHrvConfident(sdnnConf, hrConf),
+      0
     );
     this.updateValue(
       'rmssdVal',
       hrv_rmssd?.value,
-      rmssdConf >= this.HRV_CONF_THRESHOLD,
-      1
+      this.isHrvConfident(rmssdConf, hrConf),
+      0
     );
 
     // Let the shared state machine evaluate our situation
@@ -290,6 +359,7 @@ export class VitalLensMonitor extends VitalLensBase {
       this.statusBadge.className = `status-badge status-${newState}`;
       const stateLabels: Record<SessionState, string> = {
         idle: 'Idle',
+        initializing: 'Starting',
         searching: 'Searching',
         warmingUp: 'Calibrating',
         tracking: 'Tracking',
@@ -308,9 +378,14 @@ export class VitalLensMonitor extends VitalLensBase {
         100,
         Math.round((this.ppgSampleCount / requiredSamples) * 100)
       );
-      this.messageEl.textContent = `Calibrating signals... (${prog}%)`;
+      this.setMessage(
+        this.messageEl,
+        `Calibrating signals... (${prog}%)`,
+        false,
+        newState
+      );
     } else {
-      this.messageEl.textContent = msg;
+      this.setMessage(this.messageEl, msg, newState === 'issue', newState);
     }
   }
 
@@ -328,8 +403,8 @@ export class VitalLensMonitor extends VitalLensBase {
 
     this.updateValue('hrVal', null, false, 0);
     this.updateValue('rrVal', null, false, 0);
-    this.updateValue('sdnnVal', null, false, 1);
-    this.updateValue('rmssdVal', null, false, 1);
+    this.updateValue('sdnnVal', null, false, 0);
+    this.updateValue('rmssdVal', null, false, 0);
   }
 
   protected updateHRVDisplay(): void {

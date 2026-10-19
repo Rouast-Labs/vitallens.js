@@ -41,6 +41,7 @@
   .status-dot { width: 8px; height: 8px; border-radius: 50%; }
   
   .status-idle .status-dot { background: gray; }
+  .status-initializing .status-dot { background: #94a3b8; animation: pulse 1s infinite alternate; }
   .status-searching .status-dot { background: #00A3FC; animation: pulse 1s infinite alternate; }
   .status-warmingUp .status-dot { background: #a855f7; animation: pulse 1s infinite alternate; }
   .status-tracking .status-dot { background: #22c55e; }
@@ -56,7 +57,7 @@
   /* Bottom Metrics */
   .bottom-panel { position: absolute; bottom: 0; left: 0; width: 100%; padding: 16px; box-sizing: border-box; background: rgba(20, 20, 22, 0.85); backdrop-filter: blur(16px); border-top-left-radius: 24px; border-top-right-radius: 24px; display: flex; flex-direction: column; gap: 12px; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
   .bottom-panel.visible { transform: translateY(0); }
-  .message { text-align: center; font-size: 13px; font-weight: 500; color: white; min-height: 16px; }
+  .message { white-space: pre-line; text-align: center; font-size: 13px; font-weight: 500; color: white; min-height: 16px; }
   
   .metric-row { display: flex; gap: 12px; height: 90px; }
   .chart-box { flex: 1; background: rgba(255,255,255,0.05); border-radius: 12px; position: relative; padding: 8px; display: flex; align-items: center; justify-content: center; }
@@ -81,7 +82,7 @@
   .sec-label { color: #888; }
   .sec-val { font-weight: 600; font-family: monospace; color: white;}
   .sec-val.unready { color: rgba(255,255,255,0.3); }
-  .sec-unit { color: #888; font-size: 9px; }
+  .sec-unit { color: #888; font-size: 9px; margin-left: 3px; }
 
   #errorPopup {
     display: none;

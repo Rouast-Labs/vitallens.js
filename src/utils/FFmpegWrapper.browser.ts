@@ -1,3 +1,6 @@
+// TODO: ffmpeg.wasm is very large and slow for browser file decoding. WebCodecs VideoDecoder (plus an
+//   MP4 demuxer such as mp4box.js) is now available in all major browsers and would be far lighter and
+//   faster; keep ffmpeg.wasm only as a fallback for unsupported containers/codecs.
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL, fetchFile } from '@ffmpeg/util';
 import { FFmpegWrapperBase } from './FFmpegWrapper.base';

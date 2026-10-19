@@ -54,6 +54,16 @@ export abstract class VitalLensBase {
   }
 
   /**
+   * Changes the frame rate at which live stream frames are processed.
+   * Stops the current stream and clears all measurements: call
+   * `setVideoStream` and `startVideoStream` again afterwards.
+   * @param fps - New target frame rate.
+   */
+  setFpsTarget(fps: number): void {
+    this.controller.setFpsTarget(fps);
+  }
+
+  /**
    * Starts processing for live streams or resumes if paused.
    */
   startVideoStream(): void {

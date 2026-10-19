@@ -9,6 +9,7 @@ export interface IVitalLensController {
   pauseVideoStream(): void;
   stopVideoStream(): void;
   setInferenceEnabled(enabled: boolean): void;
+  setFpsTarget(fps: number): void;
   reset(): void;
   processVideoFile(filePath: VideoInput): Promise<VitalLensResult>;
   getSupportedVitals(): Vital[];

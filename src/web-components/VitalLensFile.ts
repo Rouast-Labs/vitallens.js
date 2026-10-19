@@ -191,14 +191,14 @@ export class VitalLensFile extends VitalLensBase {
     const secondaryVitals = [
       buildVital(
         'hrv_sdnn',
-        sdnnConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_sdnn?.value : null,
+        this.isHrvConfident(sdnnConf, hrConf) ? vs.hrv_sdnn?.value : null,
         sdnnConf,
         '%.0f',
         true
       ),
       buildVital(
         'hrv_rmssd',
-        rmssdConf >= this.HRV_CONF_THRESHOLD ? vs.hrv_rmssd?.value : null,
+        this.isHrvConfident(rmssdConf, hrConf) ? vs.hrv_rmssd?.value : null,
         rmssdConf,
         '%.0f',
         true

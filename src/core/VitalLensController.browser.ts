@@ -10,7 +10,10 @@ import { StreamProcessor } from '../processing/StreamProcessor.browser';
 import faceDetectionWorkerDataURI from '../../dist/faceDetection.worker.browser.bundle.js';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import FFmpegWrapper from '../utils/FFmpegWrapper.browser';
-import { IFaceDetectionWorker } from '../types/IFaceDetectionWorker';
+import {
+  IFaceDetectionWorker,
+  DetectorHooks,
+} from '../types/IFaceDetectionWorker';
 import { FaceDetectionWorker } from '../ssd/FaceDetectionWorker.browser';
 import { createWorkerBlobURL } from '../utils/workerOps';
 import {
@@ -67,7 +70,8 @@ export class VitalLensController extends VitalLensControllerBase {
         coordinates: [number, number, number, number];
         confidence: number;
       } | null
-    ) => void
+    ) => void,
+    detectorHooks?: DetectorHooks
   ): IStreamProcessor {
     return new StreamProcessor(
       options,
@@ -79,7 +83,8 @@ export class VitalLensController extends VitalLensControllerBase {
       onPredict,
       onNoFace,
       onStreamReset,
-      onFaceDetected
+      onFaceDetected,
+      detectorHooks
     );
   }
 }
