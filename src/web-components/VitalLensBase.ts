@@ -189,7 +189,7 @@ export abstract class VitalLensBase extends SafeHTMLElement {
     if (isLowSignal) {
       return {
         state: 'recovering',
-        message: 'Low confidence. Improve lighting and hold still.',
+        message: 'Low confidence. Use steady light, move closer, and hold still.',
       };
     }
 
