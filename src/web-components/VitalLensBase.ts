@@ -19,7 +19,7 @@ export abstract class VitalLensBase extends SafeHTMLElement {
   protected latestResult: VitalLensResult | null = null;
   protected isProcessingFlag = false;
   protected supportedVitals: Vital[] = [];
-  // The slow connection fallback happens at most once per component.
+  // The slow connection fallback happens at most once per scan or monitoring session.
   protected autoFallbackDone = false;
   // While set, status messages from face detection don't overwrite a notice.
   private noticeUntil = 0;
@@ -100,10 +100,12 @@ export abstract class VitalLensBase extends SafeHTMLElement {
 
   /**
    * Calls `onSlow` when the connection is too slow for the standard frame rate.
-   * Fires at most once per component, as falling back is only done once.
+   * Fires at most once per session. Call it once per started session, so that a
+   * user who switches back to standard mode is checked again.
    * @param onSlow - Called when the stream should fall back to eco mode.
    */
   protected listenForSlowConnection(onSlow: () => void): void {
+    this.autoFallbackDone = false;
     this.vitalLensInstance?.addEventListener('status', (status) => {
       const stage = (status as { stage?: string }).stage;
       if (stage !== 'slowConnection') return;
