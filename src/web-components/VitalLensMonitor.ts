@@ -290,13 +290,13 @@ export class VitalLensMonitor extends VitalLensBase {
     this.updateValue(
       'sdnnVal',
       hrv_sdnn?.value,
-      sdnnConf >= this.HRV_CONF_THRESHOLD,
+      this.isHrvConfident(sdnnConf, hrConf),
       1
     );
     this.updateValue(
       'rmssdVal',
       hrv_rmssd?.value,
-      rmssdConf >= this.HRV_CONF_THRESHOLD,
+      this.isHrvConfident(rmssdConf, hrConf),
       1
     );
 

@@ -2,6 +2,7 @@ import { SafeHTMLElement } from './SafeHTMLElement';
 import { VitalLens } from '../core/VitalLens.browser';
 import { MessageHold } from './MessageHold';
 import { VitalLensOptions, VitalLensResult, Vital } from '../types';
+import { isHrvShown } from '../utils/vitalGating';
 
 export type SessionState =
   | 'idle'
@@ -31,7 +32,7 @@ export abstract class VitalLensBase extends SafeHTMLElement {
 
   protected readonly VITAL_CONF_THRESHOLD = 0.8;
   protected readonly FACE_CONF_THRESHOLD = 0.5;
-  protected readonly HRV_CONF_THRESHOLD = 0.7;
+  protected readonly HRV_CONF_THRESHOLD = 0.8;
 
   constructor() {
     super();
@@ -205,6 +206,18 @@ export abstract class VitalLensBase extends SafeHTMLElement {
         errorPopup.style.display = 'none';
       }, 10000);
     }
+  }
+
+  /**
+   * Whether an HRV metric may be shown: it must be confident itself, and so must heart rate.
+   */
+  protected isHrvConfident(hrvConf: number, hrConf: number): boolean {
+    return isHrvShown(
+      hrvConf,
+      hrConf,
+      this.HRV_CONF_THRESHOLD,
+      this.VITAL_CONF_THRESHOLD
+    );
   }
 
   protected isFaceGood(
