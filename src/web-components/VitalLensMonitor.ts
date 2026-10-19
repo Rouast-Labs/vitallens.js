@@ -291,13 +291,13 @@ export class VitalLensMonitor extends VitalLensBase {
       'sdnnVal',
       hrv_sdnn?.value,
       this.isHrvConfident(sdnnConf, hrConf),
-      1
+      0
     );
     this.updateValue(
       'rmssdVal',
       hrv_rmssd?.value,
       this.isHrvConfident(rmssdConf, hrConf),
-      1
+      0
     );
 
     // Let the shared state machine evaluate our situation
@@ -394,8 +394,8 @@ export class VitalLensMonitor extends VitalLensBase {
 
     this.updateValue('hrVal', null, false, 0);
     this.updateValue('rrVal', null, false, 0);
-    this.updateValue('sdnnVal', null, false, 1);
-    this.updateValue('rmssdVal', null, false, 1);
+    this.updateValue('sdnnVal', null, false, 0);
+    this.updateValue('rmssdVal', null, false, 0);
   }
 
   protected updateHRVDisplay(): void {

@@ -421,14 +421,14 @@ export class VitalLensWidget extends VitalLensBase {
       hrConfident ? hrv_sdnn?.value : undefined,
       getConf(hrv_sdnn),
       this.HRV_CONF_THRESHOLD,
-      1
+      0
     );
     this.updateNumericValue(
       'hrv-rmssd',
       hrConfident ? hrv_rmssd?.value : undefined,
       getConf(hrv_rmssd),
       this.HRV_CONF_THRESHOLD,
-      1
+      0
     );
 
     this.updateFpsValue(fps);
