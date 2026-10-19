@@ -36,6 +36,8 @@ export abstract class StreamProcessorBase {
   private restartCount = 0;
   private consecutiveErrors = 0;
   private detectorFailed = false;
+  // Incremented on stop and reset, so late responses of older requests are dropped
+  private generation = 0;
 
   protected get methodConfig(): MethodConfig {
     return this.getConfig();
@@ -273,6 +275,7 @@ export abstract class StreamProcessorBase {
                 const currentState = this.bufferManager.getState();
                 const bufferSize = command.take_count;
                 const requestStart = performance.now();
+                const generation = this.generation;
                 this.methodHandler
                   .process(
                     mergedFrame,
@@ -280,22 +283,14 @@ export abstract class StreamProcessorBase {
                     currentState as Float32Array,
                     bufferSize
                   )
-                  .then((incrementalResult) => {
-                    this.detectorHooks?.report?.(
-                      'apiRequest',
-                      performance.now() - requestStart
-                    );
-                    if (incrementalResult) {
-                      if (incrementalResult.state) {
-                        this.bufferManager.setState(
-                          new Float32Array(incrementalResult.state.data)
-                        );
-                      } else {
-                        this.bufferManager.resetState();
-                      }
-                      this.onPredict(incrementalResult);
-                    }
-                  })
+                  .then((incrementalResult) =>
+                    this.handlePrediction(
+                      incrementalResult,
+                      generation,
+                      performance.now() - requestStart,
+                      bufferSize
+                    )
+                  )
                   .catch((error) => {
                     console.error('Error during prediction:', error);
                     if (error.message.includes('Resetting stream')) {
@@ -349,6 +344,34 @@ export abstract class StreamProcessorBase {
   protected abstract handleFaceDetectionResult(event: MessageEvent): void;
 
   /**
+   * Applies the response of a stream request: stores the model state and passes
+   * the result on. Responses to requests sent before the last stop or reset are
+   * dropped, so their (stale) model state cannot leak into the new stream.
+   * @param incrementalResult - The response, if any.
+   * @param generation - Generation at the time the request was sent.
+   * @param ms - Request duration in milliseconds.
+   * @param frames - Number of frames sent with the request.
+   */
+  protected handlePrediction(
+    incrementalResult: VitalLensResult | undefined,
+    generation: number,
+    ms: number,
+    frames: number
+  ): void {
+    if (generation !== this.generation) return;
+    this.detectorHooks?.report?.('apiRequest', ms, frames);
+    if (!incrementalResult) return;
+    if (incrementalResult.state) {
+      this.bufferManager.setState(
+        new Float32Array(incrementalResult.state.data)
+      );
+    } else {
+      this.bufferManager.resetState();
+    }
+    this.onPredict(incrementalResult);
+  }
+
+  /**
    * Returns `true` we are actively processing
    * @returns Returns `true` we are actively processing
    */
@@ -361,6 +384,7 @@ export abstract class StreamProcessorBase {
    */
   stop(): void {
     this.isPaused = true;
+    this.generation++;
     this.frameIterator.stop();
     this.methodHandler.cleanup();
     this.bufferManager.cleanup();
@@ -370,6 +394,7 @@ export abstract class StreamProcessorBase {
    * Clears the ROI and buffers.
    */
   reset(): void {
+    this.generation++;
     this.roi = null;
     this.pendingRoi = null;
     this.bufferManager.cleanup();

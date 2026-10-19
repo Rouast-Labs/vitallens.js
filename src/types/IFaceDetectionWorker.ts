@@ -32,5 +32,5 @@ export interface DetectorHooks {
   isReady(): boolean;
   recreateWorker(): IFaceDetectionWorker;
   onStatus(status: DetectorStatus): void;
-  report?(stage: 'detection' | 'apiRequest', ms: number): void;
+  report?(stage: 'detection' | 'apiRequest', ms: number, frames?: number): void;
 }
