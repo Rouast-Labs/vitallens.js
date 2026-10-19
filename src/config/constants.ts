@@ -21,6 +21,14 @@ export const SLOW_DETECTION_MS = 3000;
 export const SLOW_FIRST_FACE_MS = 8000;
 export const SLOW_FIRST_RESULT_MS = 8000;
 export const SLOW_API_REQUEST_MS = 3000;
+// Slow connection detection for stream requests (see ConnectionMonitor).
+export const SLOW_CONNECTION_MEDIAN_MS = 1000;
+export const SLOW_CONNECTION_MAX_FRAMES = 50;
+export const SLOW_CONNECTION_WINDOW = 5;
+export const SLOW_CONNECTION_MIN_SAMPLES = 3;
+// Frame rates of the performance modes.
+export const FPS_ECO = 15;
+export const FPS_STANDARD = 30;
 
 export const COMPRESSION_MODE: CompressionMode = 'gzip';
 
