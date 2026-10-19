@@ -32,6 +32,10 @@ export const SLOW_CONNECTION_MIN_SAMPLES = 3;
 export const FPS_ECO = 15;
 export const FPS_STANDARD = 30;
 
+// Seconds at the start of a session that are not used when deriving HRV: the model's output is
+// unsettled at first. Internal setting, not exposed to users.
+export const HRV_SKIP_SECONDS = 3;
+
 export const COMPRESSION_MODE: CompressionMode = 'gzip';
 
 /** Performance mode of the UI components: 'eco' samples at 15 fps, 'standard' at 30 fps. */

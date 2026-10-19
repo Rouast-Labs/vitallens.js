@@ -1,4 +1,5 @@
 import { MethodConfig, VitalLensResult } from '../types/core';
+import { HRV_SKIP_SECONDS } from '../config/constants';
 
 function iterEntries(obj: unknown): [string, unknown][] {
   if (!obj) return [];
@@ -29,6 +30,7 @@ export function toSessionConfig(
     n_inputs: methodConfig.minWindowLengthState || 16,
     roi_method: methodConfig.roiMethod,
     return_waveforms: supportedVitals.filter((v) => v.includes('waveform')),
+    hrv_skip_seconds: HRV_SKIP_SECONDS,
   };
 }
 

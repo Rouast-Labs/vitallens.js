@@ -38,6 +38,17 @@ describe('SessionAdapter', () => {
       expect(config.return_waveforms).toEqual(['ppg_waveform']);
     });
 
+    it('skips the first seconds of a session when deriving HRV', () => {
+      const methodConfig = {
+        method: 'vitallens-2.0',
+        fpsTarget: 30,
+        roiMethod: 'face',
+        supportedVitals: [],
+      } as unknown as MethodConfig;
+
+      expect(toSessionConfig(methodConfig).hrv_skip_seconds).toBe(3);
+    });
+
     it('overrides fps_target when provided', () => {
       const methodConfig = {
         method: 'pos',
@@ -96,7 +107,7 @@ describe('SessionAdapter', () => {
         waveforms: {
           ppg_waveform: {
             data: [0.1, 0.2],
-            confidence: 0.99 as any,  
+            confidence: 0.99 as any,
             unit: 'unitless',
             note: '',
           },
