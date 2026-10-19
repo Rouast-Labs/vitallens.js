@@ -139,4 +139,79 @@ describe('VitalLensController status events and slow-start warnings', () => {
     vi.advanceTimersByTime(10000);
     expect(warn).not.toHaveBeenCalled();
   });
+
+  describe('slow connection and frame rate changes', () => {
+    beforeEach(() => {
+      vi.spyOn(
+        TestController.prototype as any,
+        'createMethodHandler'
+      ).mockReturnValue({
+        getConfig: () => ({ fpsTarget: 30 }),
+      });
+    });
+
+    test('reports slowConnection after slow requests at the standard frame rate', () => {
+      const c = create();
+      [1500, 1400, 1300].forEach((ms) =>
+        (c as any).reportTiming('apiRequest', ms, 8)
+      );
+      expect(statuses).toEqual([
+        { stage: 'slowConnection', medianMs: 1400, frames: 8 },
+      ]);
+    });
+
+    test('does not report slow connections at the eco frame rate', () => {
+      const c = new TestController({
+        method: 'vitallens',
+        overrideFpsTarget: 15,
+      });
+      statuses = [];
+      c.addEventListener('status', (s) => statuses.push(s));
+      [1500, 1400, 1300].forEach((ms) =>
+        (c as any).reportTiming('apiRequest', ms, 8)
+      );
+      expect(statuses).toEqual([]);
+    });
+
+    test('ignores face detection timings for the connection check', () => {
+      const c = create();
+      [1500, 1400, 1300].forEach((ms) =>
+        (c as any).reportTiming('detection', ms)
+      );
+      expect(statuses).toEqual([]);
+    });
+
+    test('setFpsTarget stops the stream and clears state', () => {
+      const c = create();
+      const stop = vi.fn();
+      (c as any).streamProcessor = { stop };
+      (c as any).session = {};
+      c.setFpsTarget(15);
+      expect(stop).toHaveBeenCalled();
+      expect((c as any).streamProcessor).toBeNull();
+      expect((c as any).session).toBeNull();
+      expect((c as any).bufferManager.cleanup).toHaveBeenCalled();
+      expect((c as any).options.overrideFpsTarget).toBe(15);
+      expect(statuses).toEqual([{ stage: 'fpsChanged', fps: 15 }]);
+    });
+
+    test('setFpsTarget works without a running stream', () => {
+      const c = create();
+      expect(() => c.setFpsTarget(15)).not.toThrow();
+    });
+
+    test('after setFpsTarget the slow connection check starts over and stops at eco', () => {
+      const c = create();
+      [1500, 1400, 1300].forEach((ms) =>
+        (c as any).reportTiming('apiRequest', ms, 8)
+      );
+      statuses.length = 0;
+      c.setFpsTarget(15);
+      statuses.length = 0;
+      [1500, 1400, 1300].forEach((ms) =>
+        (c as any).reportTiming('apiRequest', ms, 8)
+      );
+      expect(statuses).toEqual([]);
+    });
+  });
 });

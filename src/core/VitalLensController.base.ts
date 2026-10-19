@@ -19,12 +19,14 @@ import { IFrameIterator } from '../types/IFrameIterator';
 import { IFFmpegWrapper } from '../types/IFFmpegWrapper';
 import { FrameIteratorFactory } from '../processing/FrameIteratorFactory';
 import { StageTimer } from '../utils/StageTimer';
+import { ConnectionMonitor } from '../utils/ConnectionMonitor';
 import {
   SLOW_WORKER_READY_MS,
   SLOW_DETECTION_MS,
   SLOW_FIRST_FACE_MS,
   SLOW_FIRST_RESULT_MS,
   SLOW_API_REQUEST_MS,
+  FPS_ECO,
 } from '../config/constants';
 import {
   IFaceDetectionWorker,
@@ -44,6 +46,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   protected faceDetectionWorker: IFaceDetectionWorker | null = null;
   protected detectorReady = false;
   protected stageTimer: StageTimer;
+  protected connectionMonitor: ConnectionMonitor;
   protected ffmpeg: IFFmpegWrapper | null = null;
   protected session: Session | null = null;
   protected eventListeners: { [event: string]: ((data: unknown) => void)[] } =
@@ -51,6 +54,9 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
 
   constructor(protected options: VitalLensOptions) {
     this.stageTimer = new StageTimer(options.debug ?? false);
+    this.connectionMonitor = new ConnectionMonitor((info) =>
+      this.dispatchEvent('status', { stage: 'slowConnection', ...info })
+    );
     this.methodConfig = METHODS_CONFIG[this.options.method];
     this.bufferManager = new BufferManager();
     this.methodHandler = this.createMethodHandler(options);
@@ -248,14 +254,61 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
           return worker;
         },
         onStatus: (status) => this.dispatchEvent('status', status),
-        report: (stage, ms) =>
-          this.stageTimer.report(
-            stage === 'detection' ? 'face detection' : 'API request',
-            ms,
-            stage === 'detection' ? SLOW_DETECTION_MS : SLOW_API_REQUEST_MS
-          ),
+        report: (stage, ms, frames) => this.reportTiming(stage, ms, frames),
       }
     );
+  }
+
+  /**
+   * Logs the duration of a detection or stream request. Stream requests also
+   * feed the slow connection check, which only applies above the eco frame rate.
+   */
+  protected reportTiming(
+    stage: 'detection' | 'apiRequest',
+    ms: number,
+    frames?: number
+  ): void {
+    this.stageTimer.report(
+      stage === 'detection' ? 'face detection' : 'API request',
+      ms,
+      stage === 'detection' ? SLOW_DETECTION_MS : SLOW_API_REQUEST_MS
+    );
+    if (
+      stage === 'apiRequest' &&
+      frames !== undefined &&
+      this.fpsTarget > FPS_ECO
+    ) {
+      this.connectionMonitor.record(ms, frames);
+    }
+  }
+
+  /**
+   * The frame rate at which stream frames are currently processed.
+   */
+  protected get fpsTarget(): number {
+    return (
+      this.options.overrideFpsTarget ?? this.methodHandler.getConfig().fpsTarget
+    );
+  }
+
+  /**
+   * Changes the frame rate of the stream. Stops the current stream processing
+   * and clears all buffers and state, as measurements at different frame rates
+   * cannot be mixed. The face detector and the resolved model stay loaded: call
+   * `setVideoStream` and `startVideoStream` again to continue.
+   * @param fps - New target frame rate.
+   */
+  setFpsTarget(fps: number): void {
+    if (this.streamProcessor) {
+      this.streamProcessor.stop();
+      this.streamProcessor = null;
+    }
+    this.options.overrideFpsTarget = fps;
+    // The session is created with the frame rate, so it is rebuilt by setVideoStream.
+    this.session = null;
+    this.bufferManager.cleanup();
+    this.connectionMonitor.reset();
+    this.dispatchEvent('status', { stage: 'fpsChanged', fps });
   }
 
   /**
