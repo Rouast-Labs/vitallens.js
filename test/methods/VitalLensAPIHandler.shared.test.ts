@@ -6,6 +6,7 @@ import {
   VitalLensOptions,
 } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
+import { getApiOrigin } from '../../src/utils/version';
 import {
   VitalLensAPIError,
   VitalLensAPIKeyError,
@@ -139,6 +140,36 @@ describe('VitalLensAPIHandler', () => {
       expect.any(Uint8Array),
       'file',
       undefined
+    );
+  });
+
+  it('should send the client version in the origin', async () => {
+    mockRestClient.sendFrames = vi
+      .fn<
+        (
+          metadata: Record<string, unknown>,
+          frames: Uint8Array,
+          mode: InferenceMode,
+          state?: Float32Array
+        ) => Promise<VitalLensAPIResponse>
+      >()
+      .mockResolvedValue(mockResponse);
+
+    const handler = new VitalLensAPIHandler(
+      mockRestClient as IRestClient,
+      mockOptionsREST
+    );
+    await handler.init();
+    await handler.process(mockFrame, 'file');
+
+    expect(mockRestClient.sendFrames).toHaveBeenCalledWith(
+      expect.objectContaining({ origin: getApiOrigin(mockOptionsREST.origin) }),
+      expect.any(Uint8Array),
+      'file',
+      undefined
+    );
+    expect(getApiOrigin(mockOptionsREST.origin)).toMatch(
+      /^vitallens\.js_\d+\.\d+\.\d+/
     );
   });
 

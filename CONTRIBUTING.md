@@ -126,6 +126,7 @@ The CI will automatically publish to NPM with the `@beta` tag.
   ```bash
   npm version patch # or minor/major
   ```
+  The `version` script in `package.json` also writes the new number into `src/utils/version.ts`, which the library sends to the API as part of the origin (`vitallens.js_<version>`), and includes it in the version commit.
 4. Push the version commit and the new tag directly to `main`:
   ```bash
   git push origin main --follow-tags

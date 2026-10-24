@@ -15,6 +15,7 @@ import {
 } from '../utils/errors';
 import { IRestClient, ResolveModelResponse } from '../types/IRestClient';
 import { VitalMetadataCache } from '../utils/VitalMetadataCache';
+import { getApiOrigin } from '../utils/version';
 
 const STREAM_RESET_BUFFER_THRESHOLD = 100; // Frames
 
@@ -237,7 +238,7 @@ export class VitalLensAPIHandler extends MethodHandler {
 
     try {
       const metadata: { origin: string; model?: string } = {
-        origin: this.options.origin || 'vitallens.js',
+        origin: getApiOrigin(this.options.origin),
         ...(this.requestedModelName && { model: this.requestedModelName }),
       };
 

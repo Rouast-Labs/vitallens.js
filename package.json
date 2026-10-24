@@ -22,6 +22,7 @@
   "scripts": {
     "build": "tsc && rollup -c",
     "prepare": "npm run build",
+    "version": "node scripts/sync-version.cjs && git add src/utils/version.ts",
     "build:integration": "rollup -c --environment BUILD_INTEGRATION",
     "test": "vitest run",
     "test:browser": "vitest run test/**/*.browser.test.ts test/**/*.shared.test.ts",
