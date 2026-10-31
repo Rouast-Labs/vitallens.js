@@ -133,6 +133,97 @@ describe('StreamFrameIterator', () => {
     });
   });
 
+  describe('requestVideoFrameCallback', () => {
+    let callbacks: VideoFrameRequestCallback[];
+
+    beforeEach(() => {
+      callbacks = [];
+      (mockVideoElement as any).requestVideoFrameCallback = vi.fn(
+        (cb: VideoFrameRequestCallback) => callbacks.push(cb)
+      );
+      (mockVideoElement as any).cancelVideoFrameCallback = vi.fn();
+      vi.spyOn(mockVideoElement, 'play').mockResolvedValue();
+    });
+
+    const present = (
+      now: number,
+      presentedFrames: number,
+      extra: Partial<VideoFrameCallbackMetadata> = {}
+    ) => {
+      const cb = callbacks.shift()!;
+      cb(now, {
+        presentedFrames,
+        mediaTime: now / 1000,
+        ...extra,
+      } as VideoFrameCallbackMetadata);
+    };
+
+    test('is frame paced and stamps frames with the capture time', async () => {
+      const iterator = new StreamFrameIterator(mockStream, mockVideoElement);
+      await iterator.start();
+      expect(iterator.isFramePaced()).toBe(true);
+
+      const pending = iterator.next();
+      present(1040, 1, { captureTime: 1000 });
+      const frame = await pending;
+
+      expect(frame!.getTimestamp()).toEqual([1.0]);
+    });
+
+    test('falls back to media time shifted onto the performance clock', async () => {
+      const iterator = new StreamFrameIterator(mockStream, mockVideoElement);
+      await iterator.start();
+
+      const first = iterator.next();
+      present(5000, 1, { mediaTime: 2.0 });
+      await first;
+      const second = iterator.next();
+      present(5050, 2, { mediaTime: 2.033 });
+
+      expect((await second)!.getTimestamp()[0]).toBeCloseTo(5.033, 6);
+    });
+
+    test('skips frames that come sooner than the frame interval', async () => {
+      const iterator = new StreamFrameIterator(mockStream, mockVideoElement);
+      await iterator.start();
+      iterator.setFrameInterval(1 / 30);
+
+      // 60 fps camera: every second frame is delivered
+      for (let i = 0; i < 6; i++) {
+        present(1000 + i * 16.667, i + 1, { captureTime: 1000 + i * 16.667 });
+      }
+
+      expect(iterator.getFrameStats().delivered).toBe(3);
+    });
+
+    test('counts missed callbacks and overwritten frames', async () => {
+      const iterator = new StreamFrameIterator(mockStream, mockVideoElement);
+      await iterator.start();
+
+      present(1000, 1, { captureTime: 1000 });
+      present(1033, 2, { captureTime: 1033 });
+      present(1133, 5, { captureTime: 1133 });
+
+      expect(iterator.getFrameStats()).toEqual({
+        delivered: 3,
+        missed: 2,
+        overwritten: 2,
+      });
+      expect((await iterator.next())!.getTimestamp()).toEqual([1.133]);
+    });
+
+    test('stop resolves a waiting next with null', async () => {
+      const iterator = new StreamFrameIterator(mockStream, mockVideoElement);
+      await iterator.start();
+
+      const pending = iterator.next();
+      iterator.stop();
+
+      expect(await pending).toBeNull();
+      expect(mockVideoElement.cancelVideoFrameCallback).toHaveBeenCalled();
+    });
+  });
+
   describe('stop', () => {
     test('pauses the video element and sets isClosed to true', () => {
       const iterator = new StreamFrameIterator(mockStream, mockVideoElement);

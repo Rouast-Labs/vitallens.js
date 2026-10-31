@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { FrameBuffer } from '../../src/processing/FrameBuffer';
+import * as tf from '@tensorflow/tfjs-core';
+import { FrameBuffer, downsample } from '../../src/processing/FrameBuffer';
 import { ROI } from '../../src/types/core';
 import { Frame } from '../../src/processing/Frame';
 import { describe, expect, beforeEach, vi, test, afterEach } from 'vitest';
@@ -155,5 +156,35 @@ describe('FrameBuffer', () => {
     }
     buffer.clear();
     expect((buffer as any).buffer.size).toBe(0);
+  });
+});
+
+describe('downsample', () => {
+  test('averages exact blocks when the size is an integer multiple', () => {
+    const image = tf.randomUniform([120, 160, 3], 0, 255) as tf.Tensor3D;
+    const out = downsample(image, 40);
+    const expected = image
+      .reshape([40, 3, 40, 4, 3])
+      .mean([1, 3]) as tf.Tensor3D;
+    expect(out.shape).toEqual([40, 40, 3]);
+    expect(tf.max(tf.abs(tf.sub(out, expected))).dataSync()[0]).toBeLessThan(
+      1e-3
+    );
+  });
+
+  test('averages out pixel noise at large downscale factors', () => {
+    // 300 -> 40: a box covers about 7.5 x 7.5 px, so noise sd drops by about 7
+    const image = tf.randomNormal([300, 300, 3], 128, 20) as tf.Tensor3D;
+    const sd = (t: tf.Tensor) =>
+      Math.sqrt(tf.moments(t).variance.dataSync()[0]);
+    expect(sd(downsample(image, 40))).toBeLessThan(4);
+    expect(sd(tf.image.resizeBilinear(image, [40, 40]))).toBeGreaterThan(8);
+  });
+
+  test('uses bilinear resizing up to 2x downscaling', () => {
+    const image = tf.ones([80, 60, 3]) as tf.Tensor3D;
+    const out = downsample(image, 40);
+    expect(out.shape).toEqual([40, 40, 3]);
+    expect(tf.min(out).dataSync()[0]).toBeCloseTo(1, 6);
   });
 });
