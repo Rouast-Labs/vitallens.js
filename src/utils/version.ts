@@ -1,7 +1,7 @@
 /**
  * The package version. Must match `version` in package.json (checked by a test); bump both together when releasing.
  */
-export const VERSION = '0.4.9';
+export const VERSION = '0.5.0';
 
 /**
  * The origin label sent to the API: `vitallens.js_<version>`, so usage can be broken down by client version.
