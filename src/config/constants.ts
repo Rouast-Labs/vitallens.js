@@ -31,6 +31,8 @@ export const SLOW_CONNECTION_MIN_SAMPLES = 3;
 // Frame rates of the performance modes.
 export const FPS_ECO = 15;
 export const FPS_STANDARD = 30;
+// Stream frames captured sooner than this fraction of the target frame interval are skipped.
+export const FRAME_INTERVAL_TOLERANCE = 0.75;
 
 // Seconds at the start of a session that are not used when deriving HRV: the model's output is
 // unsettled at first. Internal setting, not exposed to users.
