@@ -124,3 +124,22 @@ Disposes of the instance, terminates background workers, and cleans up memory.
 ```javascript
 await vl.close();
 ```
+---
+
+## `VitalLensResult`
+
+`processVideoFile` resolves to a `VitalLensResult`, and the `vitals` event delivers one with each update. It describes a single face. The structure, the vital keys, when each value is available and how to use the confidence scores are the same for all clients and described in [Understanding Results](https://docs.rouast.com/guides/results/).
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `face` | `{ coordinates?, confidence?, note? }` | Per-frame face box `[x0, y0, x1, y1]` and confidence that a face is present. |
+| `vitals` | `Record<string, { value, unit, confidence, note }>` | One entry per vital, e.g. `result.vitals.heart_rate.value`. Keys are missing until enough data is available. |
+| `waveforms` | `Record<string, { data, unit, confidence, note }>` | `ppg_waveform` and `respiratory_waveform`, with `data` and `confidence` per frame. |
+| `time` | `number[]` | Timestamp of each frame in `waveforms`, in seconds. |
+| `message` | `string` | A reminder that the values are estimates. |
+
+While streaming, `waveformMode` sets which frames `waveforms` contains:
+
+- `"incremental"` (default): only the frames added since the previous result. Append them to build a continuous signal.
+- `"windowed"`: the last 10 seconds.
+- `"global"`: all frames since the stream started. In this mode the vitals are also estimated from the whole stream instead of the most recent window.
