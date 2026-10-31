@@ -4,6 +4,24 @@ import { Buffer } from './Buffer';
 import { ROI } from '../types';
 
 /**
+ * Resizes an image to size x size. Above 2x downscaling, averages boxes of source
+ * pixels: bilinear to the next integer multiple of size, then average pooling.
+ * @param image - The image tensor of shape [h, w, c].
+ * @param size - The output height and width.
+ * @returns The resized image tensor.
+ */
+export function downsample(image: tf.Tensor3D, size: number): tf.Tensor3D {
+  const [h, w] = image.shape;
+  if (h / size <= 2 || w / size <= 2) {
+    return tf.image.resizeBilinear(image, [size, size]);
+  }
+  const kh = Math.ceil(h / size);
+  const kw = Math.ceil(w / size);
+  const upsampled = tf.image.resizeBilinear(image, [size * kh, size * kw]);
+  return tf.avgPool(upsampled, [kh, kw], [kh, kw], 'valid');
+}
+
+/**
  * A buffer implementation for managing frames with specific preprocessing.
  */
 export class FrameBuffer extends Buffer {
@@ -61,17 +79,8 @@ export class FrameBuffer extends Buffer {
       );
 
       // Resize the cropped tensor if inputSize is specified
-      // TODO: resizeBilinear has no antialiasing - at large downscale factors (e.g. ~300px -> 40px)
-      //   it samples ~4 source px per output px, discarding the spatial averaging that lifts the
-      //   pulse above sensor noise, and mismatching training (ffmpeg bicubic) / Python (box) / iOS
-      //   (vImage). Use area/box averaging instead, e.g. bilinear to an integer multiple of
-      //   inputSize then tf.avgPool, or a shared box-downsample in vitallens-core (WASM).
-      //   Verify first: same recording via Python vs JS, compare confidence/SNR.
       const resized = this.methodConfig.inputSize
-        ? tf.image.resizeBilinear(cropped as tf.Tensor3D, [
-            this.methodConfig.inputSize!,
-            this.methodConfig.inputSize!,
-          ])
+        ? downsample(cropped as tf.Tensor3D, this.methodConfig.inputSize)
         : cropped;
 
       // Create the new Frame from the processed tensor
