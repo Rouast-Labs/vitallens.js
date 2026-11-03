@@ -26,7 +26,7 @@ describe('VitalLensController Integration (Node)', () => {
   let controller: VitalLensController;
   const SAMPLE_VIDEO = path.resolve(
     __dirname,
-    '../../examples/sample_video_1.mp4'
+    '../../examples/sample_video_2.mp4'
   );
   const API_KEY = getTestDevApiKey();
 
@@ -68,8 +68,6 @@ describe('VitalLensController Integration (Node)', () => {
     expect(result.vitals.heart_rate).toHaveProperty('value');
     expect(result.vitals.heart_rate).toHaveProperty('confidence');
     expect(typeof result.vitals.heart_rate!.value).toBe('number');
-    expect(result.vitals.heart_rate!.value).toBeGreaterThan(40);
-    expect(result.vitals.heart_rate!.value).toBeLessThan(220);
     expect(result.vitals.heart_rate!.confidence).toBeGreaterThanOrEqual(0);
     expect(result.vitals.heart_rate!.confidence).toBeLessThanOrEqual(1);
 
@@ -84,6 +82,17 @@ describe('VitalLensController Integration (Node)', () => {
       0
     );
     expect(result.vitals.respiratory_rate!.confidence).toBeLessThanOrEqual(1);
+
+    // HR and HRV reference values from the contact PPG in examples/sample_vitals_2.csv
+    const hr = result.vitals.heart_rate!.value;
+    const sdnn = result.vitals.hrv_sdnn?.value;
+    const rmssd = result.vitals.hrv_rmssd?.value;
+    console.log(`[Integration] HR ${hr}, SDNN ${sdnn}, RMSSD ${rmssd}`);
+    expect(Math.abs(hr - 60.4)).toBeLessThanOrEqual(0.5);
+    expect(sdnn).toBeDefined();
+    expect(Math.abs(sdnn! - 62)).toBeLessThanOrEqual(10);
+    expect(rmssd).toBeDefined();
+    expect(Math.abs(rmssd! - 54)).toBeLessThanOrEqual(10);
 
     // Ensure `ppg_waveform` and `respiratory_waveform` have data arrays
     expect(result.waveforms).toHaveProperty('ppg_waveform');
@@ -103,14 +112,14 @@ describe('VitalLensController Integration (Node)', () => {
     expect(result.time.length).toBeGreaterThan(0);
     expect(result.time[result.time.length - 1]).toBeGreaterThan(result.time[0]);
 
-    // Ensure `message` and `fps` and `model_used` exist
+    // Ensure `message`, `fps`, `model_used` and `core_version` exist
     expect(result).toHaveProperty('message');
     expect(typeof result.message).toBe('string');
     expect(result).toHaveProperty('fps');
     expect(typeof result.fps).toBe('number');
     expect(result.fps).toBeGreaterThan(0);
-    // expect(result).toHaveProperty('model_used');
-    // expect(typeof result.model_used).toBe('string');
+    expect(result.model_used).toBe('vitallens-2.0');
+    expect(result.core_version).toMatch(/^\d+\.\d+\.\d+$/);
 
     controller.dispose();
   }, 60000);

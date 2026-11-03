@@ -378,13 +378,12 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
   async processVideoFile(videoInput: VideoInput): Promise<VitalLensResult> {
     const core = await getCore();
     await this.methodHandler.init();
-    if (!this.session) {
-      this.session = new Session(
-        core,
-        this.methodHandler.getConfig(),
-        this.options
-      );
-    }
+    const session = new Session(
+      core,
+      this.methodHandler.getConfig(),
+      this.options,
+      false
+    );
     if (!this.frameIteratorFactory) {
       throw new Error('FrameIteratorFactory is not initialized.');
     }
@@ -432,7 +431,7 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
           );
         }
         // Feed the chunk into Wasm to accumulate in the buffer
-        await this.session.processIncrementalResult(
+        await session.processIncrementalResult(
           incrementalResult,
           'incremental',
           false
@@ -442,10 +441,9 @@ export abstract class VitalLensControllerBase implements IVitalLensController {
     }
 
     // Trigger the final Global calculation on the accumulated buffer
-    const result = await this.session.getResult();
+    const result = await session.getResult();
 
     await this.methodHandler.cleanup();
-    this.session.reset();
 
     return result;
   }

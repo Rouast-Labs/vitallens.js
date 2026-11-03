@@ -19,7 +19,8 @@ function iterEntries(obj: unknown): [string, unknown][] {
 
 export function toSessionConfig(
   methodConfig: MethodConfig,
-  overrideFpsTarget?: number
+  overrideFpsTarget?: number,
+  live: boolean = true
 ) {
   const supportedVitals = methodConfig.supportedVitals || [];
   return {
@@ -30,7 +31,7 @@ export function toSessionConfig(
     n_inputs: methodConfig.minWindowLengthState || 16,
     roi_method: methodConfig.roiMethod,
     return_waveforms: supportedVitals.filter((v) => v.includes('waveform')),
-    hrv_skip_seconds: HRV_SKIP_SECONDS,
+    hrv_skip_seconds: live ? HRV_SKIP_SECONDS : 0,
   };
 }
 

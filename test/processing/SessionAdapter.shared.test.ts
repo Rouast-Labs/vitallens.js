@@ -38,7 +38,7 @@ describe('SessionAdapter', () => {
       expect(config.return_waveforms).toEqual(['ppg_waveform']);
     });
 
-    it('skips the first seconds of a session when deriving HRV', () => {
+    it('skips the first seconds of a live session when deriving HRV, but not of a file', () => {
       const methodConfig = {
         method: 'vitallens-2.0',
         fpsTarget: 30,
@@ -47,6 +47,9 @@ describe('SessionAdapter', () => {
       } as unknown as MethodConfig;
 
       expect(toSessionConfig(methodConfig).hrv_skip_seconds).toBe(3);
+      expect(
+        toSessionConfig(methodConfig, undefined, false).hrv_skip_seconds
+      ).toBe(0);
     });
 
     it('overrides fps_target when provided', () => {

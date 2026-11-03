@@ -10,18 +10,26 @@ export class Session {
   private wasmSession: any;
   private methodConfig: MethodConfig;
   private options: VitalLensOptions;
+  private coreVersion: string;
+  private modelUsed?: string;
 
   constructor(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     core: any,
     methodConfig: MethodConfig,
-    options: VitalLensOptions
+    options: VitalLensOptions,
+    live: boolean = true
   ) {
     this.methodConfig = methodConfig;
     this.options = options;
 
-    const config = toSessionConfig(methodConfig, options.overrideFpsTarget);
+    const config = toSessionConfig(
+      methodConfig,
+      options.overrideFpsTarget,
+      live
+    );
     this.wasmSession = new core.Session(config);
+    this.coreVersion = core.coreVersion();
   }
 
   async processIncrementalResult(
@@ -32,6 +40,9 @@ export class Session {
     const time = incrementalResult.time ?? [];
     if (time.length === 0) return null;
 
+    if (incrementalResult.model_used) {
+      this.modelUsed = incrementalResult.model_used;
+    }
     const sessionInput = toSessionInput(incrementalResult);
 
     // TODO: Expose waveform window configuration to users (e.g., allow custom duration).
@@ -46,7 +57,10 @@ export class Session {
     const wasmResult = this.wasmSession.processJs(sessionInput, wasmMode);
 
     if (returnResult) {
-      return toVitalLensResult(wasmResult, incrementalResult);
+      return {
+        ...toVitalLensResult(wasmResult, incrementalResult),
+        core_version: this.coreVersion,
+      };
     }
     return null;
   }
@@ -56,7 +70,11 @@ export class Session {
       { timestamp: [], signals: {} },
       'Global'
     );
-    return toVitalLensResult(wasmResult);
+    return {
+      ...toVitalLensResult(wasmResult),
+      ...(this.modelUsed && { model_used: this.modelUsed }),
+      core_version: this.coreVersion,
+    };
   }
 
   getEmptyResult(): VitalLensResult {
@@ -71,5 +89,6 @@ export class Session {
 
   reset() {
     this.wasmSession.reset();
+    this.modelUsed = undefined;
   }
 }
