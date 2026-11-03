@@ -16,6 +16,7 @@ vi.mock('../../src/core/wasmProvider', () => {
         .fn()
         .mockReturnValue({ x: 0, y: 0, width: 100, height: 100 }),
       computeBufferConfig: vi.fn().mockReturnValue({}),
+      coreVersion: vi.fn().mockReturnValue('0.4.2'),
       BufferPlanner: vi.fn().mockImplementation(() => ({
         evaluateTarget: vi.fn(),
         poll: vi.fn(),

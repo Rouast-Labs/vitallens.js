@@ -12,6 +12,7 @@ const mockSessionInstance = {
 };
 
 const mockCore = {
+  coreVersion: () => '0.4.2',
   Session: class {
     constructor() {
       return mockSessionInstance;
@@ -141,6 +142,37 @@ describe('Session', () => {
       );
       expect(result.time).toEqual([1000, 1001]);
       expect(result.message).toBe('Final global result');
+      expect(result.core_version).toBe('0.4.2');
+    });
+
+    it('keeps model_used from the incremental results for the global result', async () => {
+      mockSessionInstance.processJs.mockReturnValue({
+        timestamp: [1000],
+        vitals: {},
+        waveforms: {},
+      });
+      await session.processIncrementalResult(
+        { time: [1000], model_used: 'vitallens-2.0' } as VitalLensResult,
+        'incremental',
+        false
+      );
+      expect((await session.getResult()).model_used).toBe('vitallens-2.0');
+      session.reset();
+      expect((await session.getResult()).model_used).toBeUndefined();
+    });
+
+    it('adds the core version to incremental results but not to the empty result', async () => {
+      mockSessionInstance.processJs.mockReturnValueOnce({
+        timestamp: [1000],
+        vitals: {},
+        waveforms: {},
+      });
+      const result = await session.processIncrementalResult(
+        { time: [1000] } as VitalLensResult,
+        'incremental'
+      );
+      expect(result?.core_version).toBe('0.4.2');
+      expect(session.getEmptyResult().core_version).toBeUndefined();
     });
   });
 });

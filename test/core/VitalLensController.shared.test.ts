@@ -293,13 +293,20 @@ describe('VitalLensControllerBase', () => {
         .mockResolvedValue(mockIncrementalResult);
       controller['methodHandler'].init = vi.fn();
       controller['methodHandler'].cleanup = vi.fn();
+      const methodConfig = { method: 'vitallens-2.0' };
+      controller['methodHandler'].getConfig = vi
+        .fn()
+        .mockReturnValue(methodConfig);
 
       const mockFinalResult = { message: 'Processing complete' };
-      controller['session'] = {
+      const fileSession = {
         processIncrementalResult: vi.fn().mockResolvedValue({}),
         getResult: vi.fn().mockResolvedValue(mockFinalResult),
         reset: vi.fn(),
-      } as any;
+      };
+      vi.mocked(Session).mockImplementationOnce(function () {
+        return fileSession;
+      } as any);
 
       const result = await controller.processVideoFile(mockFileInput);
 
@@ -328,15 +335,21 @@ describe('VitalLensControllerBase', () => {
         undefined
       );
 
-      expect(
-        controller['session']!.processIncrementalResult
-      ).toHaveBeenCalledTimes(2);
-      expect(
-        controller['session']!.processIncrementalResult
-      ).toHaveBeenCalledWith(mockIncrementalResult, 'incremental', false);
+      // A file gets its own session, without the HRV skip of live streams
+      expect(Session).toHaveBeenCalledWith(
+        expect.anything(),
+        methodConfig,
+        controller['options'],
+        false
+      );
+      expect(fileSession.processIncrementalResult).toHaveBeenCalledTimes(2);
+      expect(fileSession.processIncrementalResult).toHaveBeenCalledWith(
+        mockIncrementalResult,
+        'incremental',
+        false
+      );
 
       expect(controller['methodHandler'].cleanup).toHaveBeenCalled();
-      expect(controller['session']!.reset).toHaveBeenCalled();
 
       expect(result).toEqual(mockFinalResult);
     });

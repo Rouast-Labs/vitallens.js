@@ -102,6 +102,7 @@ export interface VitalLensResult {
   fps?: number;
   est_fps?: number;
   model_used?: string;
+  core_version?: string;
   message: string;
 }
 
