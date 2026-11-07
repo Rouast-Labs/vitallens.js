@@ -1,9 +1,39 @@
 import { StreamProcessorBase } from './StreamProcessor.base';
 import { Frame } from './Frame';
 import { checkROIValid, getROIForMethod } from '../utils/faceOps';
+import { getCoreSync } from '../core/wasmProvider';
+import type { FaceHold } from 'vitallens-core';
 
 export class StreamProcessor extends StreamProcessorBase {
   private faceDetectionRequestId: number = 0;
+  private faceHold: FaceHold | null = null;
+
+  /**
+   * Registers a detection result with vitallens-core's FaceHold.
+   * @param det - The detected face, or null if none was found.
+   * @param timestamp - Time of the detected frame in seconds.
+   * @returns Whether a face is still considered present.
+   */
+  private holdFace(
+    det: { x0: number; y0: number; x1: number; y1: number } | null,
+    timestamp: number
+  ): boolean {
+    if (!this.faceHold) {
+      this.faceHold = new (getCoreSync().FaceHold)(undefined);
+    }
+    const face = det
+      ? { x: det.x0, y: det.y0, width: det.x1 - det.x0, height: det.y1 - det.y0 }
+      : null;
+    return this.faceHold.update(face, timestamp) != null;
+  }
+
+  /**
+   * Clears the ROI, buffers and the held face.
+   */
+  reset(): void {
+    super.reset();
+    this.faceHold?.reset();
+  }
 
   /**
    * Triggers face detection on a single frame.
@@ -73,6 +103,8 @@ export class StreamProcessor extends StreamProcessorBase {
       detections && detections.length > 0 && checkROIValid(detections[0]);
 
     if (!hasValidDetection) {
+      // A miss keeps the current ROI until no face was found for the hold time
+      if (this.holdFace(null, timestamp)) return;
       // No face detected.
       this.roi = null;
       this.pendingRoi = null;
@@ -82,6 +114,7 @@ export class StreamProcessor extends StreamProcessorBase {
     }
     // Use the first detection
     const det = detections[0];
+    this.holdFace(det, timestamp);
 
     if (this.onFaceDetected) {
       this.onFaceDetected({

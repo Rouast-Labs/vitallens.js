@@ -7,7 +7,8 @@ import { checkROIValid, getROIForMethod } from '../../src/utils/faceOps';
 import { VitalLensOptions, MethodConfig } from '../../src/types';
 import { BufferManager } from '../../src/processing/BufferManager';
 import { IFaceDetectionWorker } from '../../src/types/IFaceDetectionWorker';
-import { describe, expect, beforeEach, vi, it } from 'vitest';
+import { getCore } from '../../src/core/wasmProvider';
+import { describe, expect, beforeEach, beforeAll, vi, it } from 'vitest';
 
 vi.mock('../../src/utils/faceOps', async () => ({
   getROIForMethod: vi.fn(),
@@ -15,6 +16,10 @@ vi.mock('../../src/utils/faceOps', async () => ({
 }));
 
 describe('StreamProcessor (Browser)', () => {
+  beforeAll(async () => {
+    await getCore();
+  });
+
   // Dummy options and method config.
   const options: VitalLensOptions = {
     method: 'vitallens',
@@ -206,6 +211,58 @@ describe('StreamProcessor (Browser)', () => {
       // The buffer manager cleanup should be invoked.
       expect(fakeBufferManager.cleanup).toHaveBeenCalled();
       // And the onNoFace callback should be triggered.
+      expect(dummyOnNoFace).toHaveBeenCalled();
+    });
+
+    const detectionEvent = (detections: unknown[], timestamp: number) =>
+      new MessageEvent('message', {
+        data: {
+          id: 1,
+          detections,
+          probeInfo: { width: 640, height: 480 },
+          timestamp,
+        },
+      });
+
+    it('should keep the ROI through a missed detection', () => {
+      const calculatedROI = { x0: 12, y0: 22, x1: 48, y1: 58 };
+      (checkROIValid as vi.Mock).mockReturnValue(true);
+      (getROIForMethod as vi.Mock).mockReturnValue(calculatedROI);
+      (fakeBufferManager.processTarget as vi.Mock).mockReturnValue(
+        calculatedROI
+      );
+      (processor as any).handleFaceDetectionResult(
+        detectionEvent([{ x0: 10, y0: 20, x1: 50, y1: 60 }], 1.0)
+      );
+      (processor as any).roi = calculatedROI;
+      fakeBufferManager.cleanup.mockClear();
+      dummyOnNoFace.mockClear();
+
+      (processor as any).handleFaceDetectionResult(detectionEvent([], 1.5));
+
+      expect((processor as any).roi).toEqual(calculatedROI);
+      expect(fakeBufferManager.cleanup).not.toHaveBeenCalled();
+      expect(dummyOnNoFace).not.toHaveBeenCalled();
+    });
+
+    it('should drop the ROI once no face was found for the hold time', () => {
+      const calculatedROI = { x0: 12, y0: 22, x1: 48, y1: 58 };
+      (checkROIValid as vi.Mock).mockReturnValue(true);
+      (getROIForMethod as vi.Mock).mockReturnValue(calculatedROI);
+      (fakeBufferManager.processTarget as vi.Mock).mockReturnValue(
+        calculatedROI
+      );
+      (processor as any).handleFaceDetectionResult(
+        detectionEvent([{ x0: 10, y0: 20, x1: 50, y1: 60 }], 1.0)
+      );
+      (processor as any).roi = calculatedROI;
+      dummyOnNoFace.mockClear();
+
+      (processor as any).handleFaceDetectionResult(detectionEvent([], 2.0));
+      expect(dummyOnNoFace).not.toHaveBeenCalled();
+      (processor as any).handleFaceDetectionResult(detectionEvent([], 3.0));
+
+      expect((processor as any).roi).toBeNull();
       expect(dummyOnNoFace).toHaveBeenCalled();
     });
 

@@ -1,9 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { StreamProcessor } from '../../src/processing/StreamProcessor.browser';
 import { DetectorHooks } from '../../src/types/IFaceDetectionWorker';
-import { describe, expect, beforeEach, afterEach, vi, it } from 'vitest';
+import { getCore } from '../../src/core/wasmProvider';
+import { describe, expect, beforeEach, beforeAll, afterEach, vi, it } from 'vitest';
 
 describe('StreamProcessor face detection watchdog (Browser)', () => {
+  beforeAll(async () => {
+    await getCore();
+  });
+
   let worker: any;
   let newWorker: any;
   let ready: boolean;
