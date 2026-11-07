@@ -22,7 +22,12 @@ export class StreamProcessor extends StreamProcessorBase {
       this.faceHold = new (getCoreSync().FaceHold)(undefined);
     }
     const face = det
-      ? { x: det.x0, y: det.y0, width: det.x1 - det.x0, height: det.y1 - det.y0 }
+      ? {
+          x: det.x0,
+          y: det.y0,
+          width: det.x1 - det.x0,
+          height: det.y1 - det.y0,
+        }
       : null;
     return this.faceHold.update(face, timestamp) != null;
   }

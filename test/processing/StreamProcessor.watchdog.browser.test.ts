@@ -2,7 +2,15 @@
 import { StreamProcessor } from '../../src/processing/StreamProcessor.browser';
 import { DetectorHooks } from '../../src/types/IFaceDetectionWorker';
 import { getCore } from '../../src/core/wasmProvider';
-import { describe, expect, beforeEach, beforeAll, afterEach, vi, it } from 'vitest';
+import {
+  describe,
+  expect,
+  beforeEach,
+  beforeAll,
+  afterEach,
+  vi,
+  it,
+} from 'vitest';
 
 describe('StreamProcessor face detection watchdog (Browser)', () => {
   beforeAll(async () => {
